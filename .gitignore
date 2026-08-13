@@ -1,0 +1,21 @@
+# Python virtual environments (each teammate creates their own locally via
+# `pip install -r requirements.txt` — see README section 3/4)
+matching-service/venv/
+crawler/venv/
+**/__pycache__/
+*.pyc
+
+# Local environment overrides, if anyone adds one later
+.env
+*.env.local
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Database backups exported via php/backup.php (contain real data if run
+# against a populated local DB — shouldn't be committed)
+*.sql.bak
+/database/backups/

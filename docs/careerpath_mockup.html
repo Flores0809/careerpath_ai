@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CareerPath AI — UI Mockup Board</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; margin: 0; background: #eef1f6; color: #222; }
+  .board-header { background: #fff; border-bottom: 1px solid #dde3ec; padding: 20px 32px; position: sticky; top: 0; z-index: 100; }
+  .board-header h1 { margin: 0 0 4px; color: #1a4d8f; font-size: 20px; }
+  .board-header p { margin: 0; color: #667; font-size: 13px; color: #667085; }
+  .board-header .tag { display:inline-block; background:#eef2f8; color:#1a4d8f; font-size:11px; padding:3px 9px; border-radius:10px; margin-right:6px; }
+
+  .canvas { padding: 40px; display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start; }
+  .frame { }
+  .frame-label { font-size: 13px; font-weight: bold; color: #444; margin-bottom: 8px; display:flex; align-items:center; gap:8px; }
+  .frame-label .dot { width:8px; height:8px; border-radius:50%; background:#8b5cf6; display:inline-block; }
+  .frame-window { width: 900px; max-width: 90vw; background: #fff; border-radius: 10px; box-shadow: 0 12px 32px rgba(20,30,60,0.14); overflow: hidden; border: 1px solid #d8deea; }
+  .frame-window.mobile { width: 320px; }
+  .browser-bar { background: #eceff4; padding: 8px 12px; display:flex; align-items:center; gap:6px; border-bottom:1px solid #dde3ec; }
+  .browser-bar .b-dot { width:9px; height:9px; border-radius:50%; }
+  .browser-bar .b-dot.red{background:#ff5f57;} .browser-bar .b-dot.yellow{background:#febc2e;} .browser-bar .b-dot.green{background:#28c840;}
+  .browser-bar .url { margin-left:10px; background:#fff; border-radius:5px; padding:3px 10px; font-size:11px; color:#888; flex:1; }
+  .screen { padding: 0; font-size: 13px; }
+
+  /* ---- shared nav mock ---- */
+  .nav { background:#1a4d8f; color:#fff; padding:12px 20px; display:flex; align-items:center; gap:16px; font-size:13px; }
+  .nav .brand { font-weight:bold; font-size:15px; margin-right:8px; }
+  .nav .link { color:#cfe0f5; padding:6px 10px; border-radius:5px; }
+  .nav .link.active { background:rgba(255,255,255,.18); color:#fff; font-weight:bold; }
+  .nav .spacer { flex:1; }
+  .nav .user { font-size:12px; white-space:nowrap; }
+  .nav .user .logout{ color:#ffd166; margin-left:4px; }
+  .nav .badge { background:#e63946; color:#fff; border-radius:8px; font-size:9px; padding:1px 5px; margin-left:3px; }
+
+  .body-pad { padding: 22px 26px; background:#f7f9fc; }
+  .h1 { color:#1a4d8f; font-size:17px; margin:0 0 4px; }
+  .sub { color:#889; font-size:12px; margin:0 0 16px; }
+
+  .stat-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+  .stat-card { background:#fff; border-radius:9px; box-shadow:0 3px 10px rgba(18,58,107,.08); padding:12px 14px; }
+  .stat-card .lab { font-size:9px; text-transform:uppercase; color:#98a; margin-bottom:4px; letter-spacing:.4px; }
+  .stat-card .val { font-size:18px; font-weight:bold; color:#1a4d8f; }
+  .stat-card .subv { font-size:10px; color:#98a; margin-top:2px; }
+
+  .panels { display:grid; grid-template-columns:1.1fr .9fr; gap:12px; }
+  .panel { background:#fff; border-radius:9px; box-shadow:0 3px 10px rgba(18,58,107,.08); padding:16px 18px; }
+  .panel h2 { margin:0 0 10px; font-size:12.5px; color:#1a4d8f; }
+  .bar-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .bar-row .let { width:14px; font-weight:bold; color:#1a4d8f; font-size:10px; }
+  .bar-track { flex:1; background:#eef2f8; border-radius:5px; height:9px; overflow:hidden; }
+  .bar-fill { background:linear-gradient(90deg,#1a4d8f,#3d7bc4); height:100%; }
+  .bar-pct { width:26px; text-align:right; font-size:10px; color:#98a; }
+  .act-item { display:flex; justify-content:space-between; padding:7px 0; border-top:1px solid #eee; font-size:11px; }
+  .act-item:first-child{border-top:none;}
+
+  .card { background:#fff; border:1px solid #e3e8f0; border-radius:8px; padding:14px 16px; margin-bottom:12px; }
+  .card h3 { margin:0 0 6px; color:#1a4d8f; font-size:13px; }
+  .match-pill { float:right; background:#1a4d8f; color:#fff; font-size:10px; padding:3px 9px; border-radius:10px; }
+  .p-sm { font-size:11px; color:#556; line-height:1.5; margin:4px 0; }
+  .skill-tag { display:inline-block; padding:2px 7px; border-radius:9px; font-size:9.5px; margin:2px 3px 0 0; }
+  .have{background:#d1e7dd;color:#0f5132;} .need{background:#fff3cd;color:#856404;}
+
+  .btn { display:inline-block; background:#1a4d8f; color:#fff; font-size:11px; padding:8px 16px; border-radius:6px; font-weight:bold; }
+  .btn.outline { background:#fff; color:#1a4d8f; border:1px solid #1a4d8f; }
+
+  .q-block { background:#fff; border:1px solid #e3e8f0; border-radius:8px; padding:12px 16px; margin-bottom:10px; }
+  .q-block .leg { font-weight:bold; color:#1a4d8f; font-size:11px; margin-bottom:6px; }
+  .q-item { display:flex; justify-content:space-between; align-items:center; font-size:11px; padding:5px 0; border-top:1px dashed #eee; }
+  .q-item:first-of-type{border-top:none;}
+  .scale { display:flex; gap:4px; }
+  .scale span { width:16px; height:16px; border-radius:50%; border:1px solid #c7d3e6; display:inline-block; }
+  .scale span.sel { background:#1a4d8f; border-color:#1a4d8f; }
+
+  table.mock { width:100%; border-collapse:collapse; font-size:10.5px; }
+  table.mock th { text-align:left; color:#1a4d8f; text-transform:uppercase; font-size:9px; padding:6px 4px; }
+  table.mock td { padding:6px 4px; border-top:1px solid #eee; }
+  .role-tag { font-size:9px; padding:2px 6px; border-radius:8px; background:#eef2f8; color:#1a4d8f; }
+
+  .login-wrap { display:flex; align-items:center; justify-content:center; padding:60px 20px; background:#f4f7fb; }
+  .login-card { width:280px; text-align:center; }
+  .login-card h1 { color:#1a4d8f; font-size:16px; }
+  .login-card input { width:100%; padding:8px 10px; margin-top:8px; border:1px solid #ccc; border-radius:5px; font-size:11px; box-sizing:border-box; }
+  .login-card label { display:block; text-align:left; font-size:10px; font-weight:bold; margin-top:10px; color:#445; }
+
+  .notes-banner { background:#fff3cd; border:1px solid #ffe08a; color:#856404; padding:8px 12px; border-radius:6px; font-size:11px; margin-bottom:12px; }
+</style>
+</head>
+<body>
+
+<div class="board-header">
+  <h1>CareerPath AI — UI Mockup Board</h1>
+  <p><span class="tag">Editable reference</span><span class="tag">Matches live system styling</span> Open this file in any code editor to tweak colors, copy, or layout — or import into Figma via a plugin like "html.to.design".</p>
+</div>
+
+<div class="canvas">
+
+  <!-- FRAME 1: Login -->
+  <div class="frame">
+    <div class="frame-label"><span class="dot"></span>01 · Student / Staff Login</div>
+    <div class="frame-window mobile">
+      <div class="browser-bar"><span class="b-dot red"></span><span class="b-dot yellow"></span><span class="b-dot green"></span><span class="url">localhost/careerpath-ai-mvp/php/login.php</span></div>
+      <div class="screen">
+        <div class="login-wrap">
+          <div class="login-card">
+            <h1>CareerPath AI</h1>
+            <p class="p-sm">Sign in to continue</p>
+            <label>Email</label>
+            <input type="text" placeholder="you@meridian.edu.ph" readonly>
+            <label>Password</label>
+            <input type="text" placeholder="••••••••" readonly>
+            <div class="btn" style="width:100%;margin-top:16px;box-sizing:border-box;text-align:center;">Log In</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FRAME 2: Student Dashboard -->
+  <div class="frame">
+    <div class="frame-label"><span class="dot"></span>02 · Student Dashboard</div>
+    <div class="frame-window">
+      <div class="browser-bar"><span class="b-dot red"></span><span class="b-dot yellow"></span><span class="b-dot green"></span><span class="url">localhost/careerpath-ai-mvp/php/student_dashboard.php</span></div>
+      <div class="screen">
+        <div class="nav">
+          <span class="brand">CareerPath AI</span>
+          <span class="link active">Dashboard</span>
+          <span class="link">Assessment ▾</span>
+          <span class="link">Consultations</span>
+          <span class="link">My Profile</span>
+          <span class="link">Notifications<span class="badge">2</span></span>
+          <span class="spacer"></span>
+          <span class="user">Juan Dela Cruz <span class="logout">· Logout</span></span>
+        </div>
+        <div class="body-pad">
+          <div class="notes-banner">📝 You have 1 note from your guidance counselor.</div>
+          <div class="h1">Welcome back, Juan</div>
+          <p class="sub">Here's a snapshot of your career guidance journey so far.</p>
+          <div class="stat-row">
+            <div class="stat-card"><div class="lab">Assessments Taken</div><div class="val">3</div><div class="subv">submissions on record</div></div>
+            <div class="stat-card"><div class="lab">Top Match (Latest)</div><div class="val" style="font-size:14px;">Software Developer</div><div class="subv">92% match</div></div>
+            <div class="stat-card"><div class="lab">Member Since</div><div class="val" style="font-size:14px;">Jun 3, 2026</div><div class="subv">CareerPath AI account</div></div>
+          </div>
+          <div class="panels">
+            <div class="panel">
+              <h2>Latest RIASEC Snapshot</h2>
+              <div class="bar-row"><div class="let">R</div><div class="bar-track"><div class="bar-fill" style="width:40%"></div></div><div class="bar-pct">40%</div></div>
+              <div class="bar-row"><div class="let">I</div><div class="bar-track"><div class="bar-fill" style="width:85%"></div></div><div class="bar-pct">85%</div></div>
+              <div class="bar-row"><div class="let">A</div><div class="bar-track"><div class="bar-fill" style="width:35%"></div></div><div class="bar-pct">35%</div></div>
+              <div class="bar-row"><div class="let">S</div><div class="bar-track"><div class="bar-fill" style="width:20%"></div></div><div class="bar-pct">20%</div></div>
+              <div class="bar-row"><div class="let">E</div><div class="bar-track"><div class="bar-fill" style="width:30%"></div></div><div class="bar-pct">30%</div></div>
+              <div class="bar-row"><div class="let">C</div><div class="bar-track"><div class="bar-fill" style="width:55%"></div></div><div class="bar-pct">55%</div></div>
+            </div>
+            <div class="panel">
+              <h2>Recent Activity</h2>
+              <div class="act-item"><span>Jul 20, 2026</span><span style="color:#1a4d8f;font-weight:bold;">Software Developer</span></div>
+              <div class="act-item"><span>Jun 30, 2026</span><span style="color:#1a4d8f;font-weight:bold;">Data Analyst</span></div>
+              <div class="act-item"><span>Jun 3, 2026</span><span style="color:#1a4d8f;font-weight:bold;">Web/UI Designer</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FRAME 3: Assessment -->
+  <div class="frame">
+    <div class="frame-label"><span class="dot"></span>03 · RIASEC Assessment</div>
+    <div class="frame-window">
+      <div class="browser-bar"><span class="b-dot red"></span><span class="b-dot yellow"></span><span class="b-dot green"></span><span class="url">localhost/careerpath-ai-mvp/php/assessment.php</span></div>
+      <div class="screen">
+        <div class="nav">
+          <span class="brand">CareerPath AI</span>
+          <span class="link">Dashboard</span>
+          <span class="link active">Assessment ▾</span>
+          <span class="link">Consultations</span>
+          <span class="link">My Profile</span>
+          <span class="link">Notifications</span>
+          <span class="spacer"></span>
+          <span class="user">Juan Dela Cruz <span class="logout">· Logout</span></span>
+        </div>
+        <div class="body-pad">
+          <div class="h1">CareerPath AI</div>
+          <p class="sub">Answer honestly — 1 = Strongly Disagree, 4 = Strongly Agree.</p>
+          <div class="q-block">
+            <div class="leg">Realistic (R)</div>
+            <div class="q-item">I like working with tools and machines. <span class="scale"><span class="sel"></span><span></span><span></span><span></span></span></div>
+            <div class="q-item">I enjoy hands-on, physical tasks. <span class="scale"><span></span><span class="sel"></span><span></span><span></span></span></div>
+          </div>
+          <div class="q-block">
+            <div class="leg">Investigative (I)</div>
+            <div class="q-item">I like solving complex problems. <span class="scale"><span></span><span></span><span></span><span class="sel"></span></span></div>
+          </div>
+          <div class="card" style="border-style:dashed;">
+            <h3 style="font-size:12px;">Your Skills (optional)</h3>
+            <p class="p-sm">e.g. Python, Public Speaking, Excel...</p>
+          </div>
+          <div class="btn">Submit Assessment</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FRAME 4: Results / Recommendations -->
+  <div class="frame">
+    <div class="frame-label"><span class="dot"></span>04 · Recommendations Results</div>
+    <div class="frame-window">
+      <div class="browser-bar"><span class="b-dot red"></span><span class="b-dot yellow"></span><span class="b-dot green"></span><span class="url">localhost/careerpath-ai-mvp/php/submit.php</span></div>
+      <div class="screen">
+        <div class="nav">
+          <span class="brand">CareerPath AI</span>
+          <span class="link">Dashboard</span>
+          <span class="link active">Assessment ▾</span>
+          <span class="link">Consultations</span>
+          <span class="link">My Profile</span>
+          <span class="link">Notifications</span>
+          <span class="spacer"></span>
+          <span class="user">Juan Dela Cruz <span class="logout">· Logout</span></span>
+        </div>
+        <div class="body-pad">
+          <div class="h1">Your Career Recommendations</div>
+          <p class="sub">R: 40% · I: 85% · A: 35% · S: 20% · E: 30% · C: 55%</p>
+          <div class="card">
+            <span class="match-pill">92% match</span>
+            <h3>Software Developer</h3>
+            <p class="p-sm">Designs, builds, and maintains software applications and systems.</p>
+            <p class="p-sm"><strong>Educational pathway:</strong> BS Computer Science / IT</p>
+            <span class="skill-tag have">✓ Python</span><span class="skill-tag have">✓ Problem Solving</span><span class="skill-tag need">to develop: Git</span>
+          </div>
+          <div class="card">
+            <span class="match-pill">78% match</span>
+            <h3>Data Analyst</h3>
+            <p class="p-sm">Interprets data to help organizations make informed decisions.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FRAME 5: Career Profile -->
+  <div class="frame">
+    <div class="frame-label"><span class="dot"></span>05 · Career Profile Page</div>
+    <div class="frame-window">
+      <div class="browser-bar"><span class="b-dot red"></span><span class="b-dot yellow"></span><span class="b-dot green"></span><span class="url">localhost/careerpath-ai-mvp/php/career_profile.php?id=1</span></div>
+      <div class="screen">
+        <div class="nav">
+          <span class="brand">CareerPath AI</span>
+          <span class="link">Dashboard</span>
+          <span class="link">Assessment ▾</span>
+          <span class="link">Consultations</span>
+          <span class="link">My Profile</span>
+          <span class="link">Notifications</span>
+          <span class="spacer"></span>
+          <span class="user">Juan Dela Cruz <span class="logout">· Logout</span></span>
+        </div>
+        <div class="body-pad">
+          <div class="h1" style="font-size:19px;">Software Developer</div>
+          <p class="sub">Career profile — sourced from crawler data, reviewed by staff.</p>
+          <div class="panel" style="margin-bottom:10px;"><h2>Description</h2><p class="p-sm">Designs, builds, and maintains software applications and systems.</p></div>
+          <div class="panel" style="margin-bottom:10px;"><h2>RIASEC Profile</h2>
+            <div class="bar-row"><div class="let">R</div><div class="bar-track"><div class="bar-fill" style="width:30%"></div></div><div class="bar-pct">30%</div></div>
+            <div class="bar-row"><div class="let">I</div><div class="bar-track"><div class="bar-fill" style="width:85%"></div></div><div class="bar-pct">85%</div></div>
+          </div>
+          <div class="panel"><h2>Required Skills</h2>
+            <div class="p-sm">65% of required skills matched</div>
+            <span class="skill-tag have">✓ Python — Required · Intermediate</span><br>
+            <span class="skill-tag need">Git — Required · Basic</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FRAME 6: Staff Dashboard -->
+  <div class="frame">
+    <div class="frame-label"><span class="dot"></span>06 · Staff Dashboard (Admin / Counselor)</div>
+    <div class="frame-window">
+      <div class="browser-bar"><span class="b-dot red"></span><span class="b-dot yellow"></span><span class="b-dot green"></span><span class="url">localhost/careerpath-ai-mvp/php/dashboard.php</span></div>
+      <div class="screen">
+        <div class="nav">
+          <span class="brand">CareerPath AI</span>
+          <span class="link active">Dashboard</span>
+          <span class="link">Careers ▾</span>
+          <span class="link">Students ▾</span>
+          <span class="link">Notifications</span>
+          <span class="link">Admin ▾</span>
+          <span class="spacer"></span>
+          <span class="user">John Paul T. Flores <span style="background:rgba(255,255,255,.2);padding:2px 7px;border-radius:8px;font-size:9px;">ADMINISTRATOR</span> <span class="logout">· Logout</span></span>
+        </div>
+        <div class="body-pad">
+          <div class="h1">Welcome back, John Paul</div>
+          <p class="sub">Here's what's happening in the career review pipeline.</p>
+          <div class="stat-row" style="grid-template-columns:repeat(5,1fr);">
+            <div class="stat-card"><div class="lab">Pending Review</div><div class="val" style="color:#b8860b;">6</div></div>
+            <div class="stat-card"><div class="lab">Approved</div><div class="val" style="color:#0f5132;">42</div></div>
+            <div class="stat-card"><div class="lab">Rejected</div><div class="val" style="color:#b02a37;">5</div></div>
+            <div class="stat-card"><div class="lab">Active Careers</div><div class="val">18</div></div>
+            <div class="stat-card"><div class="lab">Pending Consultations</div><div class="val">3</div></div>
+          </div>
+          <div class="panels">
+            <div class="panel">
+              <h2>Student Analytics — Average RIASEC</h2>
+              <div class="bar-row"><div class="let">R</div><div class="bar-track"><div class="bar-fill" style="width:45%"></div></div><div class="bar-pct">45%</div></div>
+              <div class="bar-row"><div class="let">I</div><div class="bar-track"><div class="bar-fill" style="width:60%"></div></div><div class="bar-pct">60%</div></div>
+              <div class="bar-row"><div class="let">A</div><div class="bar-track"><div class="bar-fill" style="width:38%"></div></div><div class="bar-pct">38%</div></div>
+            </div>
+            <div class="panel">
+              <h2>Recent Review Activity</h2>
+              <div class="act-item"><span><span style="background:#d1e7dd;color:#0f5132;font-size:9px;padding:2px 6px;border-radius:8px;">approved</span> Registered Nurse</span><span style="color:#98a;">Jul 21</span></div>
+              <div class="act-item"><span><span style="background:#fdecea;color:#611a15;font-size:9px;padding:2px 6px;border-radius:8px;">rejected</span> Freelance Blogger</span><span style="color:#98a;">Jul 20</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FRAME 7: Career Review Queue -->
+  <div class="frame">
+    <div class="frame-label"><span class="dot"></span>07 · Career Review Queue</div>
+    <div class="frame-window">
+      <div class="browser-bar"><span class="b-dot red"></span><span class="b-dot yellow"></span><span class="b-dot green"></span><span class="url">localhost/careerpath-ai-mvp/php/careers.php</span></div>
+      <div class="screen">
+        <div class="nav">
+          <span class="brand">CareerPath AI</span>
+          <span class="link">Dashboard</span>
+          <span class="link active">Careers ▾</span>
+          <span class="link">Students ▾</span>
+          <span class="link">Notifications</span>
+          <span class="link">Admin ▾</span>
+          <span class="spacer"></span>
+          <span class="user">John Paul T. Flores <span class="logout">· Logout</span></span>
+        </div>
+        <div class="body-pad">
+          <div class="h1">Career Review Queue</div>
+          <p class="sub">Pending: 6 · Approved: 42 · Rejected: 5</p>
+          <div class="card">
+            <span style="float:right;background:#6f42c1;color:#fff;font-size:10px;padding:4px 10px;border-radius:6px;">✨ Enrich with AI</span>
+            <h3>Junior Web Developer</h3>
+            <p class="p-sm">Scraped from PhilJobNet · Keyword: web developer</p>
+            <span class="skill-tag" style="background:#d9ecf7;color:#1a4d8f;">PhilJobNet</span>
+            <div style="margin-top:10px;">
+              <span class="btn" style="padding:6px 14px;">Approve</span>
+              <span class="btn outline" style="padding:6px 14px;">Reject</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FRAME 8: Student Lookup -->
+  <div class="frame">
+    <div class="frame-label"><span class="dot"></span>08 · Student Lookup</div>
+    <div class="frame-window">
+      <div class="browser-bar"><span class="b-dot red"></span><span class="b-dot yellow"></span><span class="b-dot green"></span><span class="url">localhost/careerpath-ai-mvp/php/students_lookup.php</span></div>
+      <div class="screen">
+        <div class="nav">
+          <span class="brand">CareerPath AI</span>
+          <span class="link">Dashboard</span>
+          <span class="link">Careers ▾</span>
+          <span class="link active">Students ▾</span>
+          <span class="link">Notifications</span>
+          <span class="link">Admin ▾</span>
+          <span class="spacer"></span>
+          <span class="user">John Paul T. Flores <span class="logout">· Logout</span></span>
+        </div>
+        <div class="body-pad">
+          <div class="h1">Student Lookup</div>
+          <div class="panel" style="margin-bottom:10px;">
+            <input type="text" placeholder="Search by name, ID, or email" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:5px;font-size:11px;box-sizing:border-box;" readonly>
+          </div>
+          <div class="panel">
+            <h2>Juan Dela Cruz — Grade 12</h2>
+            <p class="p-sm">juan.delacruz@student.meridian.edu.ph · 3 assessments</p>
+            <details open style="font-size:11px;">
+              <summary style="cursor:pointer;color:#1a4d8f;font-weight:bold;">📝 Notes &amp; Outcomes (1)</summary>
+              <p class="p-sm" style="margin-top:8px;">Recommended pursuing BS CS track after discussing Software Developer match. — Ms. Santos, Jul 18</p>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FRAME 9: Manage Accounts (table) -->
+  <div class="frame">
+    <div class="frame-label"><span class="dot"></span>09 · Manage Accounts</div>
+    <div class="frame-window">
+      <div class="browser-bar"><span class="b-dot red"></span><span class="b-dot yellow"></span><span class="b-dot green"></span><span class="url">localhost/careerpath-ai-mvp/php/users.php</span></div>
+      <div class="screen">
+        <div class="nav">
+          <span class="brand">CareerPath AI</span>
+          <span class="link">Dashboard</span>
+          <span class="link">Careers ▾</span>
+          <span class="link">Students ▾</span>
+          <span class="link">Notifications</span>
+          <span class="link active">Admin ▾</span>
+          <span class="spacer"></span>
+          <span class="user">John Paul T. Flores <span class="logout">· Logout</span></span>
+        </div>
+        <div class="body-pad">
+          <div class="h1">Manage Accounts</div>
+          <table class="mock">
+            <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr>
+            <tr><td>Maria Santos</td><td>m.santos@meridian.edu.ph</td><td><span class="role-tag">counselor</span></td><td>active</td></tr>
+            <tr><td>John Paul Flores</td><td>jp.flores@meridian.edu.ph</td><td><span class="role-tag">administrator</span></td><td>active</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
