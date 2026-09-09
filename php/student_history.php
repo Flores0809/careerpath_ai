@@ -213,6 +213,12 @@ function cosine_similarity_riasec_history(array $a, array $b): float
                 <?php endif; ?>
             </div>
 
+            <?php if (!empty($profile['skills'])): ?>
+                <div class="profile" style="margin-top:-8px;">
+                    <span><strong>Skills listed:</strong> <?= htmlspecialchars(implode(', ', array_map('trim', explode(',', $profile['skills'])))) ?></span>
+                </div>
+            <?php endif; ?>
+
             <?php if ($dreamCareer): ?>
                 <div class="dream-row">
                     <div class="dream-label">🎯 Dream Career<?= $dreamCareer['career_category'] ? ' · ' . htmlspecialchars($dreamCareer['career_category']) : '' ?></div>

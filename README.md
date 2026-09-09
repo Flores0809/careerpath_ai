@@ -117,7 +117,7 @@ This is the public entry point — it shows a **Students** card (log in /
 sign up) and a **Staff** card (log in), since those are two separate login
 systems. Create a student account (see section 6 below), and you'll land on
 your dashboard (`student_dashboard.php` — see section 7), from which you can
-take the assessment (`assessment.php`). Answer the 24 questions and submit —
+take the assessment (`assessment.php`). Answer the 42 questions and submit —
 `submit.php` scores your answers, calls the Flask microservice (step 2) for
 your ranked recommendations, and saves the submission to your history.
 
@@ -497,8 +497,8 @@ system to keep functioning.
 
 ## How the matching actually works
 
-1. The intake form (`assessment.php`) has 4 statements per RIASEC type (24 total), each on a 1–4 scale.
-2. `submit.php` sums each type's answers (max 16) and normalizes to a 0–1 score — this is the student's RIASEC vector.
+1. The intake form (`assessment.php`) has 7 statements per RIASEC type (42 total), each on a 1–4 scale. Items are adapted from the [O*NET Interest Profiler Short Form](https://www.onetcenter.org/dl_tools/ipsf/Interest_Profiler.pdf) (U.S. Dept. of Labor / National Center for O*NET Development, CC BY 4.0) — rephrased as first-person Likert statements and simplified for a JHS/SHS Filipino audience, with a few items' wording further revised per panel/validator feedback.
+2. `submit.php` sums each type's answers (max 28) and normalizes to a 0–1 score — this is the student's RIASEC vector.
 3. That vector is POSTed as JSON to the Flask `/match` endpoint.
 4. `app.py` pulls all careers from MySQL, normalizes their stored RIASEC scores the same way, **mean-centers both the student vector and every career vector**, and computes cosine similarity between them using Scikit-learn (`profile_similarity()`). The centered-cosine result is mathematically the Pearson correlation between the two profiles' *shapes*, rescaled from [-1, 1] to [0, 100] so it always reads as a normal percentage.
 5. The top N (default 5) careers are returned ranked by match percentage and rendered on the results page.

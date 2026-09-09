@@ -15,7 +15,7 @@ require_once __DIR__ . '/notifications_helper.php';
 $currentStudent = require_student_login();
 
 $types = ['R', 'I', 'A', 'S', 'E', 'C'];
-$maxPerType = 4 * 4; // 4 questions x max score of 4
+$maxPerType = 7 * 4; // 7 questions x max score of 4
 
 $riasec = [];
 foreach ($types as $type) {
@@ -26,10 +26,14 @@ foreach ($types as $type) {
 
 // Skills verification mechanism (Specific Objective 2 / Research Gap #4) —
 // captured alongside RIASEC so recommendations can show a skills gap, not
-// just a personality match. Skills stay optional; academic average is now
-// required (server-side, not just the form's `required` attribute, since
-// that can be bypassed) so every recommendation factors in academic standing.
+// just a personality match. Skills and academic average are both required
+// (server-side, not just the form's `required` attribute, since that can be
+// bypassed) so every recommendation factors in a real skills + academic picture.
 $studentSkillsRaw = trim($_POST['skills'] ?? '');
+if ($studentSkillsRaw === '') {
+    http_response_code(400);
+    die('Please list at least one skill. <a href="assessment.php">Go back</a>');
+}
 $academicAverageRaw = trim($_POST['academic_average'] ?? '');
 if ($academicAverageRaw === '' || !is_numeric($academicAverageRaw)) {
     http_response_code(400);
@@ -333,11 +337,11 @@ try {
     <h1>Your Career Recommendations</h1>
 
     <div class="how-it-works">
-        <div class="heading">🔍 How were these recommendations calculated? (no black-box AI — see the math)</div>
+        <div class="heading">🔍 How were these recommendations calculated? (see the math)</div>
         <div class="content">
-            <p>Your 24 assessment answers were summed per RIASEC type (Realistic, Investigative, Artistic, Social, Enterprising, Conventional) and converted into a percentage score for each — that's the profile shown below.</p>
+            <p>Your 42 assessment answers were summed per RIASEC type (Realistic, Investigative, Artistic, Social, Enterprising, Conventional) and converted into a percentage score for each — that's the profile shown below.</p>
             <p>Each career in our database also has its own RIASEC profile, reviewed and approved by a guidance counselor or administrator. A rule-based algorithm (cosine similarity, via Scikit-learn) then compares the <em>shape</em> of your profile to every career's profile — which traits are relatively higher or lower than your own average, not just the raw scores — so a career only scores high if your actual strengths line up with what it needs, not just because most of your answers were positive.</p>
-            <p>This is a transparent, rule-based calculation, not an opaque AI decision — every recommendation below includes a "Why this match?" breakdown showing exactly which of your RIASEC traits contributed most.</p>
+            <p>This match score itself is a transparent, rule-based calculation, not an AI decision — every recommendation below includes a "Why this match?" breakdown showing exactly which of your RIASEC traits contributed most. (Google's Gemini AI is used elsewhere in CareerPath AI, purely to help staff draft career descriptions — every AI-assisted entry is reviewed and approved by a counselor or administrator before students ever see it. It plays no part in computing your match scores.)</p>
         </div>
     </div>
 
@@ -349,6 +353,12 @@ try {
             <span><strong>Academic average:</strong> <?= number_format($academicAverage, 2) ?></span>
         <?php endif; ?>
     </div>
+
+    <?php if ($studentSkillsRaw !== ''): ?>
+        <div class="profile" style="margin-top:-8px;">
+            <span><strong>Your skills:</strong> <?= htmlspecialchars(implode(', ', array_map('trim', explode(',', $studentSkillsRaw)))) ?></span>
+        </div>
+    <?php endif; ?>
 
     <?php
         // Shared card renderer for the dream-career highlight, same-field
