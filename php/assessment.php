@@ -50,27 +50,27 @@ $questions = [
         'I like building or fixing things with my hands.',
         'I prefer outdoor or physical activities over sitting at a desk.',
         'I enjoy being part of / doing mechanical or electrical projects.', // revised per validator feedback
-        'I would enjoy driving or operating vehicles and equipment to get a job done.',
-        'I like inspecting or testing things to make sure they work properly.',
-        'I would enjoy raising animals, fish, or growing crops/plants.',
+        'I would enjoy driving or operating trucks, heavy equipment, or machinery.',
+        'I would enjoy physically demanding outdoor work, like firefighting, construction, or emergency response.',
+        'I would enjoy raising animals or growing crops/plants.',
     ],
     'I' => [
         'I enjoy solving complex problems or puzzles.',
         'I like conducting research or running experiments.',
         'I am curious about how and why things work.',
         'I enjoy analyzing data or information to find patterns.',
-        'I would enjoy conducting science experiments in a laboratory.',
-        'I like studying natural phenomena, like weather, diseases, or outer space.',
-        'I would enjoy inventing or developing new solutions to scientific problems.',
+        'I would enjoy developing new medicines or scientific breakthroughs.',
+        'I like studying scientific topics, such as outer space, weather, or diseases.',
+        'I would enjoy investigating the causes of things, like diseases or unusual events.',
     ],
     'A' => [
         'I enjoy creative activities like arts and crafts, writing, or music.', // revised per validator feedback
         'I like coming up with original ideas or designs.',
         'I prefer flexible, unstructured tasks over strict routines.',
         'I enjoy expressing myself through art, media, or performance.',
-        'I would enjoy writing stories, poems, or scripts.',
+        'I would enjoy writing stories, plays, or scripts.',
         'I like performing in front of others, such as singing, dancing, or acting.',
-        'I would enjoy creating visual content, like photography, video editing, or graphic design.',
+        'I would enjoy creating visual art or effects, like drawing, painting, or filmmaking.',
     ],
     'S' => [
         'I enjoy helping, teaching, or caring for other people.',
@@ -97,7 +97,7 @@ $questions = [
         'I enjoy working with numbers, records, or spreadsheets.',
         'I would enjoy keeping accurate records, like inventories, receipts, or attendance.',
         'I like double-checking documents or data for errors before submitting them.',
-        'I would enjoy using computer software to organize data, like spreadsheets or databases.',
+        'I would enjoy handling routine office tasks, like filing, sorting mail, or data entry.',
     ],
 ];
 
