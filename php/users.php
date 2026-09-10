@@ -222,7 +222,7 @@ $welcome = isset($_GET['welcome']);
     .status-disabled { color: #b02a37; }
     form.inline { display: inline; }
     input[type=text], input[type=email], input[type=password], select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; }
+    .card { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; }
     label { display: block; font-size: 13px; font-weight: bold; margin: 10px 0 4px; }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     button { padding: 6px 14px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }

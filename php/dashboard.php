@@ -83,7 +83,7 @@ $welcome = isset($_GET['welcome']);
 
     .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px; }
     @media (max-width: 900px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
-    .stat-card { background: #fff; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 18px 20px; }
+    .stat-card { background: #f5f5f5; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 18px 20px; }
     .stat-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 6px; }
     .stat-card .value { font-size: 26px; font-weight: bold; color: #6e1423; }
     .stat-card.pending .value { color: #b8860b; }
@@ -94,7 +94,7 @@ $welcome = isset($_GET['welcome']);
 
     .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 28px; }
     @media (max-width: 900px) { .panels { grid-template-columns: 1fr; } }
-    .panel { background: #fff; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 24px 26px; }
+    .panel { background: #f5f5f5; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 24px 26px; }
     .panel h2 { margin: 0 0 16px; color: #6e1423; font-size: 16px; }
     .riasec-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .riasec-letter { width: 16px; font-weight: bold; color: #6e1423; font-size: 13px; }

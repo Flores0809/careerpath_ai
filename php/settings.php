@@ -40,7 +40,7 @@ foreach ($settings as $s) {
     body { font-family: Arial, sans-serif; max-width: 1280px; margin: 40px auto; padding: 0 20px; color: #222; }
     h1, .panel, .flash-success { max-width: 640px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; }
-    .panel { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; }
+    .panel { background: #f5f5f5; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; }
     label { display: block; font-size: 13px; font-weight: bold; margin: 14px 0 4px; }
     .hint { font-size: 12px; color: #888; margin-top: 2px; }
     input[type=text], input[type=number] { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; box-sizing: border-box; }

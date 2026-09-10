@@ -70,7 +70,7 @@ foreach ($tables as $table) {
     body { font-family: Arial, sans-serif; max-width: 1280px; margin: 40px auto; padding: 0 20px; color: #222; }
     h1, .panel { max-width: 640px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; }
-    .panel { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; }
+    .panel { background: #f5f5f5; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; }
     table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 13px; }
     th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
     .missing { color: #aaa; font-style: italic; }

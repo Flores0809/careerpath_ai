@@ -76,7 +76,7 @@ $backLink = $isStaff ? 'students_lookup.php' : 'student_history.php';
     h2.section-title { color: #6e1423; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 6px; margin-top: 28px; }
     table.riasec-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
     table.riasec-table td { padding: 6px 8px; border-bottom: 1px solid #eee; }
-    .career-block { border: 1px solid #ddd; border-radius: 8px; padding: 14px 20px; margin-top: 14px; page-break-inside: avoid; }
+    .career-block { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 14px 20px; margin-top: 14px; page-break-inside: avoid; }
     .career-block h3 { margin: 0 0 6px; color: #6e1423; }
     .career-block .match { float: right; background: #6e1423; color: #fff; padding: 3px 10px; border-radius: 12px; font-size: 13px; }
     .skill-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0; font-size: 11px; }

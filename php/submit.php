@@ -291,7 +291,7 @@ try {
     h1 { color: #6e1423; }
     .profile { background: #faf0f1; border-radius: 8px; padding: 14px 20px; margin-bottom: 26px; }
     .profile span { display: inline-block; margin-right: 16px; font-size: 14px; }
-    .career { border: 1px solid #ddd; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
+    .career { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
     .career h3 { margin: 0 0 6px 0; color: #6e1423; }
     .career h3 a { color: #6e1423; text-decoration: none; }
     .career h3 a:hover { text-decoration: underline; }

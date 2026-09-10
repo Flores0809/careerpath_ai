@@ -96,7 +96,7 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
     .counts a { margin-right: 16px; color: #555; text-decoration: none; }
     .counts a.active, .counts a:hover { color: #6e1423; font-weight: bold; }
     .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px 22px; margin-bottom: 16px; }
+    .card { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 16px 22px; margin-bottom: 16px; }
     .card .top { display: flex; justify-content: space-between; align-items: baseline; }
     .card h3 { margin: 0; color: #6e1423; font-size: 16px; }
     .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }

@@ -120,7 +120,7 @@ $typeLabels = [
     body > h1, body > .intro, body > form { max-width: 760px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; }
     .intro { color: #555; margin-bottom: 30px; }
-    fieldset { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 22px; padding: 16px 20px; }
+    fieldset { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 22px; padding: 16px 20px; }
     legend { font-weight: bold; color: #6e1423; padding: 0 6px; }
     .question { margin: 14px 0; }
     .question p { margin: 0 0 6px 0; }

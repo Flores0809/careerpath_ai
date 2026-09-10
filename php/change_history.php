@@ -112,7 +112,7 @@ function render_change_value($val)
     .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
     .filter-bar select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; }
 
-    .entry { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(74,12,23,0.05); }
+    .entry { background: #f5f5f5; border: 1px solid #eee; border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(74,12,23,0.05); }
     .entry summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14px; flex-wrap: wrap; }
     .entry summary::-webkit-details-marker { display: none; }
     .entry-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

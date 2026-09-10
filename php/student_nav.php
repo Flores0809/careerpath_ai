@@ -9,7 +9,7 @@ $cpCurrentPage = basename($_SERVER['PHP_SELF'] ?? '');
 $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-active' : '';
 ?>
 <div class="cp-nav">
-    <a href="index.php" class="cp-nav-brand">CareerPath AI</a>
+    <a href="student_dashboard.php" class="cp-nav-brand">CareerPath AI</a>
     <div class="cp-nav-links">
         <a class="cp-nav-item <?= $cpIsActive(['student_dashboard.php']) ?>" href="student_dashboard.php">Dashboard</a>
 

@@ -38,7 +38,7 @@ $notifications = staff_notifications($pdo, (int) $currentUser['user_id']);
     h1 { color: #6e1423; }
     .empty { color: #666; font-style: italic; }
     .top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .item { border: 1px solid #ddd; border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+    .item { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 14px; }
     .item.unread { background: #faf0f1; border-color: #e9c9ce; }
     .item .msg a { color: #6e1423; text-decoration: none; }
     .item .msg a:hover { text-decoration: underline; }

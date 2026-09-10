@@ -148,7 +148,7 @@ $categories = $pdo->query(
     h1 { color: #6e1423; margin-bottom: 4px; }
     .subtitle { color: #666; margin-top: 0; margin-bottom: 24px; }
 
-    .panel { background: #fff; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 22px 26px; margin-bottom: 20px; }
+    .panel { background: #f5f5f5; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 22px 26px; margin-bottom: 20px; }
     .panel h2 { margin: 0 0 14px; color: #6e1423; font-size: 16px; }
 
     .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }

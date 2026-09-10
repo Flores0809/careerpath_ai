@@ -86,7 +86,7 @@ function cosine_similarity_riasec_history(array $a, array $b): float
     body > h1, body > .empty, body > .notes-panel, body > .submission, body > a.back { max-width: 760px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; }
     .empty { color: #666; font-style: italic; }
-    .submission { border: 1px solid #ddd; border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; }
+    .submission { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; }
     .submission-date { font-size: 13px; color: #666; margin-bottom: 10px; }
     .profile { background: #faf0f1; border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; }
     .profile span { display: inline-block; margin-right: 14px; font-size: 13px; }

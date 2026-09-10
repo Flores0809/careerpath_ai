@@ -141,7 +141,7 @@ $riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score'
     h1 { color: #6e1423; margin-bottom: 4px; }
     .subtitle { color: #666; margin-top: 0; margin-bottom: 24px; }
 
-    .panel { background: #fff; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 22px 26px; margin-bottom: 20px; }
+    .panel { background: #f5f5f5; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 22px 26px; margin-bottom: 20px; }
 
     .search-form { display: flex; gap: 10px; }
     .search-form input[type=text] { flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }

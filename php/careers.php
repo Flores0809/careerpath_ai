@@ -196,7 +196,7 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
     .counts span { margin-right: 16px; }
     .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
     .flash-error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; }
+    .card { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; }
     .card h3 { margin-top: 0; color: #6e1423; }
     .meta { font-size: 13px; color: #666; margin-bottom: 10px; }
     .meta a { color: #6e1423; }

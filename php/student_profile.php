@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     body { font-family: Arial, sans-serif; max-width: 1280px; margin: 40px auto; padding: 0 20px; color: #222; }
     body > h1, body > .panel, body > .flash-success, body > .flash-error { max-width: 640px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; }
-    .panel { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
+    .panel { background: #f5f5f5; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
     .panel h2 { margin: 0 0 14px; color: #6e1423; font-size: 16px; }
     label { display: block; font-size: 13px; font-weight: bold; margin: 10px 0 4px; }
     input[type=text], input[type=email], input[type=password] { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; box-sizing: border-box; }

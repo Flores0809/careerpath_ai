@@ -67,7 +67,7 @@ $proficiencyLabels = ['basic' => 'Basic', 'intermediate' => 'Intermediate', 'adv
     body > h1, body > .source-note, body > .panel, body > a.back { max-width: 800px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; margin-bottom: 4px; }
     .source-note { font-size: 12px; color: #888; margin-bottom: 22px; }
-    .panel { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
+    .panel { background: #f5f5f5; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
     .panel h2 { margin: 0 0 12px; color: #6e1423; font-size: 16px; }
     .panel p { line-height: 1.5; }
 
