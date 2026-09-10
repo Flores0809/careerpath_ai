@@ -12,12 +12,27 @@ if (current_student()) {
 
 $error = null;
 
+// MEII doesn't issue students their own institutional email addresses (unlike
+// staff), so this can't be gated by an email-domain check the way many school
+// systems do. Instead, self-registration requires a shared access code that
+// an administrator sets/rotates on settings.php and shares only with MEII
+// students (e.g. announced in class, printed on ID handouts) — this stops a
+// random visitor who finds the site from self-enrolling and spamming
+// consultations, without requiring students to have a school email.
+$pdo = get_db();
+try {
+    $requiredAccessCode = (string) ($pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'student_access_code'")->fetchColumn() ?: '');
+} catch (Exception $e) {
+    $requiredAccessCode = ''; // system_settings table missing (pre-migration_10 install) — no code required
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $gradeLevel = trim($_POST['grade_level'] ?? '');
     $password = $_POST['password'] ?? '';
     $confirm = $_POST['confirm'] ?? '';
+    $accessCode = trim($_POST['access_code'] ?? '');
 
     if ($name === '' || $email === '' || $password === '') {
         $error = 'Name, email, and password are required.';
@@ -27,8 +42,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Password must be at least 8 characters.';
     } elseif ($password !== $confirm) {
         $error = 'Passwords do not match.';
+    } elseif ($requiredAccessCode !== '' && !hash_equals($requiredAccessCode, $accessCode)) {
+        $error = 'That access code is incorrect. Ask your guidance counselor or class adviser for the current MEII student access code.';
     } else {
-        $pdo = get_db();
         $hash = password_hash($password, PASSWORD_DEFAULT);
         try {
             $stmt = $pdo->prepare(
@@ -87,6 +103,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <form method="POST">
+        <?php if ($requiredAccessCode !== ''): ?>
+            <label>MEII student access code</label>
+            <input type="text" name="access_code" value="" required autocomplete="off">
+            <p style="font-size:12px;color:#888;margin-top:2px;">Ask your guidance counselor or class adviser for this if you don't have it.</p>
+        <?php endif; ?>
+
         <label>Full name</label>
         <input type="text" name="name" value="<?= htmlspecialchars($_POST['name'] ?? '') ?>" required>
 

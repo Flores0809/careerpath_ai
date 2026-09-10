@@ -14,6 +14,32 @@ $currentUser = require_role(['administrator', 'counselor']);
 $pdo = get_db();
 $noteMessage = null;
 
+// Same mean-centered cosine similarity used by submit.php/student_history.php
+// — needed here so a student's "dream career" fit still shows to staff even
+// when the Flask matching service was unavailable at submission time (that
+// case only skips the flat `recommendations` table rows, not the dream
+// career, which is computed live from student_profiles.dream_career_id).
+function cosine_similarity_riasec_lookup(array $a, array $b): float
+{
+    $keys = ['R', 'I', 'A', 'S', 'E', 'C'];
+    $meanA = array_sum($a) / count($keys);
+    $meanB = array_sum($b) / count($keys);
+
+    $dot = 0.0; $normA = 0.0; $normB = 0.0;
+    foreach ($keys as $k) {
+        $ca = $a[$k] - $meanA;
+        $cb = $b[$k] - $meanB;
+        $dot += $ca * $cb;
+        $normA += $ca ** 2;
+        $normB += $cb ** 2;
+    }
+    if ($normA == 0 || $normB == 0) {
+        return 50.0;
+    }
+    $r = $dot / (sqrt($normA) * sqrt($normB));
+    return ($r + 1) / 2 * 100;
+}
+
 // Counselor final-outcome recording — the paper's System Flowchart (Figure
 // 10) ends the counselor/admin track with "Counselor Reviews, Records &
 // Submits Final Outcome," which is more than the automatic 'viewed_profile'
@@ -96,6 +122,10 @@ if (!empty($_GET['view'])) {
              WHERE r.profile_id = :profile_id
              ORDER BY r.rank_position ASC"
         );
+        $dreamCareerStmt = $pdo->prepare("SELECT career_id, career_title, career_category, key_subjects, r_score, i_score, a_score, s_score, e_score, c_score FROM careers WHERE career_id = :id");
+        $fieldCareersStmt = $pdo->prepare(
+            "SELECT * FROM careers WHERE status = 'active' AND career_category = :category AND career_id != :dream_id"
+        );
         $allRecommendations = []; // flat list across all profiles, for the "attach note to" dropdown
         foreach ($viewedProfiles as &$profile) {
             $recStmt->execute(['profile_id' => $profile['profile_id']]);
@@ -105,6 +135,42 @@ if (!empty($_GET['view'])) {
                 $allRecommendations[] = $rec;
             }
             unset($rec);
+
+            // Dream career (migration 11) — computed live from
+            // student_profiles.dream_career_id, same as student_history.php,
+            // so it still shows here even on a submission where the Flask
+            // matching service was down and no `recommendations` rows exist.
+            $profile['dream_career'] = null;
+            $profile['field_careers'] = [];
+            if (!empty($profile['dream_career_id'])) {
+                $dreamCareerStmt->execute(['id' => $profile['dream_career_id']]);
+                $dreamCareerRow = $dreamCareerStmt->fetch();
+                if ($dreamCareerRow) {
+                    $studentVec = ['R' => (float) $profile['r_score'], 'I' => (float) $profile['i_score'], 'A' => (float) $profile['a_score'], 'S' => (float) $profile['s_score'], 'E' => (float) $profile['e_score'], 'C' => (float) $profile['c_score']];
+                    $careerVec = ['R' => $dreamCareerRow['r_score'] / 100, 'I' => $dreamCareerRow['i_score'] / 100, 'A' => $dreamCareerRow['a_score'] / 100, 'S' => $dreamCareerRow['s_score'] / 100, 'E' => $dreamCareerRow['e_score'] / 100, 'C' => $dreamCareerRow['c_score'] / 100];
+                    $profile['dream_career'] = [
+                        'career_id' => (int) $dreamCareerRow['career_id'],
+                        'career_title' => $dreamCareerRow['career_title'],
+                        'career_category' => $dreamCareerRow['career_category'],
+                        'key_subjects' => $dreamCareerRow['key_subjects'] ?? null,
+                        'match_score' => cosine_similarity_riasec_lookup($studentVec, $careerVec),
+                    ];
+
+                    if ($dreamCareerRow['career_category']) {
+                        $fieldCareersStmt->execute(['category' => $dreamCareerRow['career_category'], 'dream_id' => $profile['dream_career']['career_id']]);
+                        foreach ($fieldCareersStmt->fetchAll() as $row) {
+                            $rowVec = ['R' => $row['r_score'] / 100, 'I' => $row['i_score'] / 100, 'A' => $row['a_score'] / 100, 'S' => $row['s_score'] / 100, 'E' => $row['e_score'] / 100, 'C' => $row['c_score'] / 100];
+                            $profile['field_careers'][] = [
+                                'career_id' => (int) $row['career_id'],
+                                'career_title' => $row['career_title'],
+                                'key_subjects' => $row['key_subjects'] ?? null,
+                                'match_score' => cosine_similarity_riasec_lookup($studentVec, $rowVec),
+                            ];
+                        }
+                        usort($profile['field_careers'], function ($a, $b) { return $b['match_score'] <=> $a['match_score']; });
+                    }
+                }
+            }
         }
         unset($profile);
 
@@ -170,7 +236,9 @@ $riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score'
     .riasec-row span { display: inline-block; margin-right: 14px; font-size: 13px; background: #faf0f1; padding: 3px 8px; border-radius: 6px; }
     .career-row { padding: 6px 0; border-top: 1px solid #f2f2f2; font-size: 14px; }
     .career-row:first-of-type { border-top: none; }
-    .career-row .top-line { display: flex; justify-content: space-between; }
+    .career-row .top-line, .dream-row .top-line { display: flex; justify-content: space-between; }
+    .dream-row .top-line a, .field-careers-row a { color: #6e1423; text-decoration: none; font-weight: bold; }
+    .dream-row .top-line a:hover, .field-careers-row a:hover { text-decoration: underline; }
     .career-row .match { color: #6e1423; font-weight: bold; }
     .skill-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0; font-size: 11px; }
     .skill-have { background: #d1e7dd; color: #0f5132; }
@@ -188,6 +256,11 @@ $riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score'
     .notes-toggle::-webkit-details-marker { display: none; }
     .notes-toggle:hover { background: #4a0c17; }
     .notes-count { background: #fff; color: #6e1423; border-radius: 10px; padding: 1px 8px; font-size: 12px; }
+    .dream-row { background: #faf0f1; border: 1px solid #6e1423; border-radius: 8px; padding: 10px 14px; margin-top: 10px; }
+    .dream-row .dream-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6e1423; font-weight: bold; margin-bottom: 4px; }
+    .field-careers-row { border: 1px solid #eee; border-radius: 8px; padding: 4px 14px 2px; margin-top: 10px; }
+    .field-careers-row .career-row { padding: 6px 0; }
+    .subjects-line { font-size: 12px; color: #666; margin-top: 3px; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
 </head>
@@ -257,9 +330,46 @@ $riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score'
                             <?php if (!empty($profile['skills'])): ?>
                                 <p style="font-size:13px;color:#666;margin:6px 0 0;"><strong>Self-reported skills:</strong> <?= htmlspecialchars($profile['skills']) ?></p>
                             <?php endif; ?>
-                            <?php if ($profile['recommendations']): ?>
+                            <?php if ($profile['dream_career']): ?>
+                                <div class="dream-row">
+                                    <div class="dream-label">🎯 Dream Career<?= $profile['dream_career']['career_category'] ? ' · ' . htmlspecialchars($profile['dream_career']['career_category']) : '' ?></div>
+                                    <div class="top-line">
+                                        <span><a href="career_profile.php?id=<?= $profile['dream_career']['career_id'] ?>"><?= htmlspecialchars($profile['dream_career']['career_title']) ?></a></span>
+                                        <span class="match"><?= number_format($profile['dream_career']['match_score'], 0) ?>% match</span>
+                                    </div>
+                                    <?php if (!empty($profile['dream_career']['key_subjects'])): ?>
+                                        <div class="subjects-line">📚 Subjects to focus on: <?= htmlspecialchars($profile['dream_career']['key_subjects']) ?></div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <?php if ($profile['field_careers']): ?>
+                                <div class="field-careers-row">
+                                    <div class="dream-label" style="color:#888;">📂 More in <?= htmlspecialchars($profile['dream_career']['career_category']) ?> (<?= count($profile['field_careers']) ?>)</div>
+                                    <?php foreach ($profile['field_careers'] as $fc): ?>
+                                        <div class="career-row">
+                                            <div class="top-line">
+                                                <span><a href="career_profile.php?id=<?= $fc['career_id'] ?>"><?= htmlspecialchars($fc['career_title']) ?></a></span>
+                                                <span class="match"><?= number_format($fc['match_score'], 0) ?>% match</span>
+                                            </div>
+                                            <?php if (!empty($fc['key_subjects'])): ?>
+                                                <div class="subjects-line">📚 <?= htmlspecialchars($fc['key_subjects']) ?></div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <?php
+                                $shownCareerIds = array_map(fn($c) => $c['career_id'], $profile['field_careers']);
+                                if ($profile['dream_career']) {
+                                    $shownCareerIds[] = $profile['dream_career']['career_id'];
+                                }
+                                $otherRecs = array_filter($profile['recommendations'], fn($rec) => !in_array((int) $rec['career_id'], $shownCareerIds, true));
+                            ?>
+                            <?php if ($otherRecs): ?>
                                 <div style="margin-top:10px;">
-                                    <?php foreach ($profile['recommendations'] as $rec): ?>
+                                    <?php foreach ($otherRecs as $rec): ?>
                                         <div class="career-row">
                                             <div class="top-line">
                                                 <span><?= htmlspecialchars($rec['career_title']) ?></span>
@@ -280,7 +390,7 @@ $riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score'
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
-                            <?php else: ?>
+                            <?php elseif (!$profile['dream_career']): ?>
                                 <p class="empty" style="margin-top:8px;">No recommendations were saved for this submission.</p>
                             <?php endif; ?>
                         </div>

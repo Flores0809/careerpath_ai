@@ -33,34 +33,84 @@ $stmt = $pdo->prepare(
 $stmt->execute(['id' => $currentStudent['student_id']]);
 $latestProfile = $stmt->fetch();
 
-$topRecommendations = [];
-if ($latestProfile) {
+// "Top match" for a submission prefers its dream career (migration 11) —
+// computed live from dream_career_id, doesn't depend on the Flask matching
+// service having been up at submission time — and only falls back to the
+// Flask-sourced `recommendations` table's #1 pick when there's no dream
+// career on that submission (older pre-migration-11 submissions).
+function cosine_similarity_riasec_dashboard(array $a, array $b): float
+{
+    $keys = ['R', 'I', 'A', 'S', 'E', 'C'];
+    $meanA = array_sum($a) / count($keys);
+    $meanB = array_sum($b) / count($keys);
+    $dot = 0.0; $normA = 0.0; $normB = 0.0;
+    foreach ($keys as $k) {
+        $ca = $a[$k] - $meanA;
+        $cb = $b[$k] - $meanB;
+        $dot += $ca * $cb;
+        $normA += $ca ** 2;
+        $normB += $cb ** 2;
+    }
+    if ($normA == 0 || $normB == 0) {
+        return 50.0;
+    }
+    $r = $dot / (sqrt($normA) * sqrt($normB));
+    return ($r + 1) / 2 * 100;
+}
+
+function dashboard_top_career(PDO $pdo, array $profile): ?array
+{
+    if (!empty($profile['dream_career_id'])) {
+        $stmt = $pdo->prepare("SELECT career_id, career_title, r_score, i_score, a_score, s_score, e_score, c_score FROM careers WHERE career_id = :id");
+        $stmt->execute(['id' => $profile['dream_career_id']]);
+        $career = $stmt->fetch();
+        if ($career) {
+            $studentVec = ['R' => (float) $profile['r_score'], 'I' => (float) $profile['i_score'], 'A' => (float) $profile['a_score'], 'S' => (float) $profile['s_score'], 'E' => (float) $profile['e_score'], 'C' => (float) $profile['c_score']];
+            $careerVec = ['R' => $career['r_score'] / 100, 'I' => $career['i_score'] / 100, 'A' => $career['a_score'] / 100, 'S' => $career['s_score'] / 100, 'E' => $career['e_score'] / 100, 'C' => $career['c_score'] / 100];
+            return [
+                'career_id' => (int) $career['career_id'],
+                'career_title' => $career['career_title'],
+                'match_score' => cosine_similarity_riasec_dashboard($studentVec, $careerVec),
+            ];
+        }
+    }
+
     $stmt = $pdo->prepare(
-        "SELECT r.match_score, c.career_id, c.career_title
+        "SELECT c.career_id, c.career_title, r.match_score
          FROM recommendations r
          JOIN careers c ON c.career_id = r.career_id
          WHERE r.profile_id = :profile_id
          ORDER BY r.rank_position ASC
-         LIMIT 3"
+         LIMIT 1"
     );
-    $stmt->execute(['profile_id' => $latestProfile['profile_id']]);
-    $topRecommendations = $stmt->fetchAll();
+    $stmt->execute(['profile_id' => $profile['profile_id']]);
+    $top = $stmt->fetch();
+    return $top ?: null;
 }
+
+$topMatch = $latestProfile ? dashboard_top_career($pdo, $latestProfile) : null;
 
 $stmt = $pdo->prepare(
     "SELECT profile_id, submitted_at FROM student_profiles WHERE student_id = :id ORDER BY submitted_at DESC LIMIT 5"
 );
 $stmt->execute(['id' => $currentStudent['student_id']]);
-$recentSubmissions = $stmt->fetchAll();
+$recentSubmissionsRaw = $stmt->fetchAll();
 
-$topCareerStmt = $pdo->prepare(
-    "SELECT c.career_id, c.career_title, r.match_score
-     FROM recommendations r
-     JOIN careers c ON c.career_id = r.career_id
-     WHERE r.profile_id = :profile_id
-     ORDER BY r.rank_position ASC
-     LIMIT 1"
-);
+// Recent Activity needs the same dream-career-aware lookup per submission,
+// but dashboard_top_career() takes a full profile row (for the RIASEC
+// vector), not just the profile_id the list above gives us — re-fetch each
+// one's full row rather than duplicating the RIASEC columns in two queries.
+$fullProfileStmt = $pdo->prepare("SELECT * FROM student_profiles WHERE profile_id = :id");
+$recentSubmissions = [];
+foreach ($recentSubmissionsRaw as $sub) {
+    $fullProfileStmt->execute(['id' => $sub['profile_id']]);
+    $fullProfile = $fullProfileStmt->fetch();
+    $recentSubmissions[] = [
+        'profile_id' => $sub['profile_id'],
+        'submitted_at' => $sub['submitted_at'],
+        'top' => $fullProfile ? dashboard_top_career($pdo, $fullProfile) : null,
+    ];
+}
 
 $riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score' => 'S', 'e_score' => 'E', 'c_score' => 'C'];
 $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score' => 'Artistic', 's_score' => 'Social', 'e_score' => 'Enterprising', 'c_score' => 'Conventional'];
@@ -141,11 +191,11 @@ $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score
                 <div class="value"><?= $assessmentCount ?></div>
                 <div class="sub"><?= $assessmentCount === 1 ? 'submission on record' : 'submissions on record' ?></div>
             </a>
-            <?php if ($topRecommendations): ?>
-                <a class="stat-card stat-card-link" href="career_profile.php?id=<?= (int) $topRecommendations[0]['career_id'] ?>">
+            <?php if ($topMatch): ?>
+                <a class="stat-card stat-card-link" href="career_profile.php?id=<?= (int) $topMatch['career_id'] ?>">
                     <div class="label">Top Match (Latest)</div>
-                    <div class="value small"><?= htmlspecialchars($topRecommendations[0]['career_title']) ?></div>
-                    <div class="sub"><?= number_format($topRecommendations[0]['match_score'], 0) ?>% match</div>
+                    <div class="value small"><?= htmlspecialchars($topMatch['career_title']) ?></div>
+                    <div class="sub"><?= number_format($topMatch['match_score'], 0) ?>% match</div>
                 </a>
             <?php else: ?>
                 <a class="stat-card stat-card-link" href="assessment.php">
@@ -186,10 +236,7 @@ $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score
                     <p class="empty">Nothing yet — your assessment history will show up here.</p>
                 <?php else: ?>
                     <?php foreach ($recentSubmissions as $submission): ?>
-                        <?php
-                            $topCareerStmt->execute(['profile_id' => $submission['profile_id']]);
-                            $top = $topCareerStmt->fetch();
-                        ?>
+                        <?php $top = $submission['top']; ?>
                         <div class="activity-item">
                             <span class="date"><?= date('M j, Y', strtotime($submission['submitted_at'])) ?></span>
                             <span class="top-career"><?= $top ? '<a href="career_profile.php?id=' . (int) $top['career_id'] . '">' . htmlspecialchars($top['career_title']) . '</a>' : 'No result saved' ?></span>

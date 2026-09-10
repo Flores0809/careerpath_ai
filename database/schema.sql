@@ -262,7 +262,8 @@ CREATE TABLE IF NOT EXISTS system_settings (
 
 INSERT INTO system_settings (setting_key, setting_value, description) VALUES
     ('recommendation_count', '5', 'How many careers the matching engine returns per assessment (Top-N).'),
-    ('site_name', 'CareerPath AI', 'Display name shown in page titles and nav bars.');
+    ('site_name', 'CareerPath AI', 'Display name shown in page titles and nav bars.'),
+    ('student_access_code', 'MEII2026', 'Code students must enter to self-register. Share this only with MEII students (e.g. announce it in class or print it on ID handouts); change it here if it leaks.');
 
 -- CAREER_CATEGORIES — lookup table for the industry/job clusters used to
 -- group careers (careers.career_category / pending_careers.career_category).
@@ -307,6 +308,7 @@ INSERT INTO career_categories (name, description) VALUES
 --   database/migration_13_category_management.sql (adds career_categories lookup table: names + descriptions)
 --   database/migration_14_change_log.sql (adds change_log table: before/after snapshots + undo)
 --   database/migration_15_key_subjects.sql (adds key_subjects: recommended JHS/SHS subjects per career)
+--   database/migration_16_student_access_code.sql (adds student_access_code system_setting)
 
 -- Seed data: RIASEC codes are approximate, based on commonly published
 -- Holland Code profiles for these occupations (O*NET-style), used here

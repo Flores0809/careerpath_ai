@@ -298,6 +298,18 @@ characters). You're logged in immediately and taken to your dashboard
 `student_login.php` — or just start from the landing page (`index.php`),
 which shows a **Student Log In** button.
 
+**Access code (migration 16):** since MEII doesn't issue students their own
+institutional email addresses (unlike staff), registration can't be gated by
+an email-domain check the way many school systems do. Instead,
+`student_register.php` requires a shared access code — set/rotated by an
+administrator on `settings.php` ("Student registration access code"),
+default seed value `MEII2026` — so a random visitor who finds the site can't
+self-enroll and spam consultations. This confirms someone holds the code
+shared with MEII students (e.g. announced in class or printed on ID
+handouts); it doesn't verify individual identity against a roster. If the
+setting is left blank, registration has no code requirement (useful for
+local dev). A fuller roster/LRN-based verification is noted as future work.
+
 **Assessment history:** every time a student submits the RIASEC form, the
 submission (their R/I/A/S/E/C scores) and the ranked careers they were shown
 are saved. Students can revisit this anytime at:

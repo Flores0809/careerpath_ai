@@ -17,10 +17,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $recommendationCount = (int) ($_POST['recommendation_count'] ?? 5);
     $recommendationCount = max(1, min(10, $recommendationCount));
     $siteName = trim($_POST['site_name'] ?? '') ?: 'CareerPath AI';
+    $studentAccessCode = trim($_POST['student_access_code'] ?? '');
 
     $update = $pdo->prepare("UPDATE system_settings SET setting_value = :value WHERE setting_key = :key");
     $update->execute(['value' => (string) $recommendationCount, 'key' => 'recommendation_count']);
     $update->execute(['value' => $siteName, 'key' => 'site_name']);
+    if ($studentAccessCode !== '') {
+        $update->execute(['value' => $studentAccessCode, 'key' => 'student_access_code']);
+    }
 
     $message = ['type' => 'success', 'text' => 'Settings saved.'];
 }
@@ -69,6 +73,10 @@ foreach ($settings as $s) {
             <label>Site name</label>
             <input type="text" name="site_name" value="<?= htmlspecialchars($settingsByKey['site_name']['setting_value'] ?? 'CareerPath AI') ?>">
             <p class="hint"><?= htmlspecialchars($settingsByKey['site_name']['description'] ?? '') ?></p>
+
+            <label>Student registration access code</label>
+            <input type="text" name="student_access_code" value="<?= htmlspecialchars($settingsByKey['student_access_code']['setting_value'] ?? '') ?>">
+            <p class="hint"><?= htmlspecialchars($settingsByKey['student_access_code']['description'] ?? 'Code students must enter to self-register — share only with MEII students.') ?></p>
 
             <button type="submit">Save settings</button>
         </form>

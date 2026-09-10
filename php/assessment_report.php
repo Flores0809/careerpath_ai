@@ -56,6 +56,69 @@ $recStmt = $pdo->prepare(
 $recStmt->execute(['id' => $profileId]);
 $recommendations = $recStmt->fetchAll();
 
+// Dream career (migration 11) — computed live from student_profiles.dream_career_id,
+// same as student_history.php/students_lookup.php, so it still shows on this
+// printable report even for a submission where the Flask matching service was
+// down at the time and no `recommendations` rows were ever saved.
+function cosine_similarity_riasec_report(array $a, array $b): float
+{
+    $keys = ['R', 'I', 'A', 'S', 'E', 'C'];
+    $meanA = array_sum($a) / count($keys);
+    $meanB = array_sum($b) / count($keys);
+    $dot = 0.0; $normA = 0.0; $normB = 0.0;
+    foreach ($keys as $k) {
+        $ca = $a[$k] - $meanA;
+        $cb = $b[$k] - $meanB;
+        $dot += $ca * $cb;
+        $normA += $ca ** 2;
+        $normB += $cb ** 2;
+    }
+    if ($normA == 0 || $normB == 0) {
+        return 50.0;
+    }
+    $r = $dot / (sqrt($normA) * sqrt($normB));
+    return ($r + 1) / 2 * 100;
+}
+
+$dreamCareer = null;
+$fieldCareers = [];
+if (!empty($profile['dream_career_id'])) {
+    $dreamStmt = $pdo->prepare("SELECT career_id, career_title, career_category, key_subjects, r_score, i_score, a_score, s_score, e_score, c_score FROM careers WHERE career_id = :id");
+    $dreamStmt->execute(['id' => $profile['dream_career_id']]);
+    $dreamRow = $dreamStmt->fetch();
+    if ($dreamRow) {
+        $studentVec = ['R' => (float) $profile['r_score'], 'I' => (float) $profile['i_score'], 'A' => (float) $profile['a_score'], 'S' => (float) $profile['s_score'], 'E' => (float) $profile['e_score'], 'C' => (float) $profile['c_score']];
+        $careerVec = ['R' => $dreamRow['r_score'] / 100, 'I' => $dreamRow['i_score'] / 100, 'A' => $dreamRow['a_score'] / 100, 'S' => $dreamRow['s_score'] / 100, 'E' => $dreamRow['e_score'] / 100, 'C' => $dreamRow['c_score'] / 100];
+        $dreamCareer = [
+            'career_id' => (int) $dreamRow['career_id'],
+            'career_title' => $dreamRow['career_title'],
+            'career_category' => $dreamRow['career_category'],
+            'key_subjects' => $dreamRow['key_subjects'] ?? null,
+            'match_score' => cosine_similarity_riasec_report($studentVec, $careerVec),
+        ];
+
+        if ($dreamRow['career_category']) {
+            $fieldStmt = $pdo->prepare("SELECT * FROM careers WHERE status = 'active' AND career_category = :category AND career_id != :dream_id");
+            $fieldStmt->execute(['category' => $dreamRow['career_category'], 'dream_id' => $dreamCareer['career_id']]);
+            foreach ($fieldStmt->fetchAll() as $row) {
+                $rowVec = ['R' => $row['r_score'] / 100, 'I' => $row['i_score'] / 100, 'A' => $row['a_score'] / 100, 'S' => $row['s_score'] / 100, 'E' => $row['e_score'] / 100, 'C' => $row['c_score'] / 100];
+                $fieldCareers[] = [
+                    'career_id' => (int) $row['career_id'],
+                    'career_title' => $row['career_title'],
+                    'key_subjects' => $row['key_subjects'] ?? null,
+                    'match_score' => cosine_similarity_riasec_report($studentVec, $rowVec),
+                ];
+            }
+            usort($fieldCareers, function ($a, $b) { return $b['match_score'] <=> $a['match_score']; });
+        }
+    }
+}
+$shownCareerIds = array_map(fn($c) => $c['career_id'], $fieldCareers);
+if ($dreamCareer) {
+    $shownCareerIds[] = $dreamCareer['career_id'];
+}
+$otherRecommendations = array_filter($recommendations, fn($rec) => !in_array((int) $rec['career_id'], $shownCareerIds, true));
+
 $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)', 'a_score' => 'Artistic (A)', 's_score' => 'Social (S)', 'e_score' => 'Enterprising (E)', 'c_score' => 'Conventional (C)'];
 $backLink = $isStaff ? 'students_lookup.php' : 'student_history.php';
 ?>
@@ -123,11 +186,37 @@ $backLink = $isStaff ? 'students_lookup.php' : 'student_history.php';
         <?php endforeach; ?>
     </table>
 
+    <?php if ($dreamCareer): ?>
+        <h2 class="section-title">🎯 Dream Career<?= $dreamCareer['career_category'] ? ' · ' . htmlspecialchars($dreamCareer['career_category']) : '' ?></h2>
+        <div class="career-block" style="border-color:#6e1423;">
+            <span class="match"><?= number_format($dreamCareer['match_score'], 0) ?>% match</span>
+            <h3><?= htmlspecialchars($dreamCareer['career_title']) ?></h3>
+            <?php if (!empty($dreamCareer['key_subjects'])): ?>
+                <p><strong>📚 Subjects to focus on:</strong> <?= htmlspecialchars($dreamCareer['key_subjects']) ?></p>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($fieldCareers): ?>
+        <h2 class="section-title">📂 More in <?= htmlspecialchars($dreamCareer['career_category']) ?></h2>
+        <?php foreach ($fieldCareers as $fc): ?>
+            <div class="career-block">
+                <span class="match"><?= number_format($fc['match_score'], 0) ?>% match</span>
+                <h3><?= htmlspecialchars($fc['career_title']) ?></h3>
+                <?php if (!empty($fc['key_subjects'])): ?>
+                    <p><strong>📚 Subjects to focus on:</strong> <?= htmlspecialchars($fc['key_subjects']) ?></p>
+                <?php endif; ?>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+
     <h2 class="section-title">Career Recommendations</h2>
-    <?php if (!$recommendations): ?>
-        <p><em>No recommendations were saved for this assessment.</em></p>
+    <?php if (!$otherRecommendations): ?>
+        <?php if (!$dreamCareer): ?>
+            <p><em>No recommendations were saved for this assessment.</em></p>
+        <?php endif; ?>
     <?php else: ?>
-        <?php foreach ($recommendations as $rec): ?>
+        <?php foreach ($otherRecommendations as $rec): ?>
             <?php $skillMatch = compute_skill_match($pdo, (int) $rec['career_id'], $profile['skills'] ?? null); ?>
             <div class="career-block">
                 <span class="match"><?= number_format($rec['match_score'], 0) ?>% match</span>
