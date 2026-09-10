@@ -1,0 +1,22 @@
+-- Migration 17: Seed a default administrator account
+-- --------------------------------------------------------------------
+-- Previously the only way to get a working admin login was to visit
+-- php/setup_admin.php once per install — fine for one person, but every
+-- groupmate cloning the repo and building their own local database had to
+-- repeat that step (or share credentials) before they could log in and
+-- test anything. This seeds one default admin account so a fresh install
+-- has a working login immediately.
+--
+-- This account is meant to be temporary/removable: once MEII actually
+-- deploys this and a real administrator logs in, they should create their
+-- own named administrator account via php/users.php, then disable or
+-- delete this seeded one (php/users.php also supports this, or run
+-- `DELETE FROM users WHERE email = 'admin@careerpathai.local';`).
+--
+-- Login: admin@careerpathai.local / ChangeMe123!
+-- (Change this password immediately on any install other people can reach.)
+--
+-- Hash below is bcrypt for 'ChangeMe123!' — compatible with PHP's
+-- password_verify() (PHP accepts $2a$/$2b$/$2x$/$2y$ bcrypt identifiers).
+INSERT IGNORE INTO users (name, email, password_hash, role, status) VALUES
+    ('Default Administrator', 'admin@careerpathai.local', '$2b$10$A7PVhu3vYwQNfbjJWyZKl./RzAqWVysu4xTT3s3tKjEeuG4sWDHNS', 'administrator', 'active');

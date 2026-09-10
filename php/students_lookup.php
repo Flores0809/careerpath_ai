@@ -261,6 +261,7 @@ $riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score'
     .field-careers-row { border: 1px solid #eee; border-radius: 8px; padding: 4px 14px 2px; margin-top: 10px; }
     .field-careers-row .career-row { padding: 6px 0; }
     .subjects-line { font-size: 12px; color: #666; margin-top: 3px; }
+    .explore-others-row summary { cursor: pointer; font-weight: bold; color: #6e1423; font-size: 13.5px; padding: 8px 0; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
 </head>
@@ -368,28 +369,40 @@ $riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score'
                                 $otherRecs = array_filter($profile['recommendations'], fn($rec) => !in_array((int) $rec['career_id'], $shownCareerIds, true));
                             ?>
                             <?php if ($otherRecs): ?>
-                                <div style="margin-top:10px;">
-                                    <?php foreach ($otherRecs as $rec): ?>
-                                        <div class="career-row">
-                                            <div class="top-line">
-                                                <span><?= htmlspecialchars($rec['career_title']) ?></span>
-                                                <span class="match"><?= number_format($rec['match_score'], 0) ?>%</span>
-                                            </div>
-                                            <?php $sm = $rec['skill_match']; ?>
-                                            <?php if ($sm['match_percent'] !== null): ?>
-                                                <div class="skill-pct">
-                                                    <?= $sm['match_percent'] ?>% skills match —
-                                                    <?php foreach ($sm['matched'] as $s): ?>
-                                                        <span class="skill-tag skill-have">✓ <?= htmlspecialchars($s['skill_name']) ?></span>
-                                                    <?php endforeach; ?>
-                                                    <?php foreach ($sm['missing'] as $s): ?>
-                                                        <span class="skill-tag skill-need"><?= htmlspecialchars($s['skill_name']) ?></span>
-                                                    <?php endforeach; ?>
+                                <?php
+                                    $otherRecsMarkup = function () use ($otherRecs) {
+                                        foreach ($otherRecs as $rec) {
+                                            ?>
+                                            <div class="career-row">
+                                                <div class="top-line">
+                                                    <span><?= htmlspecialchars($rec['career_title']) ?></span>
+                                                    <span class="match"><?= number_format($rec['match_score'], 0) ?>%</span>
                                                 </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
+                                                <?php $sm = $rec['skill_match']; ?>
+                                                <?php if ($sm['match_percent'] !== null): ?>
+                                                    <div class="skill-pct">
+                                                        <?= $sm['match_percent'] ?>% skills match —
+                                                        <?php foreach ($sm['matched'] as $s): ?>
+                                                            <span class="skill-tag skill-have">✓ <?= htmlspecialchars($s['skill_name']) ?></span>
+                                                        <?php endforeach; ?>
+                                                        <?php foreach ($sm['missing'] as $s): ?>
+                                                            <span class="skill-tag skill-need"><?= htmlspecialchars($s['skill_name']) ?></span>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <?php
+                                        }
+                                    };
+                                ?>
+                                <?php if ($profile['dream_career']): ?>
+                                    <details class="explore-others-row" style="margin-top:10px;">
+                                        <summary>🔎 Explore other careers from this submission (<?= count($otherRecs) ?>)</summary>
+                                        <div style="margin-top:8px;"><?php $otherRecsMarkup(); ?></div>
+                                    </details>
+                                <?php else: ?>
+                                    <div style="margin-top:10px;"><?php $otherRecsMarkup(); ?></div>
+                                <?php endif; ?>
                             <?php elseif (!$profile['dream_career']): ?>
                                 <p class="empty" style="margin-top:8px;">No recommendations were saved for this submission.</p>
                             <?php endif; ?>

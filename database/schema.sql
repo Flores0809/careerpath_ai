@@ -27,6 +27,16 @@ CREATE TABLE IF NOT EXISTS users (
     FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
+-- Default administrator account (migration_17_default_admin.sql) so a fresh
+-- install has a working staff login immediately, instead of every developer
+-- needing to run php/setup_admin.php separately. Meant to be temporary: once
+-- MEII actually deploys this, a real administrator should log in, create
+-- their own named account via php/users.php, then disable or delete this
+-- seeded one. Login: admin@careerpathai.local / ChangeMe123! — change this
+-- password immediately on any install other people can reach.
+INSERT IGNORE INTO users (name, email, password_hash, role, status) VALUES
+    ('Default Administrator', 'admin@careerpathai.local', '$2b$10$A7PVhu3vYwQNfbjJWyZKl./RzAqWVysu4xTT3s3tKjEeuG4sWDHNS', 'administrator', 'active');
+
 CREATE TABLE careers (
     career_id           INT AUTO_INCREMENT PRIMARY KEY,
     career_title         VARCHAR(150) NOT NULL,
@@ -309,6 +319,7 @@ INSERT INTO career_categories (name, description) VALUES
 --   database/migration_14_change_log.sql (adds change_log table: before/after snapshots + undo)
 --   database/migration_15_key_subjects.sql (adds key_subjects: recommended JHS/SHS subjects per career)
 --   database/migration_16_student_access_code.sql (adds student_access_code system_setting)
+--   database/migration_17_default_admin.sql (seeds a default administrator account)
 
 -- Seed data: RIASEC codes are approximate, based on commonly published
 -- Holland Code profiles for these occupations (O*NET-style), used here

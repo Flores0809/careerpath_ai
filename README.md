@@ -253,15 +253,36 @@ Two roles share the staff side of the system:
 | Review, edit, approve, or reject careers (`careers.php`) | ✅ | ✅ |
 | Run "✨ Enrich with AI" | ✅ | ✅ |
 
-**First-time setup — create the first administrator:**
+**First-time setup — default administrator account (migration 17):**
+
+A fresh database (`schema.sql`, or `migration_17_default_admin.sql` on an
+existing install) seeds one working admin login out of the box, so every
+groupmate cloning the repo can log in immediately without a separate setup
+step:
+
+```
+Email:    admin@careerpathai.local
+Password: ChangeMe123!
+```
+
+Log in at `http://localhost/careerpath-ai-mvp/php/login.php` with those
+credentials. **This account is a placeholder, not meant for real use** —
+change its password immediately on any install other people can reach
+(`users.php` → edit → reset password), and once MEII actually deploys this
+for real, have the real administrator create their own named account and
+then disable or delete this seeded one from `users.php`.
+
+If you'd rather not have a seeded account at all (e.g. you're setting up
+without running the migrations/full schema), there's also a one-time manual
+setup page:
 
 ```
 http://localhost/careerpath-ai-mvp/php/setup_admin.php
 ```
 
-This page only works once — as soon as one administrator account exists, it
-locks itself (visiting it again just shows "setup already complete"), so it
-can't be used later to plant a rogue admin. Fill in a name, email, and
+This only works when **zero** administrator accounts exist yet — since the
+default account above already counts as one, this page will show "setup
+already complete" unless you've deleted it first. Fill in a name, email, and
 password (min. 8 characters); you'll be logged in automatically and dropped
 onto the staff dashboard (`dashboard.php` — see section 7).
 
