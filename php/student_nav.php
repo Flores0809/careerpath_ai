@@ -9,7 +9,13 @@ $cpCurrentPage = basename($_SERVER['PHP_SELF'] ?? '');
 $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-active' : '';
 ?>
 <div class="cp-nav">
-    <a href="student_dashboard.php" class="cp-nav-brand">CareerPath AI</a>
+    <a href="student_dashboard.php" class="cp-nav-brand">
+        <img src="assets/img/logo.png" alt="Meridian Educational Institution Inc. logo" class="cp-nav-logo">
+        <span class="cp-nav-brand-text">
+            <span class="cp-nav-school">Meridian Educational Institution Inc.</span>
+            <span class="cp-nav-title">CareerPath AI</span>
+        </span>
+    </a>
     <div class="cp-nav-links">
         <a class="cp-nav-item <?= $cpIsActive(['student_dashboard.php']) ?>" href="student_dashboard.php">Dashboard</a>
 
@@ -32,7 +38,11 @@ $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-a
 </div>
 <style>
     .cp-nav { display: flex; align-items: center; background: linear-gradient(135deg, #6e1423 0%, #4a0c17 100%); color: #fff; padding: 12px 20px; border-radius: 8px; margin-bottom: 24px; font-size: 14px; flex-wrap: wrap; gap: 10px 16px; position: relative; }
-    .cp-nav-brand { font-weight: bold; font-size: 16px; color: #fff; text-decoration: none; margin-right: 10px; flex-shrink: 0; }
+    .cp-nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-right: 10px; flex-shrink: 0; }
+    .cp-nav-logo { width: 36px; height: 36px; border-radius: 50%; background: #fff; object-fit: cover; flex-shrink: 0; }
+    .cp-nav-brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+    .cp-nav-school { font-size: 9px; text-transform: uppercase; letter-spacing: 0.4px; color: #e9c9ce; font-weight: normal; }
+    .cp-nav-title { font-size: 16px; font-weight: bold; color: #fff; }
     .cp-nav-links { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; flex: 1 1 auto; }
     .cp-nav-item { color: #e9c9ce; text-decoration: none; padding: 8px 12px; border-radius: 6px; background: none; border: none; font: inherit; font-size: 14px; font-family: inherit; cursor: pointer; display: inline-block; box-sizing: border-box; line-height: 20px; vertical-align: middle; margin: 0; appearance: none; -webkit-appearance: none; }
     a.cp-nav-item:hover, .cp-dropdown-toggle:hover { color: #fff; background: rgba(255,255,255,0.12); }
