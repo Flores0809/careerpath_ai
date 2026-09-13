@@ -20,9 +20,12 @@ $stmt->execute(['id' => $currentStudent['student_id']]);
 $assessmentCount = (int) $stmt->fetchColumn();
 
 // Counselor-recorded notes/outcomes for this student (students_lookup.php) —
-// shown in full on student_history.php; just a count + link here.
+// full history always shown on student_history.php; this banner only counts
+// UNREAD ones (via the notifications table's 'counselor_note' category), so
+// it disappears once the student marks them read on the Notifications page
+// instead of nagging forever.
 $stmt = $pdo->prepare(
-    "SELECT COUNT(*) FROM counselor_log WHERE student_id = :id AND action = 'recorded_outcome' AND notes IS NOT NULL"
+    "SELECT COUNT(*) FROM notifications WHERE audience = 'student' AND student_id = :id AND category = 'counselor_note' AND is_read = 0"
 );
 $stmt->execute(['id' => $currentStudent['student_id']]);
 $counselorNoteCount = (int) $stmt->fetchColumn();
@@ -112,7 +115,7 @@ foreach ($recentSubmissionsRaw as $sub) {
     ];
 }
 
-$riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score' => 'S', 'e_score' => 'E', 'c_score' => 'C'];
+$riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)', 'a_score' => 'Artistic (A)', 's_score' => 'Social (S)', 'e_score' => 'Enterprising (E)', 'c_score' => 'Conventional (C)'];
 $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score' => 'Artistic', 's_score' => 'Social', 'e_score' => 'Enterprising', 'c_score' => 'Conventional'];
 ?>
 <!DOCTYPE html>
@@ -177,8 +180,8 @@ $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score
 
         <?php if ($counselorNoteCount > 0): ?>
             <div class="notes-banner">
-                <span>📝 You have <?= $counselorNoteCount ?> note<?= $counselorNoteCount === 1 ? '' : 's' ?> from your guidance counselor.</span>
-                <a href="student_history.php">View notes &rarr;</a>
+                <span>📝 You have <?= $counselorNoteCount ?> unread note<?= $counselorNoteCount === 1 ? '' : 's' ?> from your guidance counselor.</span>
+                <a href="student_notifications.php">View &amp; mark as read &rarr;</a>
             </div>
         <?php endif; ?>
 

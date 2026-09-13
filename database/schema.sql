@@ -256,6 +256,11 @@ CREATE TABLE IF NOT EXISTS notifications (
     user_id          INT NULL,
     message          VARCHAR(255) NOT NULL,
     link             VARCHAR(255) NULL,
+    -- Lets the Notifications list (and other views) tell a counselor note
+    -- apart from a consultation/assessment alert without guessing from the
+    -- message text. NULL for anything not worth categorizing.
+    -- (migration_18_notification_categories.sql)
+    category         VARCHAR(30) NULL,
     is_read          BOOLEAN NOT NULL DEFAULT FALSE,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,

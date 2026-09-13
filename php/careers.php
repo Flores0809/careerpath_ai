@@ -16,6 +16,13 @@ $currentUser = require_role(['administrator', 'counselor']);
 $pdo = get_db();
 $message = null;
 
+$sourceLabels = [
+    'philjobnet' => 'PhilJobNet (Philippines)',
+    'onet' => 'O*NET (International)',
+    'adzuna' => 'Adzuna (International)',
+    'remoteok' => 'RemoteOK (International)',
+];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $pendingId = (int) ($_POST['pending_id'] ?? 0);
@@ -143,30 +150,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = ['type' => 'success', 'text' => 'AI enrichment complete — review the updated fields below before approving.'];
             }
         }
+    } elseif ($action === 'run_crawler') {
+        // Starts crawler/*.py as a background subprocess on the matching
+        // service (see matching-service/app.py's CrawlResource) so a
+        // counselor/admin never has to open a terminal to run it. This
+        // request returns immediately — the crawl itself keeps running in
+        // the background and results are polled via CRAWL_STATUS_SERVICE_URL.
+        $crawlSource = $_POST['source'] ?? '';
+        if (!array_key_exists($crawlSource, $sourceLabels)) {
+            $message = ['type' => 'error', 'text' => 'Unknown crawler source.'];
+        } else {
+            $ch = curl_init(CRAWL_SERVICE_URL);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => json_encode(['source' => $crawlSource]),
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                CURLOPT_TIMEOUT => 10, // just needs to confirm the subprocess started, not wait for it
+            ]);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+
+            $result = $curlError ? null : json_decode($response, true);
+
+            if ($curlError) {
+                $message = [
+                    'type' => 'error',
+                    'text' => "Could not reach the matching service ($curlError). Make sure python app.py (matching-service) is running.",
+                ];
+            } elseif (!$result || empty($result['started'])) {
+                $message = ['type' => 'error', 'text' => 'Crawler could not start: ' . ($result['error'] ?? "HTTP $httpCode")];
+            } else {
+                $message = [
+                    'type' => 'success',
+                    'text' => "{$sourceLabels[$crawlSource]} crawler started in the background. New entries will appear in Pending as they're found — refresh in a minute or two, or watch the status below.",
+                ];
+            }
+        }
     }
 }
 
-$sourceLabels = [
-    'philjobnet' => 'PhilJobNet (Philippines)',
-    'onet' => 'O*NET (International)',
-    'adzuna' => 'Adzuna (International)',
-    'remoteok' => 'RemoteOK (International)',
-];
 $sourceFilter = $_GET['source'] ?? '';
 if (!array_key_exists($sourceFilter, $sourceLabels)) {
     $sourceFilter = '';
 }
 
+// Only meaningful on the Pending tab (that's the only place entries get
+// split into New/Older — see below). '' means "show both".
+$ageFilter = $_GET['age'] ?? '';
+if (!in_array($ageFilter, ['new', 'older'], true)) {
+    $ageFilter = '';
+}
+$showNew = $ageFilter !== 'older';
+$showOlder = $ageFilter !== 'new';
+
+$statusFilter = $_GET['status'] ?? 'pending';
+if (!in_array($statusFilter, ['pending', 'approved', 'rejected'], true)) {
+    $statusFilter = 'pending';
+}
+
 if ($sourceFilter !== '') {
     $stmt = $pdo->prepare(
-        "SELECT * FROM pending_careers WHERE status = 'pending' AND data_source = :source ORDER BY scraped_at DESC"
+        "SELECT pc.*, u.name AS reviewer_name FROM pending_careers pc
+         LEFT JOIN users u ON u.user_id = pc.reviewed_by
+         WHERE pc.status = :status AND pc.data_source = :source
+         ORDER BY pc.status = 'pending' DESC, pc.scraped_at DESC, pc.reviewed_at DESC"
     );
-    $stmt->execute(['source' => $sourceFilter]);
+    $stmt->execute(['status' => $statusFilter, 'source' => $sourceFilter]);
     $pending = $stmt->fetchAll();
 } else {
-    $pending = $pdo->query(
-        "SELECT * FROM pending_careers WHERE status = 'pending' ORDER BY scraped_at DESC"
-    )->fetchAll();
+    $stmt = $pdo->prepare(
+        "SELECT pc.*, u.name AS reviewer_name FROM pending_careers pc
+         LEFT JOIN users u ON u.user_id = pc.reviewed_by
+         WHERE pc.status = :status
+         ORDER BY pc.status = 'pending' DESC, pc.scraped_at DESC, pc.reviewed_at DESC"
+    );
+    $stmt->execute(['status' => $statusFilter]);
+    $pending = $stmt->fetchAll();
 }
 
 $counts = $pdo->query(
@@ -182,6 +244,60 @@ $sourceCounts = $pdo->query(
 // php/careers_manage.php, so newly-approved careers land with a consistent,
 // managed cluster label the dream-career picker can group by.
 $categoryOptions = $pdo->query("SELECT name, description FROM career_categories ORDER BY name")->fetchAll();
+
+// Split "New" (scraped in the last 24 hours) vs everything else, so a
+// fresh crawl doesn't just get buried among however many older entries
+// were already sitting in the queue.
+$newPending = [];
+$olderPending = [];
+
+if ($statusFilter === 'pending') {
+    // Flag entries that look like a duplicate of a career that's already
+    // approved — stays entirely within the Pending tab as a small badge on
+    // the card (see render_pending_card()); doesn't touch the careers
+    // table, doesn't need its own tab/section, and doesn't change how
+    // Approve/Reject work. Staff still decide either way, same buttons as
+    // always — this just gives them a heads-up before they do.
+    //
+    // Matching compares the scraped posting's own title (source_title)
+    // against each active career's title with PHP's similar_text() (a
+    // character-overlap percentage) — exact match, or >=55% similar. Rule-
+    // based and explainable, not perfect, but good enough to flag the
+    // obvious case (e.g. a re-scraped "Welder" posting when "Welder" is
+    // already an approved career).
+    $approvedCareerTitles = $pdo->query("SELECT career_title FROM careers WHERE status = 'active'")->fetchAll(PDO::FETCH_COLUMN);
+
+    $findDuplicateTitle = function (string $sourceTitle) use ($approvedCareerTitles): ?string {
+        $needle = strtolower(trim($sourceTitle));
+        if ($needle === '') {
+            return null;
+        }
+        $bestMatch = null;
+        $bestPercent = 0.0;
+        foreach ($approvedCareerTitles as $title) {
+            $normalized = strtolower(trim($title));
+            if ($normalized === $needle) {
+                return $title; // exact match — most confident, stop here
+            }
+            similar_text($normalized, $needle, $percent);
+            if ($percent > $bestPercent) {
+                $bestPercent = $percent;
+                $bestMatch = $title;
+            }
+        }
+        return $bestPercent >= 55 ? $bestMatch : null;
+    };
+
+    $newCutoff = time() - 86400;
+    foreach ($pending as $row) {
+        $row['_duplicate_of'] = $findDuplicateTitle($row['source_title'] ?? '');
+        if (strtotime($row['scraped_at']) >= $newCutoff) {
+            $newPending[] = $row;
+        } else {
+            $olderPending[] = $row;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -214,6 +330,11 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
     .enrich { background: #6f42c1; color: #fff; }
     .ai-badge { color: #6f42c1; font-weight: bold; }
     .empty { color: #666; font-style: italic; }
+    .section-heading { color: #6e1423; font-size: 16px; margin: 26px 0 10px; padding-top: 4px; border-top: 1px solid #eee; }
+    .section-heading:first-of-type { border-top: none; padding-top: 0; margin-top: 4px; }
+    .new-section-heading { border-top: none; margin-top: 4px; }
+    .new-badge { display: inline-block; background: #ffc107; color: #664d03; font-weight: bold; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-right: 6px; }
+    .duplicate-badge { background: #fdecea; color: #842029; border: 1px solid #f5c2c7; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: bold; margin-bottom: 12px; }
     .source-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 6px; }
     .source-philjobnet { background: #f0dde1; color: #6e1423; }
     .source-onet { background: #e7d9f7; color: #4b2e83; }
@@ -222,6 +343,39 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
     .filter-bar { margin-bottom: 18px; font-size: 14px; }
     .filter-bar select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
+
+    /* Status tabs */
+    .tabs { max-width: 900px; margin: 24px auto 0; display: flex; gap: 4px; border-bottom: 2px solid #eee; flex-wrap: wrap; }
+    .tab-btn { background: none; border: none; padding: 10px 18px; font-size: 14px; font-weight: bold; color: #888; cursor: pointer; text-decoration: none; display: inline-block; border-bottom: 3px solid transparent; margin-bottom: -2px; font-family: inherit; }
+    .tab-btn:hover { color: #6e1423; }
+    .tab-btn.active { color: #6e1423; border-bottom-color: #6e1423; }
+    .tab-count { display: inline-block; background: #eee; color: #555; border-radius: 10px; padding: 1px 8px; font-size: 11px; margin-left: 5px; }
+    .tab-btn.active .tab-count { background: #f0dde1; color: #6e1423; }
+
+    /* Search bar */
+    .search-bar { position: relative; max-width: 340px; margin: 18px auto 4px; }
+    .search-bar input { width: 100%; padding: 9px 14px 9px 32px; border: 1px solid #ccc; border-radius: 20px; font-size: 14px; box-sizing: border-box; }
+    .search-bar input:focus { outline: none; border-color: #6e1423; box-shadow: 0 0 0 2px rgba(110,20,35,0.12); }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: 0.55; pointer-events: none; }
+    .no-results { max-width: 900px; margin: 20px auto; text-align: center; color: #888; font-style: italic; }
+
+    /* Read-only reviewed (approved/rejected) rows */
+    .reviewed-row { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 12px 18px; margin-bottom: 12px; font-size: 14px; }
+    .reviewed-row .title { font-weight: bold; color: #6e1423; }
+    .reviewed-row .meta { margin-top: 4px; }
+
+    /* Run Web Crawler panel */
+    .crawler-panel { max-width: 900px; margin: 0 auto 20px; background: #faf0f1; border: 1px solid #f0dde1; border-radius: 8px; padding: 16px 20px; }
+    .crawler-panel-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .crawler-panel select { padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; font-size: 13px; }
+    .crawler-panel button { background: #6e1423; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
+    .crawler-panel button:hover:not(:disabled) { background: #4a0c17; }
+    .crawler-panel button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .crawler-panel .hint { font-size: 12px; color: #888; margin-top: 6px; }
+    .crawler-status { margin-top: 10px; font-size: 13px; }
+    .crawler-status .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #6e1423; border-top-color: transparent; border-radius: 50%; animation: crawler-spin 0.7s linear infinite; margin-right: 6px; vertical-align: -1px; }
+    @keyframes crawler-spin { to { transform: rotate(360deg); } }
+    .crawler-log { margin-top: 8px; background: #222; color: #d9f7d9; font-family: monospace; font-size: 11px; padding: 10px 12px; border-radius: 6px; max-height: 160px; overflow-y: auto; white-space: pre-wrap; display: none; }
 </style>
 </head>
 <body>
@@ -231,10 +385,27 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
 
     <h1>Career Review Queue</h1>
 
-    <div class="counts">
-        <span><strong>Pending:</strong> <?= $counts['pending'] ?? 0 ?></span>
-        <span><strong>Approved:</strong> <?= $counts['approved'] ?? 0 ?></span>
-        <span><strong>Rejected:</strong> <?= $counts['rejected'] ?? 0 ?></span>
+    <div class="crawler-panel">
+        <form method="POST" class="crawler-panel-row">
+            <input type="hidden" name="action" value="run_crawler">
+            <strong>Run Web Crawler:</strong>
+            <select name="source" id="crawler-source">
+                <option value="philjobnet">PhilJobNet (Philippines — no setup needed)</option>
+                <option value="remoteok">RemoteOK (International — no setup needed)</option>
+                <option value="onet">O*NET (International — needs ONET_USERNAME/PASSWORD)</option>
+                <option value="adzuna">Adzuna (International — needs ADZUNA_APP_ID/KEY)</option>
+            </select>
+            <button type="submit">▶ Run Crawler</button>
+        </form>
+        <p class="hint">Runs in the background on the matching service (must be running — see <code>!START_HERE - Run Matching Service.bat</code>). New postings appear in the Pending tab as they're found; this page won't freeze while it runs.</p>
+        <div class="crawler-status" id="crawler-status"></div>
+        <pre class="crawler-log" id="crawler-log"></pre>
+    </div>
+
+    <div class="tabs">
+        <a class="tab-btn <?= $statusFilter === 'pending' ? 'active' : '' ?>" href="?status=pending<?= $sourceFilter !== '' ? '&source=' . urlencode($sourceFilter) : '' ?>">Pending <span class="tab-count"><?= $counts['pending'] ?? 0 ?></span></a>
+        <a class="tab-btn <?= $statusFilter === 'approved' ? 'active' : '' ?>" href="?status=approved<?= $sourceFilter !== '' ? '&source=' . urlencode($sourceFilter) : '' ?>">Approved <span class="tab-count"><?= $counts['approved'] ?? 0 ?></span></a>
+        <a class="tab-btn <?= $statusFilter === 'rejected' ? 'active' : '' ?>" href="?status=rejected<?= $sourceFilter !== '' ? '&source=' . urlencode($sourceFilter) : '' ?>">Rejected <span class="tab-count"><?= $counts['rejected'] ?? 0 ?></span></a>
     </div>
 
     <?php if ($message): ?>
@@ -243,6 +414,7 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
 
     <div class="filter-bar">
         <form method="GET">
+            <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
             <label style="display:inline;font-weight:bold;">Filter by source:</label>
             <select name="source" onchange="this.form.submit()">
                 <option value="">All sources (<?= array_sum($sourceCounts) ?>)</option>
@@ -252,34 +424,85 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
                     </option>
                 <?php endforeach; ?>
             </select>
+
+            <?php if ($statusFilter === 'pending'): ?>
+                <label style="display:inline;font-weight:bold;margin-left:16px;">Filter by age:</label>
+                <select name="age" onchange="this.form.submit()">
+                    <option value="" <?= $ageFilter === '' ? 'selected' : '' ?>>All entries (<?= count($newPending) + count($olderPending) ?>)</option>
+                    <option value="new" <?= $ageFilter === 'new' ? 'selected' : '' ?>>🆕 New — last 24 hours (<?= count($newPending) ?>)</option>
+                    <option value="older" <?= $ageFilter === 'older' ? 'selected' : '' ?>>Older entries (<?= count($olderPending) ?>)</option>
+                </select>
+            <?php endif; ?>
         </form>
     </div>
 
-    <?php if (!$pending): ?>
+    <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="career-search" placeholder="Search by title or keyword...">
+    </div>
+
+    <?php
+        $filteredPendingCount = $statusFilter === 'pending'
+            ? ($showNew ? count($newPending) : 0) + ($showOlder ? count($olderPending) : 0)
+            : count($pending);
+    ?>
+    <?php if ($filteredPendingCount === 0): ?>
         <p class="empty">
-            No pending entries<?= $sourceFilter !== '' ? ' from ' . htmlspecialchars($sourceLabels[$sourceFilter]) : '' ?>.
-            Run <code>python crawler/crawler.py</code> (Philippines), <code>python crawler/onet_client.py</code>,
-            <code>python crawler/adzuna_client.py</code>, or <code>python crawler/remoteok_client.py</code>
-            (international) to fetch more.
+            No <?= htmlspecialchars($statusFilter) ?> entries<?= $sourceFilter !== '' ? ' from ' . htmlspecialchars($sourceLabels[$sourceFilter]) : '' ?><?= $ageFilter === 'new' ? ' scraped in the last 24 hours' : ($ageFilter === 'older' ? ' older than 24 hours' : '') ?>.
+            <?php if ($statusFilter === 'pending'): ?>
+                Use "Run Web Crawler" above to fetch more, or run one of the scripts manually:
+                <code>python crawler/crawler.py</code> (Philippines), <code>python crawler/onet_client.py</code>,
+                <code>python crawler/adzuna_client.py</code>, or <code>python crawler/remoteok_client.py</code>
+                (international).
+            <?php endif; ?>
         </p>
     <?php endif; ?>
 
-    <?php foreach ($pending as $row): ?>
+    <div id="no-search-results" class="no-results" style="display:none;">No entries match your search.</div>
+
+    <?php if ($statusFilter !== 'pending'): ?>
+        <?php foreach ($pending as $row): ?>
+            <div class="reviewed-row" data-search="<?= htmlspecialchars(strtolower(($row['source_title'] ?? '') . ' ' . ($row['search_keyword'] ?? ''))) ?>">
+                <div class="title"><?= htmlspecialchars($row['source_title'] ?? '(untitled)') ?>
+                    <span class="source-tag source-<?= htmlspecialchars($row['data_source']) ?>"><?= htmlspecialchars($sourceLabels[$row['data_source']] ?? $row['data_source']) ?></span>
+                </div>
+                <div class="meta">
+                    <?= htmlspecialchars($row['employer'] ?? '—') ?> ·
+                    <?= htmlspecialchars($row['career_category'] ?? '—') ?> ·
+                    Reviewed <?= htmlspecialchars($row['reviewed_at'] ?? '—') ?>
+                    <?php if (!empty($row['reviewer_name'])): ?>by <?= htmlspecialchars($row['reviewer_name']) ?><?php endif; ?>
+                    · <a href="<?= htmlspecialchars($row['source_url']) ?>" target="_blank" rel="noopener">View original posting</a>
+                    <?php if ($statusFilter === 'approved'): ?>
+                        · <a href="careers_manage.php">Edit in Manage Careers</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php else: ?>
         <?php
-            $isEnriched = !empty($row['ai_enriched_at']);
-            // Prefer AI-enriched fields when present, fall back to raw scraped fields.
-            $descriptionDefault = $row['ai_description'] ?? $row['description'] ?? '';
-            $dailyTaskDefault = $row['ai_daily_task'] ?? $row['qualifications'] ?? '';
-            $pathwayDefault = $row['ai_educational_pathway'] ?? $row['education_level'] ?? '';
-            $rDefault = $row['ai_r_score'] ?? $row['suggested_r_score'];
-            $iDefault = $row['ai_i_score'] ?? $row['suggested_i_score'];
-            $aDefault = $row['ai_a_score'] ?? $row['suggested_a_score'];
-            $sDefault = $row['ai_s_score'] ?? $row['suggested_s_score'];
-            $eDefault = $row['ai_e_score'] ?? $row['suggested_e_score'];
-            $cDefault = $row['ai_c_score'] ?? $row['suggested_c_score'];
+            // Renders one pending-review card. Pulled into a function so the
+            // "New" / "Older" grouping below can call it twice without
+            // duplicating this whole block.
+            function render_pending_card(array $row, array $sourceLabels, array $categoryOptions, bool $isNew): void
+            {
+                $isEnriched = !empty($row['ai_enriched_at']);
+                // Prefer AI-enriched fields when present, fall back to raw scraped fields.
+                $descriptionDefault = $row['ai_description'] ?? $row['description'] ?? '';
+                $dailyTaskDefault = $row['ai_daily_task'] ?? $row['qualifications'] ?? '';
+                $pathwayDefault = $row['ai_educational_pathway'] ?? $row['education_level'] ?? '';
+                $rDefault = $row['ai_r_score'] ?? $row['suggested_r_score'];
+                $iDefault = $row['ai_i_score'] ?? $row['suggested_i_score'];
+                $aDefault = $row['ai_a_score'] ?? $row['suggested_a_score'];
+                $sDefault = $row['ai_s_score'] ?? $row['suggested_s_score'];
+                $eDefault = $row['ai_e_score'] ?? $row['suggested_e_score'];
+                $cDefault = $row['ai_c_score'] ?? $row['suggested_c_score'];
         ?>
-        <div class="card">
+        <div class="card" data-search="<?= htmlspecialchars(strtolower(($row['source_title'] ?? '') . ' ' . ($row['search_keyword'] ?? ''))) ?>">
+            <?php if (!empty($row['_duplicate_of'])): ?>
+                <div class="duplicate-badge">⚠️ Duplicate from approved careers: "<?= htmlspecialchars($row['_duplicate_of']) ?>" is already approved — consider rejecting this entry.</div>
+            <?php endif; ?>
             <div class="meta">
+                <?php if ($isNew): ?><span class="new-badge">🆕 New</span><?php endif; ?>
                 Scraped <?= htmlspecialchars($row['scraped_at']) ?> ·
                 Keyword: <?= htmlspecialchars($row['search_keyword']) ?> ·
                 <?= htmlspecialchars($row['country'] ?? '—') ?>
@@ -347,6 +570,78 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
                 </div>
             </form>
         </div>
-    <?php endforeach; ?>
+        <?php
+            }
+        ?>
+
+        <?php if ($showNew && $newPending): ?>
+            <h2 class="section-heading new-section-heading">🆕 New — added in the last 24 hours (<?= count($newPending) ?>)</h2>
+            <?php foreach ($newPending as $row): render_pending_card($row, $sourceLabels, $categoryOptions, true); endforeach; ?>
+        <?php endif; ?>
+
+        <?php if ($showOlder && $olderPending): ?>
+            <h2 class="section-heading <?= ($showNew && $newPending) ? '' : 'new-section-heading' ?>">Older entries (<?= count($olderPending) ?>)</h2>
+            <?php foreach ($olderPending as $row): render_pending_card($row, $sourceLabels, $categoryOptions, false); endforeach; ?>
+        <?php endif; ?>
+    <?php endif; ?>
+
+    <script>
+    (function () {
+        var searchInput = document.getElementById('career-search');
+        var noResults = document.getElementById('no-search-results');
+        searchInput.addEventListener('input', function () {
+            var q = searchInput.value.trim().toLowerCase();
+            var items = document.querySelectorAll('[data-search]');
+            var visibleCount = 0;
+            items.forEach(function (item) {
+                var match = item.dataset.search.indexOf(q) !== -1;
+                item.style.display = match ? '' : 'none';
+                if (match) visibleCount++;
+            });
+            noResults.style.display = (items.length && visibleCount === 0 && q !== '') ? 'block' : 'none';
+        });
+    })();
+
+    // Live status for the "Run Web Crawler" panel — polls crawler_status.php
+    // (same-origin proxy to the matching service) every few seconds so staff
+    // can watch a crawl finish without manually refreshing the page.
+    (function () {
+        var sourceSelect = document.getElementById('crawler-source');
+        var statusEl = document.getElementById('crawler-status');
+        var logEl = document.getElementById('crawler-log');
+        if (!sourceSelect || !statusEl) return;
+
+        function poll() {
+            var source = sourceSelect.value;
+            fetch('crawler_status.php?source=' + encodeURIComponent(source))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.state === 'running') {
+                        statusEl.innerHTML = '<span class="spinner"></span>Running for ' + data.elapsed_seconds + 's...';
+                    } else if (data.state === 'finished' && data.exit_code === 0) {
+                        statusEl.textContent = 'Finished (ran for ' + data.elapsed_seconds + 's). Check the Pending tab for new entries.';
+                    } else if (data.state === 'finished') {
+                        statusEl.textContent = 'Crashed after ' + data.elapsed_seconds + 's (exit code ' + data.exit_code + ') — see the log below.';
+                    } else if (data.state === 'unreachable') {
+                        statusEl.textContent = 'Matching service not reachable — make sure it is running.';
+                    } else {
+                        statusEl.textContent = '';
+                    }
+                    if (data.log_tail) {
+                        logEl.textContent = data.log_tail;
+                        logEl.style.display = 'block';
+                        logEl.scrollTop = logEl.scrollHeight;
+                    } else {
+                        logEl.style.display = 'none';
+                    }
+                })
+                .catch(function () { /* matching service likely not running yet — stay quiet, the run button's own error message already covers this */ });
+        }
+
+        poll();
+        setInterval(poll, 4000);
+        sourceSelect.addEventListener('change', poll);
+    })();
+    </script>
 </body>
 </html>

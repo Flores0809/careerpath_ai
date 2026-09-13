@@ -88,8 +88,8 @@ function cosine_similarity_riasec_history(array $a, array $b): float
     .empty { color: #666; font-style: italic; }
     .submission { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; }
     .submission-date { font-size: 13px; color: #666; margin-bottom: 10px; }
-    .profile { background: #faf0f1; border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; }
-    .profile span { display: inline-block; margin-right: 14px; font-size: 13px; }
+    .profile { background: #faf0f1; border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; white-space: nowrap; overflow-x: auto; }
+    .profile span { display: inline-block; margin-right: 12px; font-size: 12.5px; }
     .career-row { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-top: 1px solid #eee; }
     .career-row:first-of-type { border-top: none; }
     .career-row .title { font-weight: bold; }
@@ -202,12 +202,12 @@ function cosine_similarity_riasec_history(array $a, array $b): float
             </div>
 
             <div class="profile">
-                <span><strong>R:</strong> <?= number_format($profile['r_score'] * 100, 0) ?>%</span>
-                <span><strong>I:</strong> <?= number_format($profile['i_score'] * 100, 0) ?>%</span>
-                <span><strong>A:</strong> <?= number_format($profile['a_score'] * 100, 0) ?>%</span>
-                <span><strong>S:</strong> <?= number_format($profile['s_score'] * 100, 0) ?>%</span>
-                <span><strong>E:</strong> <?= number_format($profile['e_score'] * 100, 0) ?>%</span>
-                <span><strong>C:</strong> <?= number_format($profile['c_score'] * 100, 0) ?>%</span>
+                <span><strong>Realistic (R):</strong> <?= number_format($profile['r_score'] * 100, 0) ?>%</span>
+                <span><strong>Investigative (I):</strong> <?= number_format($profile['i_score'] * 100, 0) ?>%</span>
+                <span><strong>Artistic (A):</strong> <?= number_format($profile['a_score'] * 100, 0) ?>%</span>
+                <span><strong>Social (S):</strong> <?= number_format($profile['s_score'] * 100, 0) ?>%</span>
+                <span><strong>Enterprising (E):</strong> <?= number_format($profile['e_score'] * 100, 0) ?>%</span>
+                <span><strong>Conventional (C):</strong> <?= number_format($profile['c_score'] * 100, 0) ?>%</span>
                 <?php if (!empty($profile['academic_average'])): ?>
                     <span><strong>Academic average:</strong> <?= number_format($profile['academic_average'], 2) ?></span>
                 <?php endif; ?>

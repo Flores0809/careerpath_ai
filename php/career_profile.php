@@ -52,7 +52,7 @@ $latestSkillsStmt->execute(['id' => $currentStudent['student_id']]);
 $latestSkillsRaw = $latestSkillsStmt->fetchColumn();
 $skillMatch = compute_skill_match($pdo, $careerId, $latestSkillsRaw ?: null);
 
-$riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score' => 'S', 'e_score' => 'E', 'c_score' => 'C'];
+$riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)', 'a_score' => 'Artistic (A)', 's_score' => 'Social (S)', 'e_score' => 'Enterprising (E)', 'c_score' => 'Conventional (C)'];
 $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score' => 'Artistic', 's_score' => 'Social', 'e_score' => 'Enterprising', 'c_score' => 'Conventional'];
 
 $proficiencyLabels = ['basic' => 'Basic', 'intermediate' => 'Intermediate', 'advanced' => 'Advanced'];

@@ -46,34 +46,34 @@ foreach ($careerRows as $row) {
 
 $questions = [
     'R' => [
-        'I enjoy working with tools, machines, or equipment.',
+        'I enjoy working with tools, machines, or equipments.',
         'I like building or fixing things with my hands.',
         'I prefer outdoor or physical activities over sitting at a desk.',
-        'I enjoy being part of / doing mechanical or electrical projects.', // revised per validator feedback
+        'I enjoy participating in mechanical or electrical projects.', // revised per validator feedback
         'I would enjoy driving or operating trucks, heavy equipment, or machinery.',
-        'I would enjoy physically demanding outdoor work, like firefighting, construction, or emergency response.',
+        'I would enjoy physical outdoor work, like firefighting, construction, or emergency response.', // revised per validator feedback
         'I would enjoy raising animals or growing crops/plants.',
     ],
     'I' => [
-        'I enjoy solving complex problems or puzzles.',
-        'I like conducting research or running experiments.',
+        'I enjoy solving hard problems or puzzles.', // simplified per validator feedback
+        'I like doing research or experiments.', // simplified per validator feedback
         'I am curious about how and why things work.',
-        'I enjoy analyzing data or information to find patterns.',
-        'I would enjoy developing new medicines or scientific breakthroughs.',
+        'I enjoy looking closely at information to find patterns.', // simplified per validator feedback
+        'I would enjoy creating new medicines or making new science discoveries.', // simplified per validator feedback
         'I like studying scientific topics, such as outer space, weather, or diseases.',
-        'I would enjoy investigating the causes of things, like diseases or unusual events.',
+        'I would enjoy examine the causes of things, like diseases or unusual events.', // revised per validator feedback
     ],
     'A' => [
         'I enjoy creative activities like arts and crafts, writing, or music.', // revised per validator feedback
         'I like coming up with original ideas or designs.',
-        'I prefer flexible, unstructured tasks over strict routines.',
+        'I prefer flexible, tasks over strict routines.', // revised per validator feedback
         'I enjoy expressing myself through art, media, or performance.',
         'I would enjoy writing stories, plays, or scripts.',
         'I like performing in front of others, such as singing, dancing, or acting.',
         'I would enjoy creating visual art or effects, like drawing, painting, or filmmaking.',
     ],
     'S' => [
-        'I enjoy helping, teaching, or caring for other people.',
+        'I enjoy helping or caring for other people.', // revised per validator feedback
         'I like working in teams and collaborating with others.',
         'I am comfortable listening to and supporting people\'s problems.',
         'I enjoy volunteering or community-oriented activities.',
@@ -86,14 +86,14 @@ $questions = [
         'I like taking initiative and starting new projects.',
         'I am comfortable taking risks to achieve a goal.',
         'I enjoy selling, promoting, or negotiating.',
-        'I would enjoy managing or supervising a group of people or a business.',
+        'I would enjoy being in charge of a group of people or a business.', // revised per validator feedback
         'I like the idea of starting and running my own business someday.',
         'I would enjoy marketing or advertising a product or service.',
     ],
     'C' => [
         'I enjoy organizing information, files, or schedules.',
         'I like following clear plan, procedures, and instructions.', // revised per validator feedback
-        'I am detail-oriented and prefer accuracy over improvisation.',
+        'I like being very careful and getting things exactly right, instead of guessing.', // simplified per validator feedback
         'I enjoy working with numbers, records, or spreadsheets.',
         'I would enjoy keeping accurate records, like inventories, receipts, or attendance.',
         'I like double-checking documents or data for errors before submitting them.',
@@ -124,8 +124,9 @@ $typeLabels = [
     legend { font-weight: bold; color: #6e1423; padding: 0 6px; }
     .question { margin: 14px 0; }
     .question p { margin: 0 0 6px 0; }
-    .scale { display: flex; gap: 18px; font-size: 14px; }
-    .scale label { display: flex; align-items: center; gap: 4px; }
+    .scale { display: flex; gap: 40px; font-size: 14px; }
+    .scale label { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+    .scale input[type="radio"] { width: 18px; height: 18px; }
     button { background: #6e1423; color: #fff; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
     button:hover { background: #4a0c17; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }

@@ -32,6 +32,9 @@ Or POST a career title to http://localhost:5000/enrich
 """
 
 import os
+import subprocess
+import sys
+import time
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource
 import numpy as np
@@ -313,9 +316,111 @@ class EnrichResource(Resource):
             return {"ai_enriched": False, "error": str(e)}, 503
 
 
+# --- Web crawler launcher -------------------------------------------------
+# Lets php/careers.php trigger a crawl with a button press instead of
+# someone having to open a terminal and run `python crawler.py` by hand.
+# Each crawler script (crawler/*.py) is a normal standalone script that
+# talks to MySQL directly — this endpoint just starts it as a background
+# subprocess (fire-and-forget, non-blocking) so the button click returns
+# instantly instead of the browser hanging for however long the crawl takes.
+CRAWLER_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "crawler")
+CRAWLER_SCRIPTS = {
+    "philjobnet": "crawler.py",
+    "onet": "onet_client.py",
+    "adzuna": "adzuna_client.py",
+    "remoteok": "remoteok_client.py",
+}
+# Tracks at most one in-flight subprocess per source, keyed by source name,
+# so clicking the button twice in a row doesn't stack up duplicate crawls.
+_running_crawls = {}  # source -> {"process": Popen, "log_path": str, "started_at": float}
+
+
+class CrawlResource(Resource):
+    def post(self):
+        payload = request.get_json(force=True, silent=True) or {}
+        source = (payload.get("source") or "").strip().lower()
+
+        if source not in CRAWLER_SCRIPTS:
+            return {
+                "started": False,
+                "error": f"Unknown source '{source}'. Expected one of: {', '.join(CRAWLER_SCRIPTS)}",
+            }, 400
+
+        existing = _running_crawls.get(source)
+        if existing and existing["process"].poll() is None:
+            return {
+                "started": False,
+                "error": f"A {source} crawl is already running (started "
+                         f"{int(time.time() - existing['started_at'])}s ago). Wait for it to finish.",
+            }, 409
+
+        script_path = os.path.join(CRAWLER_DIR, CRAWLER_SCRIPTS[source])
+        if not os.path.isfile(script_path):
+            return {"started": False, "error": f"Could not find {CRAWLER_SCRIPTS[source]} in the crawler folder."}, 404
+
+        logs_dir = os.path.join(CRAWLER_DIR, "logs")
+        os.makedirs(logs_dir, exist_ok=True)
+        log_path = os.path.join(logs_dir, f"{source}_{int(time.time())}.log")
+
+        try:
+            log_file = open(log_path, "w", encoding="utf-8")
+            # sys.executable = the same Python interpreter running this Flask
+            # app, so it uses whatever venv app.py itself was started with —
+            # no separate venv/path guessing needed for the crawler scripts.
+            process = subprocess.Popen(
+                [sys.executable, script_path],
+                cwd=CRAWLER_DIR,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+            )
+        except Exception as e:
+            return {"started": False, "error": f"Failed to launch crawler: {e}"}, 500
+
+        _running_crawls[source] = {"process": process, "log_path": log_path, "started_at": time.time()}
+        return {"started": True, "source": source, "pid": process.pid}, 200
+
+
+class CrawlStatusResource(Resource):
+    def get(self):
+        source = (request.args.get("source") or "").strip().lower()
+        if source not in CRAWLER_SCRIPTS:
+            return {"error": f"Unknown source '{source}'."}, 400
+
+        existing = _running_crawls.get(source)
+        if not existing:
+            return {"source": source, "state": "idle"}, 200
+
+        running = existing["process"].poll() is None
+        # Freeze the clock the moment we first notice it's done, instead of
+        # measuring against "now" forever — otherwise a crawl that crashed in
+        # under a second would show a "ran for 224s" style number just
+        # because the browser kept polling this endpoint for that long.
+        if not running and existing.get("finished_at") is None:
+            existing["finished_at"] = time.time()
+        end_time = existing["finished_at"] if not running else time.time()
+
+        tail = ""
+        try:
+            with open(existing["log_path"], "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+                tail = "".join(lines[-30:])
+        except OSError:
+            pass
+
+        return {
+            "source": source,
+            "state": "running" if running else "finished",
+            "exit_code": None if running else existing["process"].returncode,
+            "elapsed_seconds": int(end_time - existing["started_at"]),
+            "log_tail": tail,
+        }, 200
+
+
 api.add_resource(MatchResource, "/match")
 api.add_resource(HealthResource, "/health")
 api.add_resource(EnrichResource, "/enrich")
+api.add_resource(CrawlResource, "/crawl")
+api.add_resource(CrawlStatusResource, "/crawl/status")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

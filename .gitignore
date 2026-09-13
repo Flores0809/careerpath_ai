@@ -19,3 +19,4 @@ Thumbs.db
 # against a populated local DB — shouldn't be committed)
 *.sql.bak
 /database/backups/
+crawler/logs/

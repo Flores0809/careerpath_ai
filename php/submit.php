@@ -258,7 +258,7 @@ if ($dreamCareerData || $hasMatchResults) {
         // see README) — assessment-completion notice. Best-effort: never
         // block the results page over a notification insert failing.
         try {
-            notify_student($pdo, (int) $currentStudent['student_id'], 'Your new RIASEC assessment results are ready.', 'student_history.php');
+            notify_student($pdo, (int) $currentStudent['student_id'], 'Your new RIASEC assessment results are ready.', 'student_history.php', 'assessment');
         } catch (Exception $e) {
             // ignore
         }
@@ -287,10 +287,11 @@ try {
 <title>CareerPath AI — Your Recommendations</title>
 <style>
     body { font-family: Arial, sans-serif; max-width: 1280px; margin: 40px auto; padding: 0 20px; color: #222; }
-    body > h1, body > .profile, body > .error, body > .career, body > a.back { max-width: 760px; margin-left: auto; margin-right: auto; }
+    body > h1, body > .error, body > .career, body > a.back { max-width: 760px; margin-left: auto; margin-right: auto; }
+    body > .profile { max-width: 1240px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; }
-    .profile { background: #faf0f1; border-radius: 8px; padding: 14px 20px; margin-bottom: 26px; }
-    .profile span { display: inline-block; margin-right: 16px; font-size: 14px; }
+    .profile { background: #faf0f1; border-radius: 8px; padding: 14px 20px; margin-bottom: 26px; white-space: nowrap; overflow-x: auto; }
+    .profile span { display: inline-block; margin-right: 14px; font-size: 13.5px; }
     .career { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
     .career h3 { margin: 0 0 6px 0; color: #6e1423; }
     .career h3 a { color: #6e1423; text-decoration: none; }
@@ -339,15 +340,15 @@ try {
     <div class="how-it-works">
         <div class="heading">🔍 How were these recommendations calculated? (see the math)</div>
         <div class="content">
-            <p>Your 42 assessment answers were summed per RIASEC type (Realistic, Investigative, Artistic, Social, Enterprising, Conventional) and converted into a percentage score for each — that's the profile shown below.</p>
-            <p>Each career in our database also has its own RIASEC profile, reviewed and approved by a guidance counselor or administrator. A rule-based algorithm (cosine similarity, via Scikit-learn) then compares the <em>shape</em> of your profile to every career's profile — which traits are relatively higher or lower than your own average, not just the raw scores — so a career only scores high if your actual strengths line up with what it needs, not just because most of your answers were positive.</p>
-            <p>This match score itself is a transparent, rule-based calculation, not an AI decision — every recommendation below includes a "Why this match?" breakdown showing exactly which of your RIASEC traits contributed most. (Google's Gemini AI is used elsewhere in CareerPath AI, purely to help staff draft career descriptions — every AI-assisted entry is reviewed and approved by a counselor or administrator before students ever see it. It plays no part in computing your match scores.)</p>
+            <p>Your 42 assessment answers were summed per RIASEC type (Realistic, Investigative, Artistic, Social, Enterprising, Conventional) and converted into a percentage score for each. That is the profile shown below.</p>
+            <p>Each career in our database also has its own RIASEC profile, reviewed and approved by a guidance counselor. A rule-based algorithm (cosine similarity, via Scikit-learn) then compares the <em>shape</em> of your profile to every career's profile, looking at which traits are relatively higher or lower than your own average rather than just the raw scores. This means a career only scores high if your actual strengths line up with what it needs, not simply because most of your answers were positive.</p>
+            <p>This match score itself is a transparent, rule-based calculation, not an AI decision. Every recommendation below includes a "Why this match?" breakdown showing exactly which of your RIASEC traits contributed most. (Google's Gemini AI is used elsewhere in CareerPath AI, purely to help staff draft career descriptions. Every AI-assisted entry is reviewed and approved by a guidance counselor before students ever see it, and it plays no part in computing your match scores.)</p>
         </div>
     </div>
 
     <div class="profile">
         <?php foreach ($riasec as $type => $score): ?>
-            <span><strong><?= $type ?>:</strong> <?= number_format($score * 100, 0) ?>%</span>
+            <span><strong><?= $riasecTypeNames[$type] ?? $type ?> (<?= $type ?>):</strong> <?= number_format($score * 100, 0) ?>%</span>
         <?php endforeach; ?>
         <?php if ($academicAverage !== null): ?>
             <span><strong>Academic average:</strong> <?= number_format($academicAverage, 2) ?></span>

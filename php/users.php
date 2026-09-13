@@ -184,6 +184,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             log_change($pdo, 'students', $targetId, $target['name'], 'update', ['status' => $target['status']], ['status' => $newStatus], $currentUser['user_id']);
             $message = ['type' => 'success', 'text' => "Student account $newStatus."];
         }
+    } elseif ($action === 'reset_student_password' && !empty($_POST['student_id'])) {
+        // Lets a counselor/administrator reset a student's password directly
+        // (e.g. the student forgot it and has no self-service recovery flow
+        // yet) without needing the student's current password.
+        $targetId = (int) $_POST['student_id'];
+        $password = $_POST['new_password'] ?? '';
+        $confirm = $_POST['new_password_confirm'] ?? '';
+
+        if (strlen($password) < 8) {
+            $message = ['type' => 'error', 'text' => 'New password must be at least 8 characters.'];
+        } elseif ($password !== $confirm) {
+            $message = ['type' => 'error', 'text' => 'New passwords do not match.'];
+        } else {
+            $oldStmt = $pdo->prepare("SELECT name, password_hash FROM students WHERE student_id = :id");
+            $oldStmt->execute(['id' => $targetId]);
+            $target = $oldStmt->fetch();
+
+            if (!$target) {
+                $message = ['type' => 'error', 'text' => 'Student account not found.'];
+            } else {
+                $newHash = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("UPDATE students SET password_hash = :hash WHERE student_id = :id");
+                $stmt->execute(['hash' => $newHash, 'id' => $targetId]);
+
+                log_change($pdo, 'students', $targetId, $target['name'], 'update', ['password_hash' => $target['password_hash']], ['password_hash' => $newHash], $currentUser['user_id']);
+                $message = ['type' => 'success', 'text' => "Password reset for {$target['name']}."];
+            }
+        }
     }
 }
 
@@ -233,6 +261,36 @@ $welcome = isset($_GET['welcome']);
     details summary { cursor: pointer; color: #6e1423; font-size: 13px; }
     .empty { color: #666; font-style: italic; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
+
+    /* Collapsible "create account" panel, styled as a button until opened */
+    .create-toggle { margin-top: 18px; }
+    .create-toggle > summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; background: #6e1423; color: #fff; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; }
+    .create-toggle > summary::-webkit-details-marker { display: none; }
+    .create-toggle > summary:hover { background: #4a0c17; }
+    .create-toggle[open] > summary { margin-bottom: 16px; }
+    .create-toggle .card { max-width: 560px; margin-left: 0; margin-right: 0; }
+
+    /* Tabs for Administrators / Counselors / Students */
+    .tabs { display: flex; gap: 4px; margin-top: 30px; border-bottom: 2px solid #eee; flex-wrap: wrap; }
+    .tab-btn { background: none; border: none; padding: 10px 18px; font-size: 14px; font-weight: bold; color: #888; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color 0.15s ease, border-color 0.15s ease; font-family: inherit; }
+    .tab-btn:hover { color: #6e1423; }
+    .tab-btn.active { color: #6e1423; border-bottom-color: #6e1423; }
+    .tab-count { display: inline-block; background: #eee; color: #555; border-radius: 10px; padding: 1px 8px; font-size: 11px; margin-left: 5px; }
+    .tab-btn.active .tab-count { background: #f0dde1; color: #6e1423; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Search bar */
+    .search-bar { position: relative; max-width: 340px; margin: 18px 0 4px; }
+    .search-bar input { width: 100%; padding: 9px 14px 9px 32px; border: 1px solid #ccc; border-radius: 20px; font-size: 14px; box-sizing: border-box; }
+    .search-bar input:focus { outline: none; border-color: #6e1423; box-shadow: 0 0 0 2px rgba(110,20,35,0.12); }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: 0.55; pointer-events: none; }
+    .no-results-row td { text-align: center; color: #888; font-style: italic; padding: 18px 10px; }
+
+    /* Table panel + row polish */
+    .table-card { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 6px 18px 12px; }
+    .table-card table { margin-top: 6px; }
+    tbody tr:hover { background: rgba(110,20,35,0.04); }
 </style>
 </head>
 <body>
@@ -250,45 +308,47 @@ $welcome = isset($_GET['welcome']);
         <div class="flash-<?= $message['type'] ?>"><?= htmlspecialchars($message['text']) ?></div>
     <?php endif; ?>
 
-    <div class="card" style="max-width:560px;margin-left:auto;margin-right:auto;">
-        <h2 style="margin-top:0;">Create a new account</h2>
-        <form method="POST">
-            <input type="hidden" name="action" value="create">
-            <div class="grid2">
-                <div>
-                    <label>Full name</label>
-                    <input type="text" name="name" required style="width:100%;box-sizing:border-box;">
+    <details class="create-toggle"<?= $message && $message['type'] === 'error' && isset($_POST['action']) && $_POST['action'] === 'create' ? ' open' : '' ?>>
+        <summary>+ Create New Account</summary>
+        <div class="card">
+            <form method="POST">
+                <input type="hidden" name="action" value="create">
+                <div class="grid2">
+                    <div>
+                        <label>Full name</label>
+                        <input type="text" name="name" required style="width:100%;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label>Email</label>
+                        <input type="email" name="email" required style="width:100%;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label>Password (min. 8 characters)</label>
+                        <input type="password" name="password" required minlength="8" style="width:100%;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label>Confirm password</label>
+                        <input type="password" name="confirm" required minlength="8" style="width:100%;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label>Role</label>
+                        <select name="role" style="width:100%;box-sizing:border-box;">
+                            <option value="counselor">Counselor — reviews & approves careers</option>
+                            <option value="administrator">Administrator — manages accounts</option>
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label>Email</label>
-                    <input type="email" name="email" required style="width:100%;box-sizing:border-box;">
-                </div>
-                <div>
-                    <label>Password (min. 8 characters)</label>
-                    <input type="password" name="password" required minlength="8" style="width:100%;box-sizing:border-box;">
-                </div>
-                <div>
-                    <label>Confirm password</label>
-                    <input type="password" name="confirm" required minlength="8" style="width:100%;box-sizing:border-box;">
-                </div>
-                <div>
-                    <label>Role</label>
-                    <select name="role" style="width:100%;box-sizing:border-box;">
-                        <option value="counselor">Counselor — reviews & approves careers</option>
-                        <option value="administrator">Administrator — manages accounts</option>
-                    </select>
-                </div>
-            </div>
-            <button type="submit" class="btn-primary" style="margin-top:16px;">Create account</button>
-        </form>
-    </div>
+                <button type="submit" class="btn-primary" style="margin-top:16px;">Create account</button>
+            </form>
+        </div>
+    </details>
 
     <?php
         // Renders one staff row (administrator or counselor) — same edit/reset/toggle actions for both.
         function render_staff_row(array $u, array $currentUser): void
         {
     ?>
-            <tr>
+            <tr data-search="<?= htmlspecialchars(strtolower($u['name'] . ' ' . $u['email'])) ?>">
                 <td><?= htmlspecialchars($u['name']) ?><?= $u['user_id'] == $currentUser['user_id'] ? ' <em>(you)</em>' : '' ?></td>
                 <td><?= htmlspecialchars($u['email']) ?></td>
                 <td><span class="role-tag role-<?= htmlspecialchars($u['role']) ?>"><?= htmlspecialchars($u['role']) ?></span></td>
@@ -336,69 +396,160 @@ $welcome = isset($_GET['welcome']);
         }
     ?>
 
-    <h2>Administrators</h2>
-    <table>
-        <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Actions</th>
-        </tr>
-        <?php if (!$administrators): ?>
-            <tr><td colspan="5" class="empty">No administrator accounts.</td></tr>
-        <?php endif; ?>
-        <?php foreach ($administrators as $u): render_staff_row($u, $currentUser); endforeach; ?>
-    </table>
+    <div class="tabs">
+        <button type="button" class="tab-btn active" data-tab="admins">Administrators <span class="tab-count"><?= count($administrators) ?></span></button>
+        <button type="button" class="tab-btn" data-tab="counselors">Counselors <span class="tab-count"><?= count($counselors) ?></span></button>
+        <button type="button" class="tab-btn" data-tab="students">Students <span class="tab-count"><?= count($students) ?></span></button>
+    </div>
 
-    <h2>Counselors</h2>
-    <table>
-        <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Actions</th>
-        </tr>
-        <?php if (!$counselors): ?>
-            <tr><td colspan="5" class="empty">No counselor accounts yet — create one above.</td></tr>
-        <?php endif; ?>
-        <?php foreach ($counselors as $u): render_staff_row($u, $currentUser); endforeach; ?>
-    </table>
+    <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="account-search" placeholder="Search by name or email...">
+    </div>
 
-    <h2>Students</h2>
-    <p style="font-size:13px;color:#666;margin-top:-6px;">Students create their own accounts at <code>student_register.php</code> — administrators can only view accounts and disable/re-enable them here (e.g. for misuse), not edit their details or reset their passwords.</p>
-    <table>
-        <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Grade level</th>
-            <th>Assessments taken</th>
-            <th>Status</th>
-            <th>Actions</th>
-        </tr>
-        <?php if (!$students): ?>
-            <tr><td colspan="6" class="empty">No student accounts yet.</td></tr>
-        <?php endif; ?>
-        <?php foreach ($students as $s): ?>
-            <tr>
-                <td><?= htmlspecialchars($s['name']) ?></td>
-                <td><?= htmlspecialchars($s['email']) ?></td>
-                <td><?= htmlspecialchars($s['grade_level'] ?? '—') ?></td>
-                <td><?= (int) $s['submission_count'] ?></td>
-                <td class="status-<?= htmlspecialchars($s['status']) ?>"><?= htmlspecialchars($s['status']) ?></td>
-                <td class="actions-cell">
-                    <a href="students_lookup.php?view=<?= (int) $s['student_id'] ?>&from=users" class="btn-secondary" style="display:inline-block;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:13px;margin:2px 2px 2px 0;">View History</a>
-                    <form method="POST" class="inline" onsubmit="return confirm('<?= $s['status'] === 'active' ? 'Disable' : 'Re-enable' ?> this student account?');">
-                        <input type="hidden" name="action" value="toggle_student_status">
-                        <input type="hidden" name="student_id" value="<?= (int) $s['student_id'] ?>">
-                        <button type="submit" class="<?= $s['status'] === 'active' ? 'btn-danger' : 'btn-secondary' ?>">
-                            <?= $s['status'] === 'active' ? 'Disable' : 'Re-enable' ?>
-                        </button>
-                    </form>
-                </td>
-            </tr>
-        <?php endforeach; ?>
-    </table>
+    <div class="tab-panel active" data-tab="admins">
+        <div class="table-card">
+            <table>
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php if (!$administrators): ?>
+                    <tr><td colspan="5" class="empty">No administrator accounts.</td></tr>
+                <?php endif; ?>
+                <?php foreach ($administrators as $u): render_staff_row($u, $currentUser); endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="tab-panel" data-tab="counselors">
+        <div class="table-card">
+            <table>
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php if (!$counselors): ?>
+                    <tr><td colspan="5" class="empty">No counselor accounts yet — create one above.</td></tr>
+                <?php endif; ?>
+                <?php foreach ($counselors as $u): render_staff_row($u, $currentUser); endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="tab-panel" data-tab="students">
+        <p style="font-size:13px;color:#666;margin-top:0;">Students create their own accounts at <code>student_register.php</code> — administrators can view accounts, disable/re-enable them here (e.g. for misuse), and reset a student's password if they're locked out. Name/email/grade level still can't be edited here.</p>
+        <div class="table-card">
+            <table>
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Grade level</th>
+                    <th>Assessments taken</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php if (!$students): ?>
+                    <tr><td colspan="6" class="empty">No student accounts yet.</td></tr>
+                <?php endif; ?>
+                <?php foreach ($students as $s): ?>
+                    <tr data-search="<?= htmlspecialchars(strtolower($s['name'] . ' ' . $s['email'])) ?>">
+                        <td><?= htmlspecialchars($s['name']) ?></td>
+                        <td><?= htmlspecialchars($s['email']) ?></td>
+                        <td><?= htmlspecialchars($s['grade_level'] ?? '—') ?></td>
+                        <td><?= (int) $s['submission_count'] ?></td>
+                        <td class="status-<?= htmlspecialchars($s['status']) ?>"><?= htmlspecialchars($s['status']) ?></td>
+                        <td class="actions-cell">
+                            <a href="students_lookup.php?view=<?= (int) $s['student_id'] ?>&from=users" class="btn-secondary" style="display:inline-block;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:13px;margin:2px 2px 2px 0;">View History</a>
+                            <details style="display:inline-block;vertical-align:top;">
+                                <summary>Reset password</summary>
+                                <form method="POST" style="margin-top:8px;">
+                                    <input type="hidden" name="action" value="reset_student_password">
+                                    <input type="hidden" name="student_id" value="<?= (int) $s['student_id'] ?>">
+                                    <label>New password</label>
+                                    <input type="password" name="new_password" minlength="8" required>
+                                    <label>Confirm</label>
+                                    <input type="password" name="new_password_confirm" minlength="8" required>
+                                    <button type="submit" class="btn-secondary" style="margin-top:8px;">Reset password</button>
+                                </form>
+                            </details>
+                            <form method="POST" class="inline" onsubmit="return confirm('<?= $s['status'] === 'active' ? 'Disable' : 'Re-enable' ?> this student account?');">
+                                <input type="hidden" name="action" value="toggle_student_status">
+                                <input type="hidden" name="student_id" value="<?= (int) $s['student_id'] ?>">
+                                <button type="submit" class="<?= $s['status'] === 'active' ? 'btn-danger' : 'btn-secondary' ?>">
+                                    <?= $s['status'] === 'active' ? 'Disable' : 'Re-enable' ?>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        var tabButtons = document.querySelectorAll('.tab-btn');
+        var panels = document.querySelectorAll('.tab-panel');
+
+        tabButtons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                tabButtons.forEach(function (b) { b.classList.remove('active'); });
+                panels.forEach(function (p) { p.classList.remove('active'); });
+                btn.classList.add('active');
+                document.querySelector('.tab-panel[data-tab="' + btn.dataset.tab + '"]').classList.add('active');
+            });
+        });
+
+        var searchInput = document.getElementById('account-search');
+        searchInput.addEventListener('input', function () {
+            var q = searchInput.value.trim().toLowerCase();
+            panels.forEach(function (panel) {
+                var rows = panel.querySelectorAll('tr[data-search]');
+                var visibleCount = 0;
+                rows.forEach(function (row) {
+                    var match = row.dataset.search.indexOf(q) !== -1;
+                    row.style.display = match ? '' : 'none';
+                    if (match) visibleCount++;
+                });
+                var noResultsRow = panel.querySelector('.no-results-row');
+                if (rows.length) {
+                    if (visibleCount === 0 && q !== '') {
+                        if (!noResultsRow) {
+                            var tbody = rows[0].parentElement;
+                            var tr = document.createElement('tr');
+                            tr.className = 'no-results-row';
+                            var td = document.createElement('td');
+                            td.colSpan = tbody.parentElement.querySelectorAll('thead th').length;
+                            td.textContent = 'No accounts match "' + searchInput.value.trim() + '".';
+                            tr.appendChild(td);
+                            tbody.appendChild(tr);
+                        }
+                    } else if (noResultsRow) {
+                        noResultsRow.remove();
+                    }
+                }
+            });
+        });
+    })();
+    </script>
 </body>
 </html>

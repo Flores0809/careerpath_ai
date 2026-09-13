@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $studentId = $studentStmt->fetchColumn();
         if ($studentId) {
             $when = $scheduledDate ? date('M j, Y', strtotime($scheduledDate)) : 'a date to be confirmed';
-            notify_student($pdo, (int) $studentId, "Your consultation has been scheduled for $when.", 'request_consultation.php');
+            notify_student($pdo, (int) $studentId, "Your consultation has been scheduled for $when.", 'request_consultation.php', 'consultation');
         }
         $message = ['type' => 'success', 'text' => 'Consultation scheduled.'];
     } elseif ($action === 'complete' && $id) {
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $studentStmt->execute(['id' => $id]);
         $studentId = $studentStmt->fetchColumn();
         if ($studentId) {
-            notify_student($pdo, (int) $studentId, 'Your consultation request was cancelled by staff.', 'request_consultation.php');
+            notify_student($pdo, (int) $studentId, 'Your consultation request was cancelled by staff.', 'request_consultation.php', 'consultation');
         }
         $message = ['type' => 'success', 'text' => 'Request cancelled.'];
     }
@@ -64,6 +64,25 @@ if (!in_array($statusFilter, ['pending', 'scheduled', 'completed', 'cancelled', 
     $statusFilter = 'pending';
 }
 
+$sortFilter = $_GET['sort'] ?? 'default';
+if (!in_array($sortFilter, ['default', 'requested_asc', 'preferred'], true)) {
+    $sortFilter = 'default';
+}
+$sortLabels = [
+    'default' => 'Default - newest request first',
+    'requested_asc' => 'Request date - oldest first',
+    'preferred' => "Student's preferred date/time",
+];
+$orderBySql = [
+    'default' => 'c.requested_at DESC',
+    // Oldest-first — so a student who requested first isn't buried under
+    // everyone who requested after them; "default" alone made that easy to miss.
+    'requested_asc' => 'c.requested_at ASC',
+    // Chronological by the slot the student actually asked for, so a
+    // counselor building their day can work straight down the list.
+    'preferred' => '(c.preferred_date IS NULL), c.preferred_date ASC, (c.preferred_time IS NULL), c.preferred_time ASC',
+][$sortFilter];
+
 $sql = "SELECT c.*, s.name AS student_name, s.email AS student_email, u.name AS counselor_name
         FROM consultations c
         JOIN students s ON s.student_id = c.student_id
@@ -71,7 +90,7 @@ $sql = "SELECT c.*, s.name AS student_name, s.email AS student_email, u.name AS 
 if ($statusFilter !== 'all') {
     $sql .= " WHERE c.status = :status";
 }
-$sql .= " ORDER BY c.requested_at DESC";
+$sql .= " ORDER BY $orderBySql";
 $stmt = $pdo->prepare($sql);
 if ($statusFilter !== 'all') {
     $stmt->execute(['status' => $statusFilter]);
@@ -115,6 +134,17 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
     .cancel-btn { background: #b02a37; color: #fff; }
     .empty { color: #666; font-style: italic; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
+
+    .toolbar { max-width: 900px; margin: 0 auto 18px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .sort-control { font-size: 13px; color: #555; display: flex; align-items: center; gap: 6px; }
+    .sort-control select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; font-size: 13px; }
+
+    /* Search bar — same pill + icon style used elsewhere in the app */
+    .search-bar { position: relative; max-width: 300px; flex: 1 1 240px; }
+    .search-bar input { width: 100%; padding: 9px 14px 9px 32px; border: 1px solid #ccc; border-radius: 20px; font-size: 14px; box-sizing: border-box; }
+    .search-bar input:focus { outline: none; border-color: #6e1423; box-shadow: 0 0 0 2px rgba(110,20,35,0.12); }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: 0.55; pointer-events: none; }
+    .no-results { max-width: 900px; margin: 20px auto; text-align: center; color: #888; font-style: italic; display: none; }
 </style>
 </head>
 <body>
@@ -130,16 +160,35 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
 
     <div class="counts">
         <?php foreach (['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed' => 'Completed', 'cancelled' => 'Cancelled', 'all' => 'All'] as $key => $label): ?>
-            <a href="?status=<?= $key ?>" class="<?= $statusFilter === $key ? 'active' : '' ?>"><?= $label ?> (<?= $key === 'all' ? array_sum($counts) : ($counts[$key] ?? 0) ?>)</a>
+            <a href="?status=<?= $key ?>&sort=<?= urlencode($sortFilter) ?>" class="<?= $statusFilter === $key ? 'active' : '' ?>"><?= $label ?> (<?= $key === 'all' ? array_sum($counts) : ($counts[$key] ?? 0) ?>)</a>
         <?php endforeach; ?>
+    </div>
+
+    <div class="toolbar">
+        <form class="sort-control" method="GET">
+            <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
+            <label for="sort-select" style="margin:0;font-weight:bold;">Sort by:</label>
+            <select name="sort" id="sort-select" onchange="this.form.submit()">
+                <?php foreach ($sortLabels as $key => $label): ?>
+                    <option value="<?= $key ?>" <?= $sortFilter === $key ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </form>
+
+        <div class="search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="consultation-search" placeholder="Search by student name or email...">
+        </div>
     </div>
 
     <?php if (!$consultations): ?>
         <p class="empty">No requests<?= $statusFilter !== 'all' ? ' with status "' . $statusFilter . '"' : '' ?>.</p>
     <?php endif; ?>
 
+    <div id="no-search-results" class="no-results">No requests match your search.</div>
+
     <?php foreach ($consultations as $c): ?>
-        <div class="card">
+        <div class="card" data-search="<?= htmlspecialchars(strtolower($c['student_name'] . ' ' . $c['student_email'])) ?>">
             <div class="top">
                 <h3><?= htmlspecialchars($c['student_name']) ?></h3>
                 <span class="status-badge status-<?= $c['status'] ?>"><?= $statusLabels[$c['status']] ?></span>
@@ -184,5 +233,24 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
             <?php endif; ?>
         </div>
     <?php endforeach; ?>
+
+    <script>
+    (function () {
+        var input = document.getElementById('consultation-search');
+        var noResults = document.getElementById('no-search-results');
+        var cards = document.querySelectorAll('[data-search]');
+        if (!input) return;
+        input.addEventListener('input', function () {
+            var q = input.value.trim().toLowerCase();
+            var visible = 0;
+            cards.forEach(function (card) {
+                var match = card.dataset.search.indexOf(q) !== -1;
+                card.style.display = match ? '' : 'none';
+                if (match) visible++;
+            });
+            noResults.style.display = (cards.length && visible === 0 && q !== '') ? 'block' : 'none';
+        });
+    })();
+    </script>
 </body>
 </html>

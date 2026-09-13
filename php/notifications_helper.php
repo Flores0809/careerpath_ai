@@ -8,22 +8,29 @@
 
 require_once __DIR__ . '/db.php';
 
-/** Create a notification for a single student. */
-function notify_student(PDO $pdo, int $studentId, string $message, ?string $link = null): void
+/**
+ * Create a notification for a single student.
+ * $category tags what kind of notification this is (e.g. 'counselor_note',
+ * 'consultation', 'assessment') so the Notifications list can visibly tell
+ * them apart, and other views (like the dashboard's notes banner) can count
+ * just one category's unread total instead of everything. Null is fine for
+ * anything generic.
+ */
+function notify_student(PDO $pdo, int $studentId, string $message, ?string $link = null, ?string $category = null): void
 {
     $stmt = $pdo->prepare(
-        "INSERT INTO notifications (audience, student_id, message, link) VALUES ('student', :student_id, :message, :link)"
+        "INSERT INTO notifications (audience, student_id, message, link, category) VALUES ('student', :student_id, :message, :link, :category)"
     );
-    $stmt->execute(['student_id' => $studentId, 'message' => $message, 'link' => $link]);
+    $stmt->execute(['student_id' => $studentId, 'message' => $message, 'link' => $link, 'category' => $category]);
 }
 
 /** Create a notification for one staff account, or broadcast to all staff (counselor + administrator) if $userId is null. */
-function notify_staff(PDO $pdo, ?int $userId, string $message, ?string $link = null): void
+function notify_staff(PDO $pdo, ?int $userId, string $message, ?string $link = null, ?string $category = null): void
 {
     $stmt = $pdo->prepare(
-        "INSERT INTO notifications (audience, user_id, message, link) VALUES ('staff', :user_id, :message, :link)"
+        "INSERT INTO notifications (audience, user_id, message, link, category) VALUES ('staff', :user_id, :message, :link, :category)"
     );
-    $stmt->execute(['user_id' => $userId, 'message' => $message, 'link' => $link]);
+    $stmt->execute(['user_id' => $userId, 'message' => $message, 'link' => $link, 'category' => $category]);
 }
 
 /** Unread count for the logged-in student (used for the nav badge). */

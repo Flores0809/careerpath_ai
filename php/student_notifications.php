@@ -24,6 +24,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'mark_
 }
 
 $notifications = student_notifications($pdo, (int) $currentStudent['student_id']);
+
+$categoryLabels = [
+    'counselor_note' => ['label' => '📝 Counselor Note', 'class' => 'cat-note'],
+    'consultation' => ['label' => '📅 Consultation', 'class' => 'cat-consultation'],
+    'assessment' => ['label' => '📊 Assessment', 'class' => 'cat-assessment'],
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -41,6 +47,10 @@ $notifications = student_notifications($pdo, (int) $currentStudent['student_id']
     .item .msg a { color: #6e1423; text-decoration: none; }
     .item .msg a:hover { text-decoration: underline; }
     .item .meta { font-size: 12px; color: #888; margin-top: 4px; }
+    .cat-badge { display: inline-block; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 10px; margin-bottom: 5px; }
+    .cat-note { background: #fff3cd; color: #856404; }
+    .cat-consultation { background: #d1e7dd; color: #0f5132; }
+    .cat-assessment { background: #e7d9f7; color: #4b2e83; }
     .item form { margin: 0; }
     button.link-btn { background: none; border: none; color: #6e1423; cursor: pointer; font-size: 12px; text-decoration: underline; padding: 0; }
     .btn { display: inline-block; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #6e1423; color: #fff; border: none; cursor: pointer; }
@@ -65,6 +75,10 @@ $notifications = student_notifications($pdo, (int) $currentStudent['student_id']
         <?php foreach ($notifications as $n): ?>
             <div class="item <?= $n['is_read'] ? '' : 'unread' ?>">
                 <div class="msg">
+                    <?php if (!empty($n['category']) && isset($categoryLabels[$n['category']])): ?>
+                        <span class="cat-badge <?= htmlspecialchars($categoryLabels[$n['category']]['class']) ?>"><?= htmlspecialchars($categoryLabels[$n['category']]['label']) ?></span>
+                        <br>
+                    <?php endif; ?>
                     <?php if ($n['link']): ?>
                         <a href="<?= htmlspecialchars($n['link']) ?>"><?= htmlspecialchars($n['message']) ?></a>
                     <?php else: ?>

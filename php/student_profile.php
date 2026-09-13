@@ -4,6 +4,7 @@
 // "Develop the Student Dashboard and Profile Management module")
 
 require __DIR__ . '/student_auth.php';
+require_once __DIR__ . '/change_log_helper.php';
 $currentStudent = require_student_login();
 
 $pdo = get_db();
@@ -31,6 +32,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($dupStmt->fetch()) {
                 $message = ['type' => 'error', 'text' => 'That email is already used by another account.'];
             } else {
+                // Snapshot before/after so this shows up in Change History
+                // (php/change_history.php) same as any other account edit —
+                // previously this update wasn't logged at all.
+                $oldValues = [
+                    'name' => $student['name'],
+                    'email' => $student['email'],
+                    'grade_level' => $student['grade_level'],
+                ];
+
                 $update = $pdo->prepare(
                     "UPDATE students SET name = :name, email = :email, grade_level = :grade_level WHERE student_id = :id"
                 );
@@ -40,6 +50,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'grade_level' => $gradeLevel !== '' ? $gradeLevel : null,
                     'id' => $currentStudent['student_id'],
                 ]);
+
+                $newValues = [
+                    'name' => $name,
+                    'email' => $email,
+                    'grade_level' => $gradeLevel !== '' ? $gradeLevel : null,
+                ];
+                // changed_by is NULL (not a users.user_id — this was the
+                // student themselves, not staff) — change_history.php shows
+                // "system" for those, so the "(self-edit)" label is what
+                // actually distinguishes this from a counselor/admin edit.
+                log_change($pdo, 'students', $currentStudent['student_id'], $name . ' (self-edit)', 'update', $oldValues, $newValues, null);
+
                 // Keep the session (and nav greeting) in sync immediately.
                 $_SESSION['student_name'] = $name;
                 $_SESSION['student_email'] = $email;
@@ -62,11 +84,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($new !== $confirm) {
             $message = ['type' => 'error', 'text' => 'New password and confirmation do not match.'];
         } else {
+            $oldHash = $student['password_hash'];
+            $newHash = password_hash($new, PASSWORD_DEFAULT);
+
             $update = $pdo->prepare("UPDATE students SET password_hash = :hash WHERE student_id = :id");
             $update->execute([
-                'hash' => password_hash($new, PASSWORD_DEFAULT),
+                'hash' => $newHash,
                 'id' => $currentStudent['student_id'],
             ]);
+
+            // Logged same as an admin-initiated reset (php/users.php) —
+            // change_history.php masks password_hash values either way, so
+            // this just records THAT it happened, not the actual password.
+            log_change($pdo, 'students', $currentStudent['student_id'], $student['name'] . ' (self-edit)', 'update', ['password_hash' => $oldHash], ['password_hash' => $newHash], null);
+
             $message = ['type' => 'success', 'text' => 'Password changed.'];
         }
     }

@@ -9,6 +9,7 @@
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/skills_helper.php';
+require_once __DIR__ . '/notifications_helper.php';
 $currentUser = require_role(['administrator', 'counselor']);
 
 $pdo = get_db();
@@ -61,6 +62,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'recor
             'recommendation_id' => $recommendationId,
             'notes' => $notes,
         ]);
+
+        // Also surface this as a real, mark-as-readable notification (tagged
+        // 'counselor_note') instead of the student only finding out via the
+        // "Notes from Your Counselor" box on their History page — that box
+        // has no read state, so it used to nag forever on the dashboard.
+        $noteCareerTitle = null;
+        if ($recommendationId) {
+            $careerStmt = $pdo->prepare(
+                "SELECT c.career_title FROM recommendations r
+                 JOIN careers c ON c.career_id = r.career_id
+                 WHERE r.recommendation_id = :id"
+            );
+            $careerStmt->execute(['id' => $recommendationId]);
+            $noteCareerTitle = $careerStmt->fetchColumn() ?: null;
+        }
+        $noteNotificationMessage = $noteCareerTitle
+            ? "Your counselor left a note about \"$noteCareerTitle\"."
+            : 'Your counselor left you a note.';
+        notify_student($pdo, $studentId, $noteNotificationMessage, 'student_history.php', 'counselor_note');
+
         $noteMessage = ['type' => 'success', 'text' => 'Outcome recorded.'];
         $_GET['view'] = $studentId; // re-show this student's profile after redirect-less POST
     } else {
@@ -69,25 +90,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'recor
     }
 }
 
-$search = trim($_GET['q'] ?? '');
-$students = [];
-
-if ($search !== '') {
-    $like = '%' . $search . '%';
-    $idMatch = ctype_digit($search) ? (int) $search : 0;
-
-    $stmt = $pdo->prepare(
-        "SELECT s.*, COUNT(sp.profile_id) AS submission_count
-         FROM students s
-         LEFT JOIN student_profiles sp ON sp.student_id = s.student_id
-         WHERE s.student_id = :id_match OR s.name LIKE :like OR s.email LIKE :like
-         GROUP BY s.student_id
-         ORDER BY s.name
-         LIMIT 25"
-    );
-    $stmt->execute(['id_match' => $idMatch, 'like' => $like]);
-    $students = $stmt->fetchAll();
-}
+// The roster always loads in full (no query required) so staff can browse
+// every student account at a glance; the search box below is now a live,
+// client-side filter over this already-loaded list rather than a page
+// reload, since the full roster is small enough to render at once.
+$students = $pdo->query(
+    "SELECT s.*, COUNT(sp.profile_id) AS submission_count
+     FROM students s
+     LEFT JOIN student_profiles sp ON sp.student_id = s.student_id
+     GROUP BY s.student_id
+     ORDER BY s.name"
+)->fetchAll();
 
 $viewedStudent = null;
 $viewedProfiles = [];
@@ -193,7 +206,7 @@ if (!empty($_GET['view'])) {
     }
 }
 
-$riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score' => 'S', 'e_score' => 'E', 'c_score' => 'C'];
+$riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)', 'a_score' => 'Artistic (A)', 's_score' => 'Social (S)', 'e_score' => 'Enterprising (E)', 'c_score' => 'Conventional (C)'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -209,10 +222,11 @@ $riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score'
 
     .panel { background: #f5f5f5; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 22px 26px; margin-bottom: 20px; }
 
-    .search-form { display: flex; gap: 10px; }
-    .search-form input[type=text] { flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-    .search-form button { padding: 10px 20px; background: #6e1423; color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
-    .search-form button:hover { background: #4a0c17; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+    /* Search bar — same pill + icon style used on users.php / careers.php */
+    .search-bar { position: relative; max-width: 340px; margin: 0 0 4px; }
+    .search-bar input { width: 100%; padding: 9px 14px 9px 32px; border: 1px solid #ccc; border-radius: 20px; font-size: 14px; box-sizing: border-box; }
+    .search-bar input:focus { outline: none; border-color: #6e1423; box-shadow: 0 0 0 2px rgba(110,20,35,0.12); }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: 0.55; pointer-events: none; }
 
     table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
     th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
@@ -292,8 +306,8 @@ $riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score'
                     $backHref = 'users.php';
                     $backLabel = '&larr; Back to Manage Accounts';
                 } else {
-                    $backHref = 'students_lookup.php' . ($search !== '' ? '?q=' . urlencode($search) : '');
-                    $backLabel = '&larr; Back to search';
+                    $backHref = 'students_lookup.php';
+                    $backLabel = '&larr; Back to student list';
                 }
             ?>
             <div class="panel">
@@ -309,8 +323,43 @@ $riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score'
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <h3 style="color:#6e1423;font-size:15px;margin-top:22px;">Assessment History</h3>
+            <div class="panel">
+                <details <?= $noteMessage ? 'open' : '' ?>>
+                    <summary class="notes-toggle">
+                        📝 Counselor Notes &amp; Outcomes
+                        <?php if ($recordedNoteCount): ?><span class="notes-count"><?= $recordedNoteCount ?></span><?php endif; ?>
+                    </summary>
+
+                    <div style="margin-top:18px;">
+                        <p class="subtitle" style="margin-bottom:16px;">Record what was discussed or decided during a consultation. The student can see these notes on their own history page. (Every profile view and note is also logged internally — see <a href="audit_log.php" style="color:#6e1423;">Audit Log</a>.)</p>
+
+                        <form method="POST" class="note-form">
+                            <input type="hidden" name="action" value="record_outcome">
+                            <input type="hidden" name="student_id" value="<?= (int) $viewedStudent['student_id'] ?>">
+
+                            <?php if ($allRecommendations): ?>
+                                <label style="display:block;font-size:13px;font-weight:bold;margin-bottom:4px;">Relates to a specific recommendation (optional)</label>
+                                <select name="recommendation_id">
+                                    <option value="">— General note, not tied to one career —</option>
+                                    <?php foreach ($allRecommendations as $rec): ?>
+                                        <option value="<?= (int) $rec['recommendation_id'] ?>"><?= htmlspecialchars($rec['career_title']) ?> (<?= number_format($rec['match_score'], 0) ?>% match)</option>
+                                    <?php endforeach; ?>
+                                </select>
+                            <?php endif; ?>
+
+                            <textarea name="notes" placeholder="e.g. Discussed results with student; leaning toward Civil Engineering; follow-up session scheduled next week." required></textarea>
+                            <div class="actions" style="margin-top:10px;">
+                                <button type="submit" class="btn btn-primary" style="padding:8px 18px;border:none;border-radius:6px;background:#6e1423;color:#fff;cursor:pointer;">Save Note</button>
+                            </div>
+                        </form>
+                    </div>
+                </details>
+            </div>
+
+            <div class="panel">
+                <h3 style="color:#6e1423;font-size:15px;margin-top:0;">Assessment History</h3>
                 <?php if (!$viewedProfiles): ?>
                     <p class="empty">This student hasn't taken the assessment yet.</p>
                 <?php else: ?>
@@ -410,96 +459,66 @@ $riasecLabels = ['r_score' => 'R', 'i_score' => 'I', 'a_score' => 'A', 's_score'
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-
-            <div class="panel">
-                <details <?= $noteMessage ? 'open' : '' ?>>
-                    <summary class="notes-toggle">
-                        📝 Counselor Notes &amp; Outcomes
-                        <?php if ($recordedNoteCount): ?><span class="notes-count"><?= $recordedNoteCount ?></span><?php endif; ?>
-                    </summary>
-
-                    <div style="margin-top:18px;">
-                        <p class="subtitle" style="margin-bottom:16px;">Record what was discussed or decided during a consultation. The student can see these notes on their own history page — the automatic view log below stays internal to staff.</p>
-
-                        <form method="POST" class="note-form">
-                            <input type="hidden" name="action" value="record_outcome">
-                            <input type="hidden" name="student_id" value="<?= (int) $viewedStudent['student_id'] ?>">
-
-                            <?php if ($allRecommendations): ?>
-                                <label style="display:block;font-size:13px;font-weight:bold;margin-bottom:4px;">Relates to a specific recommendation (optional)</label>
-                                <select name="recommendation_id">
-                                    <option value="">— General note, not tied to one career —</option>
-                                    <?php foreach ($allRecommendations as $rec): ?>
-                                        <option value="<?= (int) $rec['recommendation_id'] ?>"><?= htmlspecialchars($rec['career_title']) ?> (<?= number_format($rec['match_score'], 0) ?>% match)</option>
-                                    <?php endforeach; ?>
-                                </select>
-                            <?php endif; ?>
-
-                            <textarea name="notes" placeholder="e.g. Discussed results with student; leaning toward Civil Engineering; follow-up session scheduled next week." required></textarea>
-                            <div class="actions" style="margin-top:10px;">
-                                <button type="submit" class="btn btn-primary" style="padding:8px 18px;border:none;border-radius:6px;background:#6e1423;color:#fff;cursor:pointer;">Save Note</button>
-                            </div>
-                        </form>
-
-                        <?php if (!$counselorLogEntries): ?>
-                            <p class="empty" style="margin-top:16px;">No log entries yet for this student.</p>
-                        <?php else: ?>
-                            <div style="margin-top:18px;">
-                                <?php foreach ($counselorLogEntries as $entry): ?>
-                                    <?php $isNote = $entry['action'] === 'recorded_outcome' && !empty($entry['notes']); ?>
-                                    <div class="note-entry <?= $isNote ? '' : 'audit-only' ?>">
-                                        <div class="note-meta">
-                                            <?= htmlspecialchars($entry['counselor_name']) ?> ·
-                                            <?= htmlspecialchars($entry['created_at']) ?> ·
-                                            <?= $isNote ? 'Outcome recorded (visible to student)' : htmlspecialchars(str_replace('_', ' ', $entry['action'])) ?>
-                                        </div>
-                                        <?php if ($isNote): ?>
-                                            <div><?= nl2br(htmlspecialchars($entry['notes'])) ?></div>
-                                        <?php endif; ?>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </details>
-            </div>
         <?php else: ?>
             <div class="panel">
-                <form class="search-form" method="GET">
-                    <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Search by student ID, name, or email" autofocus>
-                    <button type="submit">Search</button>
-                </form>
+                <div class="search-bar">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="student-search" placeholder="Search by student ID, name, or email..." autofocus>
+                </div>
 
-                <?php if ($search !== ''): ?>
-                    <?php if (!$students): ?>
-                        <p class="empty" style="margin-top:16px;">No students matched "<?= htmlspecialchars($search) ?>".</p>
-                    <?php else: ?>
-                        <table>
-                            <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Grade level</th>
-                                <th>Assessments</th>
-                                <th>Status</th>
-                                <th></th>
+                <?php if (!$students): ?>
+                    <p class="empty" style="margin-top:16px;">No student accounts yet.</p>
+                <?php else: ?>
+                    <p class="empty" id="student-count" style="margin-top:16px;margin-bottom:0;"><?= count($students) ?> student account<?= count($students) === 1 ? '' : 's' ?></p>
+                    <table>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Grade level</th>
+                            <th>Assessments</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                        <?php foreach ($students as $s): ?>
+                            <tr data-search="<?= htmlspecialchars(strtolower($s['student_id'] . ' ' . $s['name'] . ' ' . $s['email'])) ?>">
+                                <td>#<?= (int) $s['student_id'] ?></td>
+                                <td><?= htmlspecialchars($s['name']) ?></td>
+                                <td><?= htmlspecialchars($s['email']) ?></td>
+                                <td><?= htmlspecialchars($s['grade_level'] ?? '—') ?></td>
+                                <td><?= (int) $s['submission_count'] ?></td>
+                                <td class="status-<?= htmlspecialchars($s['status']) ?>"><?= htmlspecialchars($s['status']) ?></td>
+                                <td><a class="view-link" href="students_lookup.php?view=<?= (int) $s['student_id'] ?>">View →</a></td>
                             </tr>
-                            <?php foreach ($students as $s): ?>
-                                <tr>
-                                    <td>#<?= (int) $s['student_id'] ?></td>
-                                    <td><?= htmlspecialchars($s['name']) ?></td>
-                                    <td><?= htmlspecialchars($s['email']) ?></td>
-                                    <td><?= htmlspecialchars($s['grade_level'] ?? '—') ?></td>
-                                    <td><?= (int) $s['submission_count'] ?></td>
-                                    <td class="status-<?= htmlspecialchars($s['status']) ?>"><?= htmlspecialchars($s['status']) ?></td>
-                                    <td><a class="view-link" href="students_lookup.php?view=<?= (int) $s['student_id'] ?>&q=<?= urlencode($search) ?>">View →</a></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </table>
-                    <?php endif; ?>
+                        <?php endforeach; ?>
+                        <tr id="student-no-results" style="display:none;">
+                            <td colspan="7" class="empty" style="text-align:center;">No students match your search.</td>
+                        </tr>
+                    </table>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
     </div>
+
+    <script>
+    (function () {
+        var input = document.getElementById('student-search');
+        if (!input) return;
+        var rows = document.querySelectorAll('tr[data-search]');
+        var noResultsRow = document.getElementById('student-no-results');
+        var countLabel = document.getElementById('student-count');
+        input.addEventListener('input', function () {
+            var q = input.value.trim().toLowerCase();
+            var visible = 0;
+            rows.forEach(function (row) {
+                var match = row.dataset.search.indexOf(q) !== -1;
+                row.style.display = match ? '' : 'none';
+                if (match) visible++;
+            });
+            if (noResultsRow) noResultsRow.style.display = visible === 0 ? '' : 'none';
+            if (countLabel) countLabel.textContent = visible + ' student account' + (visible === 1 ? '' : 's') + (q !== '' ? ' matching "' + input.value.trim() + '"' : '');
+        });
+    })();
+    </script>
 </body>
 </html>
