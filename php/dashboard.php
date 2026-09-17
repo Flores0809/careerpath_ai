@@ -111,11 +111,12 @@ $welcome = isset($_GET['welcome']);
 
     .activity-item { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; padding: 12px 0; border-top: 1px solid #eee; font-size: 15.5px; gap: 4px 10px; }
     .activity-item:first-of-type { border-top: none; }
-    .activity-item .title { font-weight: bold; color: #222; flex: 1 1 260px; min-width: 0; line-height: 1.4; }
+    .activity-item .title { font-weight: bold; color: #222; flex: 1 1 260px; min-width: 0; line-height: 1.4; display: flex; align-items: center; gap: 8px; }
     .activity-item .meta { color: #888; font-size: 13.5px; white-space: nowrap; flex-shrink: 0; }
+    .activity-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
     .activity-title-link { color: inherit; text-decoration: none; border-bottom: 1px solid transparent; }
     .activity-title-link:hover { color: #6e1423; border-bottom-color: #6e1423; }
-    .status-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12.5px; text-transform: uppercase; margin-right: 8px; }
+    .status-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12.5px; text-transform: uppercase; flex-shrink: 0; }
     .status-approved { background: #d1e7dd; color: #0f5132; }
     .status-rejected { background: #fdecea; color: #611a15; }
 
@@ -216,13 +217,14 @@ $welcome = isset($_GET['welcome']);
                     <p class="empty">No careers have been approved or rejected yet.</p>
                 <?php else: ?>
                     <?php foreach ($recentActivity as $item): ?>
+                        <?php $fullTitle = $item['source_title'] ?? '(untitled)'; ?>
                         <div class="activity-item">
                             <span class="title">
                                 <span class="status-tag status-<?= htmlspecialchars($item['status']) ?>"><?= htmlspecialchars($item['status']) ?></span>
                                 <?php if (!empty($item['career_id'])): ?>
-                                    <a href="careers_manage.php?q=<?= urlencode($item['current_career_title']) ?>" class="activity-title-link"><?= htmlspecialchars($item['source_title'] ?? '(untitled)') ?></a>
+                                    <a href="careers_manage.php?q=<?= urlencode($item['current_career_title']) ?>" class="activity-title-link activity-title-text" title="<?= htmlspecialchars($fullTitle) ?>"><?= htmlspecialchars($fullTitle) ?></a>
                                 <?php else: ?>
-                                    <?= htmlspecialchars($item['source_title'] ?? '(untitled)') ?>
+                                    <span class="activity-title-text" title="<?= htmlspecialchars($fullTitle) ?>"><?= htmlspecialchars($fullTitle) ?></span>
                                 <?php endif; ?>
                             </span>
                             <span class="meta">
