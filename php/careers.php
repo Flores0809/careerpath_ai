@@ -254,10 +254,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
+                // Records which live career this became — whether newly
+                // created or merged into an existing one — so pages like
+                // the staff dashboard's "Recent Review Activity" list can
+                // link straight to it (migration_26_pending_career_link.sql).
                 $update = $pdo->prepare(
-                    "UPDATE pending_careers SET status = 'approved', reviewed_at = NOW(), reviewed_by = :uid WHERE pending_id = :id"
+                    "UPDATE pending_careers SET status = 'approved', reviewed_at = NOW(), reviewed_by = :uid, approved_career_id = :career_id WHERE pending_id = :id"
                 );
-                $update->execute(['uid' => $currentUser['user_id'], 'id' => $pendingId]);
+                $update->execute(['uid' => $currentUser['user_id'], 'career_id' => $careerId, 'id' => $pendingId]);
 
                 $pdo->commit();
                 $message = $mergeIntoCareerId

@@ -297,10 +297,18 @@ CREATE TABLE pending_careers (
     suggested_e_score     INT DEFAULT 0,
     suggested_c_score     INT DEFAULT 0,
     status                ENUM('pending','approved','rejected') DEFAULT 'pending',
+    -- Set at approval time (php/careers.php) to the resulting live
+    -- careers.career_id — whether a brand-new row or an existing career
+    -- merged into via AI duplicate resolution. Lets the staff dashboard's
+    -- "Recent Review Activity" list link an approved entry straight to it.
+    -- NULL for pending/rejected entries, or anything approved before this
+    -- column existed (migration_26_pending_career_link.sql).
+    approved_career_id    INT NULL,
     scraped_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     reviewed_at           TIMESTAMP NULL,
     reviewed_by           INT NULL,        -- FK to users.user_id; which account approved/rejected this
-    FOREIGN KEY (reviewed_by) REFERENCES users(user_id) ON DELETE SET NULL
+    FOREIGN KEY (reviewed_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (approved_career_id) REFERENCES careers(career_id) ON DELETE SET NULL
 );
 
 -- Pending-side mirror of skill_requirements (migration_20_pending_career_skills.sql)
@@ -405,8 +413,8 @@ INSERT IGNORE INTO career_categories (name, description) VALUES
 ('Public Safety & Law Enforcement', 'Careers protecting communities — police, fire, corrections, forensic investigation.'),
 ('Agriculture & Environmental Science', 'Careers working with land, animals, water, and the natural environment.');
 
--- ONE FILE, NOT TWENTY-FOUR: this file is kept up to date as the single,
--- complete schema — every migration_2 through migration_24 change (new
+-- ONE FILE, NOT TWENTY-SIX: this file is kept up to date as the single,
+-- complete schema — every migration_2 through migration_26 change (new
 -- columns, new tables, seed data) is already merged in above. Setting up a
 -- FRESH, EMPTY `careerpath_ai` database (including right after running
 -- Data_Nuke.sql)? Just run this one file. You do NOT need to also run the
@@ -419,7 +427,7 @@ INSERT IGNORE INTO career_categories (name, description) VALUES
 -- file — it will DROP and reset skill_requirements, careers, and
 -- pending_careers. Instead, run whichever migration_N_*.sql files add
 -- something your database doesn't have yet, in numeric order starting from
--- migration_2_ai_enrichment.sql through migration_24_student_number.sql
+-- migration_2_ai_enrichment.sql through migration_26_pending_career_link.sql
 -- (each one's filename/header describes exactly what it adds).
 
 -- Seed data: RIASEC codes are approximate, based on commonly published

@@ -54,10 +54,17 @@ try {
     $pendingConsultations = 0; // consultations table not present yet (pre-migration_10 install)
 }
 
+// Joins to the live career (when approved and still present — c.career_id
+// is NULL for rejected entries, or approved ones from before
+// migration_26_pending_career_link.sql, or a since-deleted career) so the
+// title can link straight to it on careers_manage.php instead of being
+// static text.
 $recentActivity = $pdo->query(
-    "SELECT pc.source_title, pc.status, pc.reviewed_at, u.name AS reviewer_name
+    "SELECT pc.source_title, pc.status, pc.reviewed_at, u.name AS reviewer_name,
+            c.career_id, c.career_title AS current_career_title
      FROM pending_careers pc
      LEFT JOIN users u ON u.user_id = pc.reviewed_by
+     LEFT JOIN careers c ON c.career_id = pc.approved_career_id
      WHERE pc.status IN ('approved', 'rejected')
      ORDER BY pc.reviewed_at DESC
      LIMIT 8"
@@ -102,10 +109,12 @@ $welcome = isset($_GET['welcome']);
     .riasec-fill { background: linear-gradient(90deg, #6e1423, #b3465c); height: 100%; border-radius: 6px; }
     .riasec-pct { width: 36px; text-align: right; font-size: 13.5px; color: #888; }
 
-    .activity-item { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-top: 1px solid #eee; font-size: 15.5px; gap: 10px; }
+    .activity-item { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; padding: 12px 0; border-top: 1px solid #eee; font-size: 15.5px; gap: 4px 10px; }
     .activity-item:first-of-type { border-top: none; }
-    .activity-item .title { font-weight: bold; color: #222; flex: 1; }
-    .activity-item .meta { color: #888; font-size: 13.5px; white-space: nowrap; }
+    .activity-item .title { font-weight: bold; color: #222; flex: 1 1 260px; min-width: 0; line-height: 1.4; }
+    .activity-item .meta { color: #888; font-size: 13.5px; white-space: nowrap; flex-shrink: 0; }
+    .activity-title-link { color: inherit; text-decoration: none; border-bottom: 1px solid transparent; }
+    .activity-title-link:hover { color: #6e1423; border-bottom-color: #6e1423; }
     .status-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12.5px; text-transform: uppercase; margin-right: 8px; }
     .status-approved { background: #d1e7dd; color: #0f5132; }
     .status-rejected { background: #fdecea; color: #611a15; }
@@ -210,7 +219,11 @@ $welcome = isset($_GET['welcome']);
                         <div class="activity-item">
                             <span class="title">
                                 <span class="status-tag status-<?= htmlspecialchars($item['status']) ?>"><?= htmlspecialchars($item['status']) ?></span>
-                                <?= htmlspecialchars($item['source_title'] ?? '(untitled)') ?>
+                                <?php if (!empty($item['career_id'])): ?>
+                                    <a href="careers_manage.php?q=<?= urlencode($item['current_career_title']) ?>" class="activity-title-link"><?= htmlspecialchars($item['source_title'] ?? '(untitled)') ?></a>
+                                <?php else: ?>
+                                    <?= htmlspecialchars($item['source_title'] ?? '(untitled)') ?>
+                                <?php endif; ?>
                             </span>
                             <span class="meta">
                                 <?= $item['reviewer_name'] ? htmlspecialchars($item['reviewer_name']) . ' · ' : '' ?><?= date('M j, Y', strtotime($item['reviewed_at'])) ?>

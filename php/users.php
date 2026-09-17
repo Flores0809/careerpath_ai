@@ -345,8 +345,14 @@ $welcome = isset($_GET['welcome']);
 
     <?php
         // Renders one staff row (administrator or counselor) — same edit/reset/toggle actions for both.
-        function render_staff_row(array $u, array $currentUser): void
+        function render_staff_row(array $u, array $currentUser, string $tab): void
         {
+            // $tab ('admins' or 'counselors') is echoed into each form's
+            // action so that submitting Edit/Reset/Disable-Re-enable lands
+            // back on the same tab instead of always resetting to
+            // Administrators (the tabs are client-side only — see the
+            // hash-restoring script near the bottom of this file).
+            $tabAction = 'users.php#' . htmlspecialchars($tab);
     ?>
             <tr data-search="<?= htmlspecialchars(strtolower($u['name'] . ' ' . $u['email'])) ?>">
                 <td><?= htmlspecialchars($u['name']) ?><?= $u['user_id'] == $currentUser['user_id'] ? ' <em>(you)</em>' : '' ?></td>
@@ -356,7 +362,7 @@ $welcome = isset($_GET['welcome']);
                 <td class="actions-cell">
                     <details>
                         <summary>Edit</summary>
-                        <form method="POST" style="margin-top:8px;">
+                        <form method="POST" action="<?= $tabAction ?>" style="margin-top:8px;">
                             <input type="hidden" name="action" value="update">
                             <input type="hidden" name="user_id" value="<?= (int) $u['user_id'] ?>">
                             <label>Name</label>
@@ -373,7 +379,7 @@ $welcome = isset($_GET['welcome']);
                     </details>
                     <details>
                         <summary>Reset password</summary>
-                        <form method="POST" style="margin-top:8px;">
+                        <form method="POST" action="<?= $tabAction ?>" style="margin-top:8px;">
                             <input type="hidden" name="action" value="reset_password">
                             <input type="hidden" name="user_id" value="<?= (int) $u['user_id'] ?>">
                             <label>New password</label>
@@ -383,7 +389,7 @@ $welcome = isset($_GET['welcome']);
                             <button type="submit" class="btn-secondary" style="margin-top:8px;">Reset password</button>
                         </form>
                     </details>
-                    <form method="POST" class="inline" onsubmit="return confirm('<?= $u['status'] === 'active' ? 'Disable' : 'Re-enable' ?> this account?');">
+                    <form method="POST" action="<?= $tabAction ?>" class="inline" onsubmit="return confirm('<?= $u['status'] === 'active' ? 'Disable' : 'Re-enable' ?> this account?');">
                         <input type="hidden" name="action" value="toggle_status">
                         <input type="hidden" name="user_id" value="<?= (int) $u['user_id'] ?>">
                         <button type="submit" class="<?= $u['status'] === 'active' ? 'btn-danger' : 'btn-secondary' ?>">
@@ -423,7 +429,7 @@ $welcome = isset($_GET['welcome']);
                 <?php if (!$administrators): ?>
                     <tr><td colspan="5" class="empty">No administrator accounts.</td></tr>
                 <?php endif; ?>
-                <?php foreach ($administrators as $u): render_staff_row($u, $currentUser); endforeach; ?>
+                <?php foreach ($administrators as $u): render_staff_row($u, $currentUser, 'admins'); endforeach; ?>
                 </tbody>
             </table>
         </div>
@@ -445,7 +451,7 @@ $welcome = isset($_GET['welcome']);
                 <?php if (!$counselors): ?>
                     <tr><td colspan="5" class="empty">No counselor accounts yet — create one above.</td></tr>
                 <?php endif; ?>
-                <?php foreach ($counselors as $u): render_staff_row($u, $currentUser); endforeach; ?>
+                <?php foreach ($counselors as $u): render_staff_row($u, $currentUser, 'counselors'); endforeach; ?>
                 </tbody>
             </table>
         </div>
@@ -480,7 +486,7 @@ $welcome = isset($_GET['welcome']);
                             <a href="students_lookup.php?view=<?= (int) $s['student_id'] ?>&from=users" class="btn-secondary" style="display:inline-block;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:14.5px;margin:2px 2px 2px 0;">View History</a>
                             <details style="display:inline-block;vertical-align:top;">
                                 <summary>Reset password</summary>
-                                <form method="POST" style="margin-top:8px;">
+                                <form method="POST" action="users.php#students" style="margin-top:8px;">
                                     <input type="hidden" name="action" value="reset_student_password">
                                     <input type="hidden" name="student_id" value="<?= (int) $s['student_id'] ?>">
                                     <label>New password</label>
@@ -490,7 +496,7 @@ $welcome = isset($_GET['welcome']);
                                     <button type="submit" class="btn-secondary" style="margin-top:8px;">Reset password</button>
                                 </form>
                             </details>
-                            <form method="POST" class="inline" onsubmit="return confirm('<?= $s['status'] === 'active' ? 'Disable' : 'Re-enable' ?> this student account?');">
+                            <form method="POST" action="users.php#students" class="inline" onsubmit="return confirm('<?= $s['status'] === 'active' ? 'Disable' : 'Re-enable' ?> this student account?');">
                                 <input type="hidden" name="action" value="toggle_student_status">
                                 <input type="hidden" name="student_id" value="<?= (int) $s['student_id'] ?>">
                                 <button type="submit" class="<?= $s['status'] === 'active' ? 'btn-danger' : 'btn-secondary' ?>">
@@ -510,14 +516,30 @@ $welcome = isset($_GET['welcome']);
         var tabButtons = document.querySelectorAll('.tab-btn');
         var panels = document.querySelectorAll('.tab-panel');
 
+        function activateTab(tabName) {
+            var targetBtn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+            var targetPanel = document.querySelector('.tab-panel[data-tab="' + tabName + '"]');
+            if (!targetBtn || !targetPanel) return;
+            tabButtons.forEach(function (b) { b.classList.remove('active'); });
+            panels.forEach(function (p) { p.classList.remove('active'); });
+            targetBtn.classList.add('active');
+            targetPanel.classList.add('active');
+        }
+
         tabButtons.forEach(function (btn) {
             btn.addEventListener('click', function () {
-                tabButtons.forEach(function (b) { b.classList.remove('active'); });
-                panels.forEach(function (p) { p.classList.remove('active'); });
-                btn.classList.add('active');
-                document.querySelector('.tab-panel[data-tab="' + btn.dataset.tab + '"]').classList.add('active');
+                activateTab(btn.dataset.tab);
             });
         });
+
+        // Every Edit/Reset password/Disable/Re-enable form's action targets
+        // "users.php#<tab>" (set server-side in render_staff_row() and the
+        // student rows below) — since these are plain form POSTs (full page
+        // reload, no AJAX), this is what lands the user back on the tab
+        // they were on instead of always resetting to Administrators.
+        if (location.hash) {
+            activateTab(location.hash.slice(1));
+        }
 
         var searchInput = document.getElementById('account-search');
         searchInput.addEventListener('input', function () {
