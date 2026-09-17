@@ -37,6 +37,8 @@ from bs4 import BeautifulSoup
 import pymysql
 import pymysql.cursors
 
+from enrichment_helper import auto_enrich_pending
+
 API_URL = "https://remoteok.com/api"
 
 HEADERS = {
@@ -154,15 +156,17 @@ def save_pending_career(conn, job, keyword):
     try:
         with conn.cursor() as cur:
             affected = cur.execute(sql, params)
+            new_pending_id = cur.lastrowid if affected else None
         conn.commit()
     except pymysql.err.OperationalError as e:
         print(f"  [!] DB connection hiccup ({e}); reconnecting and retrying once...")
         conn.ping(reconnect=True)
         with conn.cursor() as cur:
             affected = cur.execute(sql, params)
+            new_pending_id = cur.lastrowid if affected else None
         conn.commit()
 
-    return affected, row
+    return new_pending_id, row
 
 
 def run():
@@ -188,10 +192,11 @@ def run():
 
             per_keyword_counts[keyword] += 1
             total_seen += 1
-            affected, row = save_pending_career(conn, job, keyword)
-            if affected:
+            new_pending_id, row = save_pending_career(conn, job, keyword)
+            if new_pending_id:
                 total_new += 1
                 print(f"  [+] Staged ({keyword}): {row['source_title']} ({row['employer']})")
+                auto_enrich_pending(conn, new_pending_id, row["source_title"], row["description"], row["qualifications"])
             else:
                 print(f"  [=] Already staged/seen: {row['source_title']}")
     finally:

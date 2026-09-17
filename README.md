@@ -10,7 +10,7 @@ loop described in Chapter III of the capstone paper.
 - `matching-service/` — Python/Flask microservice running the Hybrid Recommendation Engine (Scikit-learn cosine similarity)
 - `php/` — PHP front end: a front landing page (`index.php`) that routes to either path; student sign up/login (`student_register.php`/`student_login.php`), a student dashboard (`student_dashboard.php`), the intake form (`assessment.php`), results page (`submit.php`), assessment history (`student_history.php`), and a standing career profile page (`career_profile.php`) linked from any recommended career title; staff login (`login.php`), a staff dashboard (`dashboard.php`), career review queue (`careers.php`), live career editing (`careers_manage.php`), student search (`students_lookup.php`), and administrator-only account management (`users.php`)
 - `crawler/` — four data-collection scripts staging entries into the same review queue: `crawler.py` scrapes real PH job postings from **PhilJobNet** (philjobnet.gov.ph); `onet_client.py`, `adzuna_client.py`, and `remoteok_client.py` add **international** coverage (official occupation standards + live postings across several countries) — added after panel feedback that the system needed non-PH requirements too. See section 4 below.
-- **AI enrichment** — the matching-service's `/enrich` endpoint calls the Gemini API (Gemini 2.5 Flash-Lite) to turn a raw scraped posting into a polished description, daily-task list, educational pathway, and a suggested RIASEC vector, wired into `careers.php`'s "✨ Enrich with AI" button
+- **AI enrichment** — the matching-service's `/enrich` endpoint calls the Gemini API (Gemini 3.5 Flash-Lite) to turn a raw scraped posting into a polished description, daily-task list, educational pathway, and a suggested RIASEC vector, wired into `careers.php`'s "✨ Enrich with AI" button
 - **Staff accounts + roles** — two roles, **administrator** (creates/manages counselor and administrator accounts, and can view/moderate student accounts, via `users.php`) and **counselor** (reviews, edits, approves, or rejects careers via `careers.php`). See section 5 below.
 - **Student accounts + history** — students self-register (`student_register.php`) and log in (`student_login.php`) to take the RIASEC assessment; every submission and its ranked recommendations are saved and viewable later on `student_history.php`. This matches the STUDENT / STUDENT_PROFILE / RECOMMENDATION entities in the paper's ERD (Chapter III, Figure 11). See section 6 below.
 - **Career profile page** — every recommended career title (on `submit.php`, `student_history.php`, and `student_dashboard.php`) is now a clickable link to `career_profile.php`, a standing, non-AI reference page showing that career's full description, typical tasks, educational pathway, RIASEC profile, and complete required-skills list with a match indicator against the student's own skills — available even outside the context of a specific AI recommendation call.
@@ -89,17 +89,24 @@ REM Set DB credentials if not using XAMPP defaults (root / no password / localho
 set DB_USER=root
 set DB_PASSWORD=
 
-REM Optional — only needed for AI enrichment (step 5). Without this, /match
-REM still works fine; /enrich will just report itself unavailable.
-set GEMINI_API_KEY=...
-
 python app.py
 ```
 
+Optional — AI enrichment (step 5) needs a `GEMINI_API_KEY`. Without it, `/match`
+still works fine; `/enrich` will just report itself unavailable. Easiest way:
+create a `matching-service/.env` file (git-ignored, never pushed to GitHub — each
+teammate keeps their own) containing:
+
+```
+GEMINI_API_KEY=your-key-here
+```
+
+`app.py` loads this automatically on startup. (Alternatively, `set GEMINI_API_KEY=...`
+in the terminal before `python app.py` works too, but you'd have to retype it every session.)
+
 This starts the microservice at `http://localhost:5000`. Check it's alive by
 visiting `http://localhost:5000/health` in your browser — you should see
-`{"status": "ok", ..., "ai_enrichment_configured": true}` (or `false` if you
-skipped the `GEMINI_API_KEY` line above).
+`{"status": "ok", ..., "ai_enrichment_configured": true}` (or `false` if no key is set).
 
 **Leave this terminal window running** while you use the system — it's a
 separate process from Apache/XAMPP.
@@ -481,8 +488,11 @@ fallback behavior as `careers.php`'s "Enrich with AI."
 **Required skills (migration 8):** below the deactivate/reactivate button,
 each career has a "Required skills" section listing anything already added,
 each removable with one click, plus a small form to add a new skill
-(name, proficiency — basic/intermediate/advanced — and whether it's
-required or just nice-to-have). This is what the skills-verification
+(name, a free-text note on what proficiency is needed, and whether it's
+required or just nice-to-have — proficiency used to be a fixed
+basic/intermediate/advanced dropdown, but migration 23 switched it to free
+text since most skills don't cleanly fit three rigid buckets). This is what
+the skills-verification
 percentage on `submit.php`, `student_history.php`, and `students_lookup.php`
 is computed against — a career with no skills listed here just won't show a
 skills-match percentage yet.
@@ -491,7 +501,7 @@ skills-match percentage yet.
 
 Raw job postings from PhilJobNet are written for adult jobseekers, not
 JHS/SHS students — often terse, jargon-heavy, or missing fields entirely.
-The `/enrich` endpoint on the matching-service asks **Gemini 2.5
+The `/enrich` endpoint on the matching-service asks **Gemini 3.5
 Flash-Lite** (via Google's `google-genai` SDK) to turn a career title +
 whatever raw text the crawler found into: a 2-3 sentence student-friendly
 description, a short list of daily tasks, a suggested Philippine
@@ -501,7 +511,7 @@ schema-validated structured output (Pydantic), not free-form text.
 **To get an API key:**
 1. Go to https://aistudio.google.com/apikey (sign in with a Google account; Gemini API has a free tier, no billing required to start).
 2. Click "Create API key," copy it.
-3. Set it as `GEMINI_API_KEY` before running `app.py`, as shown in step 2 above.
+3. Put it in `matching-service/.env` as `GEMINI_API_KEY=...`, as shown in step 2 above (git-ignored — never committed).
 
 **To use it:** on `http://localhost/careerpath-ai-mvp/php/careers.php`, click
 **✨ Enrich with AI** on any pending card. The description, daily tasks,
@@ -511,7 +521,7 @@ can still edit anything before clicking Approve; nothing is saved to the
 live `careers` table until you do.
 
 **Cost note:** every click is one API call, billed per token by Google —
-Gemini 2.5 Flash-Lite is their cheapest/fastest 2.5-series model, and the
+Gemini 3.5 Flash-Lite is their cheapest/fastest 3.5-series model, and the
 free tier covers a generous number of requests per day for a project this
 size. Check current pricing and free-tier limits at
 https://ai.google.dev/gemini-api/docs/pricing before doing this at scale.
@@ -617,8 +627,8 @@ added later or goes down.
   doesn't accept `'inactive'` and the toggle silently fails to change it
   (check for a MySQL data-truncation warning).
 - **"AI enrichment unavailable (GEMINI_API_KEY is not set)"** — you clicked
-  "Enrich with AI" without setting the key when you started `app.py`. Stop
-  it (Ctrl+C), `set GEMINI_API_KEY=...`, and run `python app.py` again.
+  "Enrich with AI" without the key configured. Add `GEMINI_API_KEY=...` to
+  `matching-service/.env`, stop the service (Ctrl+C), and run `python app.py` again.
 - **"AI enrichment unavailable" with some other error** — usually an invalid
   key, a rate limit (free tier has daily/per-minute caps), or a model name
   typo in `GEMINI_MODEL`. The error message from Google is shown as-is so

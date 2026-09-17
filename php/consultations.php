@@ -109,42 +109,48 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
 <title>CareerPath AI — Consultations</title>
 <style>
     body { font-family: Arial, sans-serif; max-width: 1280px; margin: 40px auto; padding: 0 20px; color: #222; }
-    h1, .counts, .flash-success, .card { max-width: 900px; margin-left: auto; margin-right: auto; }
+    h1, .flash-success, .card { max-width: 1100px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; }
-    .counts { margin-bottom: 18px; font-size: 14px; color: #555; }
-    .counts a { margin-right: 16px; color: #555; text-decoration: none; }
-    .counts a.active, .counts a:hover { color: #6e1423; font-weight: bold; }
     .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
     .card { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 16px 22px; margin-bottom: 16px; }
+
+    /* Status tabs — same pattern as careers.php / users.php */
+    .tabs { max-width: 1100px; margin: 24px auto 18px; display: flex; gap: 4px; border-bottom: 2px solid #eee; flex-wrap: wrap; }
+    .tab-btn { background: none; border: none; padding: 10px 18px; font-size: 15.5px; font-weight: bold; color: #888; cursor: pointer; text-decoration: none; display: inline-block; border-bottom: 3px solid transparent; margin-bottom: -2px; font-family: inherit; }
+    .tab-btn:hover { color: #6e1423; }
+    .tab-btn.active { color: #6e1423; border-bottom-color: #6e1423; }
+    .tab-count { display: inline-block; background: #eee; color: #555; border-radius: 10px; padding: 1px 8px; font-size: 12.5px; margin-left: 5px; }
+    .tab-btn.active .tab-count { background: #f0dde1; color: #6e1423; }
     .card .top { display: flex; justify-content: space-between; align-items: baseline; }
-    .card h3 { margin: 0; color: #6e1423; font-size: 16px; }
-    .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+    .card h3 { margin: 0; color: #6e1423; font-size: 17.5px; }
+    .status-badge { font-size: 12.5px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
     .status-pending { background: #fff3cd; color: #856404; }
     .status-scheduled { background: #d1e7dd; color: #0f5132; }
     .status-completed { background: #f0dde1; color: #6e1423; }
     .status-cancelled { background: #e2e3e5; color: #41464b; }
-    .meta { font-size: 13px; color: #666; margin: 6px 0; }
-    label { display: block; font-size: 12px; font-weight: bold; margin: 8px 0 3px; }
+    .meta { font-size: 14.5px; color: #666; margin: 6px 0; }
+    label { display: block; font-size: 13.5px; font-weight: bold; margin: 8px 0 3px; }
     input[type=date], input[type=time], textarea { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
     textarea { width: 100%; min-height: 50px; box-sizing: border-box; }
     .schedule-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
-    button { padding: 7px 16px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; margin-right: 8px; margin-top: 10px; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
-    .schedule-btn { background: #6e1423; color: #fff; }
-    .complete-btn { background: #0f5132; color: #fff; }
-    .cancel-btn { background: #b02a37; color: #fff; }
+    button { padding: 7px 16px; border: none; border-radius: 6px; font-size: 14.5px; cursor: pointer; margin-right: 8px; margin-top: 10px; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
+    /* Shared button naming used across Manage Accounts, Career Review, etc. */
+    .btn-primary { background: #6e1423; color: #fff; }
+    .btn-success { background: #0f5132; color: #fff; }
+    .btn-danger { background: #b02a37; color: #fff; }
     .empty { color: #666; font-style: italic; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 
-    .toolbar { max-width: 900px; margin: 0 auto 18px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
-    .sort-control { font-size: 13px; color: #555; display: flex; align-items: center; gap: 6px; }
-    .sort-control select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; font-size: 13px; }
+    .toolbar { max-width: 1100px; margin: 0 auto 18px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .sort-control { font-size: 14.5px; color: #555; display: flex; align-items: center; gap: 6px; }
+    .sort-control select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; font-size: 14.5px; }
 
     /* Search bar — same pill + icon style used elsewhere in the app */
     .search-bar { position: relative; max-width: 300px; flex: 1 1 240px; }
-    .search-bar input { width: 100%; padding: 9px 14px 9px 32px; border: 1px solid #ccc; border-radius: 20px; font-size: 14px; box-sizing: border-box; }
+    .search-bar input { width: 100%; padding: 9px 14px 9px 32px; border: 1px solid #ccc; border-radius: 20px; font-size: 15.5px; box-sizing: border-box; }
     .search-bar input:focus { outline: none; border-color: #6e1423; box-shadow: 0 0 0 2px rgba(110,20,35,0.12); }
-    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: 0.55; pointer-events: none; }
-    .no-results { max-width: 900px; margin: 20px auto; text-align: center; color: #888; font-style: italic; display: none; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14.5px; opacity: 0.55; pointer-events: none; }
+    .no-results { max-width: 1100px; margin: 20px auto; text-align: center; color: #888; font-style: italic; display: none; }
 </style>
 </head>
 <body>
@@ -158,9 +164,9 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
         <div class="flash-<?= $message['type'] ?>"><?= htmlspecialchars($message['text']) ?></div>
     <?php endif; ?>
 
-    <div class="counts">
+    <div class="tabs">
         <?php foreach (['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed' => 'Completed', 'cancelled' => 'Cancelled', 'all' => 'All'] as $key => $label): ?>
-            <a href="?status=<?= $key ?>&sort=<?= urlencode($sortFilter) ?>" class="<?= $statusFilter === $key ? 'active' : '' ?>"><?= $label ?> (<?= $key === 'all' ? array_sum($counts) : ($counts[$key] ?? 0) ?>)</a>
+            <a class="tab-btn <?= $statusFilter === $key ? 'active' : '' ?>" href="?status=<?= $key ?>&sort=<?= urlencode($sortFilter) ?>"><?= $label ?> <span class="tab-count"><?= $key === 'all' ? array_sum($counts) : ($counts[$key] ?? 0) ?></span></a>
         <?php endforeach; ?>
     </div>
 
@@ -217,18 +223,18 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
                     </div>
                     <label>Note (optional)</label>
                     <textarea name="counselor_notes" placeholder="e.g. Meet at the Guidance Office"></textarea>
-                    <button class="schedule-btn" type="submit">Schedule</button>
+                    <button class="btn-primary" type="submit">Schedule</button>
                 </form>
             <?php elseif ($c['status'] === 'scheduled'): ?>
                 <form method="POST" style="display:inline;">
                     <input type="hidden" name="action" value="complete">
                     <input type="hidden" name="consultation_id" value="<?= (int) $c['consultation_id'] ?>">
-                    <button class="complete-btn" type="submit">Mark completed</button>
+                    <button class="btn-success" type="submit">Mark completed</button>
                 </form>
                 <form method="POST" style="display:inline;" onsubmit="return confirm('Cancel this consultation?');">
                     <input type="hidden" name="action" value="cancel">
                     <input type="hidden" name="consultation_id" value="<?= (int) $c['consultation_id'] ?>">
-                    <button class="cancel-btn" type="submit">Cancel</button>
+                    <button class="btn-danger" type="submit">Cancel</button>
                 </form>
             <?php endif; ?>
         </div>
@@ -252,5 +258,6 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
         });
     })();
     </script>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

@@ -3,8 +3,13 @@
 
 require __DIR__ . '/auth.php';
 
+// Open-redirect guard: "next" is attacker-controllable (it's a GET/POST
+// param), so only accept a plain local filename like "careers.php" or
+// "careers.php?foo=bar" — never an absolute URL ("https://evil.com") or a
+// protocol-relative one ("//evil.com"), both of which a browser would
+// happily follow off-site after a successful login.
 $next = $_GET['next'] ?? ($_POST['next'] ?? 'dashboard.php');
-if ($next === '') {
+if ($next === '' || !preg_match('#^[a-zA-Z0-9_\-]+\.php(\?[^\s]*)?$#', $next)) {
     $next = 'dashboard.php';
 }
 
@@ -43,11 +48,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>CareerPath AI — Login</title>
 <style>
     body { font-family: Arial, sans-serif; max-width: 400px; margin: 80px auto; padding: 0 20px; color: #222; }
-    h1 { color: #6e1423; font-size: 22px; }
-    label { display: block; font-size: 13px; font-weight: bold; margin: 14px 0 4px; }
+    h1 { color: #6e1423; font-size: 24px; }
+    label { display: block; font-size: 14.5px; font-weight: bold; margin: 14px 0 4px; }
     input[type=email], input[type=password] { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    button { margin-top: 20px; width: 100%; padding: 10px; background: #6e1423; color: #fff; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
-    .error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
+    button { margin-top: 20px; width: 100%; padding: 10px; background: #6e1423; color: #fff; border: none; border-radius: 6px; font-size: 16.5px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
+    .error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 15.5px; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
 </head>
@@ -72,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <button type="submit">Log in</button>
     </form>
 
-    <p style="margin-top:18px;font-size:13px;text-align:center;"><a href="index.php" style="color:#6e1423;">&larr; Back to home</a></p>
+    <p style="margin-top:18px;font-size:14.5px;text-align:center;"><a href="index.php" style="color:#6e1423;">&larr; Back to home</a></p>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

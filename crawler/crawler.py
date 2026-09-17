@@ -54,6 +54,8 @@ from bs4 import BeautifulSoup
 import pymysql
 import pymysql.cursors
 
+from enrichment_helper import auto_enrich_pending
+
 BASE_URL = "https://philjobnet.gov.ph"
 SEARCH_URL_TEMPLATE = BASE_URL + "/job-vacancies/0/{keyword}/0"
 
@@ -229,6 +231,7 @@ def save_pending_career(conn, job, keyword):
     try:
         with conn.cursor() as cur:
             affected = cur.execute(sql, params)
+            new_pending_id = cur.lastrowid if affected else None
         conn.commit()
     except pymysql.err.OperationalError as e:
         # One retry: the connection may have dropped between the ping above
@@ -237,9 +240,10 @@ def save_pending_career(conn, job, keyword):
         conn.ping(reconnect=True)
         with conn.cursor() as cur:
             affected = cur.execute(sql, params)
+            new_pending_id = cur.lastrowid if affected else None
         conn.commit()
 
-    return affected  # 0 means it already existed (duplicate source_url)
+    return new_pending_id  # None means it already existed (duplicate source_url)
 
 
 def run():
@@ -269,10 +273,14 @@ def run():
                     continue
 
                 job = parse_job_detail(detail_html, link)
-                affected = save_pending_career(conn, job, keyword)
-                if affected:
+                new_pending_id = save_pending_career(conn, job, keyword)
+                if new_pending_id:
                     total_new += 1
                     print(f"  [+] Staged: {job['source_title']} ({job['employer']})")
+                    # Best-effort — see enrichment_helper.py. Never blocks
+                    # staging itself; a counselor can still fill this entry
+                    # in by hand if the matching service isn't running.
+                    auto_enrich_pending(conn, new_pending_id, job["source_title"], job["description"], job["qualifications"])
                 else:
                     print(f"  [=] Already staged/seen: {job['source_title']}")
 

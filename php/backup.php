@@ -14,8 +14,9 @@ $currentUser = require_role(['administrator']);
 $pdo = get_db();
 
 $tables = [
-    'users', 'students', 'careers', 'skill_requirements', 'student_profiles',
-    'recommendations', 'counselor_log', 'pending_careers', 'consultations',
+    'users', 'students', 'careers', 'career_categories', 'skill_requirements',
+    'student_profiles', 'student_career_insights', 'recommendations', 'counselor_log',
+    'change_log', 'pending_careers', 'pending_career_skills', 'consultations',
     'notifications', 'system_settings',
 ];
 
@@ -71,12 +72,12 @@ foreach ($tables as $table) {
     h1, .panel { max-width: 640px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; }
     .panel { background: #f5f5f5; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; }
-    table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 14.5px; }
     th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
     .missing { color: #aaa; font-style: italic; }
-    .btn { display: inline-block; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: bold; background: #6e1423; color: #fff; }
+    .btn { display: inline-block; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 15.5px; font-weight: bold; background: #6e1423; color: #fff; }
     .btn:hover { background: #4a0c17; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-    .note { font-size: 12px; color: #888; margin-top: 14px; }
+    .note { font-size: 13.5px; color: #888; margin-top: 14px; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
 </head>
@@ -101,5 +102,6 @@ foreach ($tables as $table) {
         <a class="btn" href="backup.php?download=1">Download backup (.sql)</a>
         <p class="note">This exports data only, not the table structure — keep <code>database/schema.sql</code> alongside any backup you archive.</p>
     </div>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

@@ -94,6 +94,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'recor
 // every student account at a glance; the search box below is now a live,
 // client-side filter over this already-loaded list rather than a page
 // reload, since the full roster is small enough to render at once.
+// Distinct grade levels currently in use, for the grade-level filter
+// dropdown next to the search box — built from real data rather than a
+// hardcoded list, so it always matches whatever values students/counselors
+// have actually entered (free text on student_register.php/student_profile.php).
+$gradeLevelOptions = $pdo->query(
+    "SELECT DISTINCT grade_level FROM students WHERE grade_level IS NOT NULL AND grade_level != '' ORDER BY grade_level"
+)->fetchAll(PDO::FETCH_COLUMN);
+
 $students = $pdo->query(
     "SELECT s.*, COUNT(sp.profile_id) AS submission_count
      FROM students s
@@ -224,58 +232,58 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
 
     /* Search bar — same pill + icon style used on users.php / careers.php */
     .search-bar { position: relative; max-width: 340px; margin: 0 0 4px; }
-    .search-bar input { width: 100%; padding: 9px 14px 9px 32px; border: 1px solid #ccc; border-radius: 20px; font-size: 14px; box-sizing: border-box; }
+    .search-bar input { width: 100%; padding: 9px 14px 9px 32px; border: 1px solid #ccc; border-radius: 20px; font-size: 15.5px; box-sizing: border-box; }
     .search-bar input:focus { outline: none; border-color: #6e1423; box-shadow: 0 0 0 2px rgba(110,20,35,0.12); }
-    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: 0.55; pointer-events: none; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14.5px; opacity: 0.55; pointer-events: none; }
 
-    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 15.5px; }
     th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
-    th { color: #555; font-size: 12px; text-transform: uppercase; }
+    th { color: #555; font-size: 13.5px; text-transform: uppercase; }
     .status-active { color: #0f5132; }
     .status-disabled { color: #b02a37; }
     a.view-link { color: #6e1423; font-weight: bold; text-decoration: none; }
     a.view-link:hover { text-decoration: underline; }
 
-    .empty { color: #888; font-style: italic; font-size: 14px; }
+    .empty { color: #888; font-style: italic; font-size: 15.5px; }
     .error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
 
     .student-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
     .student-header h2 { margin: 0; color: #6e1423; }
-    .student-meta { font-size: 13px; color: #666; }
-    a.back { color: #6e1423; font-size: 13px; text-decoration: none; }
+    .student-meta { font-size: 14.5px; color: #666; }
+    a.back { color: #6e1423; font-size: 14.5px; text-decoration: none; }
     a.back:hover { text-decoration: underline; }
 
     .submission { border: 1px solid #eee; border-radius: 8px; padding: 16px 18px; margin-top: 14px; }
-    .submission-date { font-size: 13px; color: #666; margin-bottom: 10px; }
-    .riasec-row span { display: inline-block; margin-right: 14px; font-size: 13px; background: #faf0f1; padding: 3px 8px; border-radius: 6px; }
-    .career-row { padding: 6px 0; border-top: 1px solid #f2f2f2; font-size: 14px; }
+    .submission-date { font-size: 14.5px; color: #666; margin-bottom: 10px; }
+    .riasec-row span { display: inline-block; margin-right: 14px; font-size: 14.5px; background: #faf0f1; padding: 3px 8px; border-radius: 6px; }
+    .career-row { padding: 6px 0; border-top: 1px solid #f2f2f2; font-size: 15.5px; }
     .career-row:first-of-type { border-top: none; }
     .career-row .top-line, .dream-row .top-line { display: flex; justify-content: space-between; }
     .dream-row .top-line a, .field-careers-row a { color: #6e1423; text-decoration: none; font-weight: bold; }
     .dream-row .top-line a:hover, .field-careers-row a:hover { text-decoration: underline; }
     .career-row .match { color: #6e1423; font-weight: bold; }
-    .skill-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0; font-size: 11px; }
+    .skill-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0; font-size: 12.5px; }
     .skill-have { background: #d1e7dd; color: #0f5132; }
     .skill-need { background: #fff3cd; color: #856404; }
-    .skill-pct { font-size: 12px; color: #666; margin-top: 4px; }
-    .note-entry { border-top: 1px solid #f2f2f2; padding: 10px 0; font-size: 13px; }
+    .skill-pct { font-size: 13.5px; color: #666; margin-top: 4px; }
+    .note-entry { border-top: 1px solid #f2f2f2; padding: 10px 0; font-size: 14.5px; }
     .note-entry:first-of-type { border-top: none; }
-    .note-entry .note-meta { color: #888; font-size: 12px; margin-bottom: 3px; }
+    .note-entry .note-meta { color: #888; font-size: 13.5px; margin-bottom: 3px; }
     .note-entry.audit-only { color: #aaa; font-style: italic; }
     .note-form textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; box-sizing: border-box; min-height: 60px; }
     .note-form select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; margin-bottom: 8px; }
-    .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
-    .flash-error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
-    .notes-toggle { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; background: #6e1423; color: #fff; padding: 10px 18px; border-radius: 6px; font-size: 14px; font-weight: bold; user-select: none; }
+    .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 15.5px; }
+    .flash-error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 15.5px; }
+    .notes-toggle { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; background: #6e1423; color: #fff; padding: 10px 18px; border-radius: 6px; font-size: 15.5px; font-weight: bold; user-select: none; }
     .notes-toggle::-webkit-details-marker { display: none; }
     .notes-toggle:hover { background: #4a0c17; }
-    .notes-count { background: #fff; color: #6e1423; border-radius: 10px; padding: 1px 8px; font-size: 12px; }
+    .notes-count { background: #fff; color: #6e1423; border-radius: 10px; padding: 1px 8px; font-size: 13.5px; }
     .dream-row { background: #faf0f1; border: 1px solid #6e1423; border-radius: 8px; padding: 10px 14px; margin-top: 10px; }
-    .dream-row .dream-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6e1423; font-weight: bold; margin-bottom: 4px; }
+    .dream-row .dream-label { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.5px; color: #6e1423; font-weight: bold; margin-bottom: 4px; }
     .field-careers-row { border: 1px solid #eee; border-radius: 8px; padding: 4px 14px 2px; margin-top: 10px; }
     .field-careers-row .career-row { padding: 6px 0; }
-    .subjects-line { font-size: 12px; color: #666; margin-top: 3px; }
-    .explore-others-row summary { cursor: pointer; font-weight: bold; color: #6e1423; font-size: 13.5px; padding: 8px 0; }
+    .subjects-line { font-size: 13.5px; color: #666; margin-top: 3px; }
+    .explore-others-row summary { cursor: pointer; font-weight: bold; color: #6e1423; font-size: 15px; padding: 8px 0; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
 </head>
@@ -320,6 +328,9 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                             <?= htmlspecialchars($viewedStudent['grade_level'] ?? 'Grade level not set') ?> ·
                             <span class="status-<?= htmlspecialchars($viewedStudent['status']) ?>"><?= htmlspecialchars($viewedStudent['status']) ?></span> ·
                             Student ID #<?= (int) $viewedStudent['student_id'] ?>
+                            <?php if (!empty($viewedStudent['student_number'])): ?>
+                                · LRN <?= htmlspecialchars($viewedStudent['student_number']) ?>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -340,7 +351,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                             <input type="hidden" name="student_id" value="<?= (int) $viewedStudent['student_id'] ?>">
 
                             <?php if ($allRecommendations): ?>
-                                <label style="display:block;font-size:13px;font-weight:bold;margin-bottom:4px;">Relates to a specific recommendation (optional)</label>
+                                <label style="display:block;font-size:14.5px;font-weight:bold;margin-bottom:4px;">Relates to a specific recommendation (optional)</label>
                                 <select name="recommendation_id">
                                     <option value="">— General note, not tied to one career —</option>
                                     <?php foreach ($allRecommendations as $rec): ?>
@@ -359,7 +370,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
             </div>
 
             <div class="panel">
-                <h3 style="color:#6e1423;font-size:15px;margin-top:0;">Assessment History</h3>
+                <h3 style="color:#6e1423;font-size:16.5px;margin-top:0;">Assessment History</h3>
                 <?php if (!$viewedProfiles): ?>
                     <p class="empty">This student hasn't taken the assessment yet.</p>
                 <?php else: ?>
@@ -378,7 +389,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                                 <?php endif; ?>
                             </div>
                             <?php if (!empty($profile['skills'])): ?>
-                                <p style="font-size:13px;color:#666;margin:6px 0 0;"><strong>Self-reported skills:</strong> <?= htmlspecialchars($profile['skills']) ?></p>
+                                <p style="font-size:14.5px;color:#666;margin:6px 0 0;"><strong>Self-reported skills:</strong> <?= htmlspecialchars($profile['skills']) ?></p>
                             <?php endif; ?>
                             <?php if ($profile['dream_career']): ?>
                                 <div class="dream-row">
@@ -461,9 +472,19 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
             </div>
         <?php else: ?>
             <div class="panel">
-                <div class="search-bar">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" id="student-search" placeholder="Search by student ID, name, or email..." autofocus>
+                <div class="search-bar" style="display:flex;align-items:center;gap:12px;max-width:none;flex-wrap:wrap;">
+                    <div style="position:relative;max-width:340px;flex:1;min-width:220px;">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="student-search" placeholder="Search by student ID, student number, name, or email..." autofocus style="width:100%;padding:9px 14px 9px 32px;border:1px solid #ccc;border-radius:20px;font-size:15.5px;box-sizing:border-box;">
+                    </div>
+                    <?php if ($gradeLevelOptions): ?>
+                        <select id="grade-filter" style="padding:8px 12px;border:1px solid #ccc;border-radius:20px;font-size:14.5px;">
+                            <option value="">All grade levels</option>
+                            <?php foreach ($gradeLevelOptions as $gl): ?>
+                                <option value="<?= htmlspecialchars(strtolower($gl)) ?>"><?= htmlspecialchars($gl) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php endif; ?>
                 </div>
 
                 <?php if (!$students): ?>
@@ -473,6 +494,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                     <table>
                         <tr>
                             <th>ID</th>
+                            <th>LRN</th>
                             <th>Name</th>
                             <th>Email</th>
                             <th>Grade level</th>
@@ -481,8 +503,9 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                             <th></th>
                         </tr>
                         <?php foreach ($students as $s): ?>
-                            <tr data-search="<?= htmlspecialchars(strtolower($s['student_id'] . ' ' . $s['name'] . ' ' . $s['email'])) ?>">
+                            <tr data-search="<?= htmlspecialchars(strtolower($s['student_id'] . ' ' . ($s['student_number'] ?? '') . ' ' . $s['name'] . ' ' . $s['email'])) ?>" data-grade="<?= htmlspecialchars(strtolower($s['grade_level'] ?? '')) ?>">
                                 <td>#<?= (int) $s['student_id'] ?></td>
+                                <td><?= htmlspecialchars($s['student_number'] ?? '—') ?></td>
                                 <td><?= htmlspecialchars($s['name']) ?></td>
                                 <td><?= htmlspecialchars($s['email']) ?></td>
                                 <td><?= htmlspecialchars($s['grade_level'] ?? '—') ?></td>
@@ -492,7 +515,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                             </tr>
                         <?php endforeach; ?>
                         <tr id="student-no-results" style="display:none;">
-                            <td colspan="7" class="empty" style="text-align:center;">No students match your search.</td>
+                            <td colspan="8" class="empty" style="text-align:center;">No students match your search.</td>
                         </tr>
                     </table>
                 <?php endif; ?>
@@ -504,21 +527,28 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
     (function () {
         var input = document.getElementById('student-search');
         if (!input) return;
+        var gradeFilter = document.getElementById('grade-filter');
         var rows = document.querySelectorAll('tr[data-search]');
         var noResultsRow = document.getElementById('student-no-results');
         var countLabel = document.getElementById('student-count');
-        input.addEventListener('input', function () {
+        function applyFilters() {
             var q = input.value.trim().toLowerCase();
+            var grade = gradeFilter ? gradeFilter.value : '';
             var visible = 0;
             rows.forEach(function (row) {
-                var match = row.dataset.search.indexOf(q) !== -1;
+                var matchesText = row.dataset.search.indexOf(q) !== -1;
+                var matchesGrade = grade === '' || row.dataset.grade === grade;
+                var match = matchesText && matchesGrade;
                 row.style.display = match ? '' : 'none';
                 if (match) visible++;
             });
             if (noResultsRow) noResultsRow.style.display = visible === 0 ? '' : 'none';
-            if (countLabel) countLabel.textContent = visible + ' student account' + (visible === 1 ? '' : 's') + (q !== '' ? ' matching "' + input.value.trim() + '"' : '');
-        });
+            if (countLabel) countLabel.textContent = visible + ' student account' + (visible === 1 ? '' : 's') + (q !== '' || grade !== '' ? ' matching your filters' : '');
+        }
+        input.addEventListener('input', applyFilters);
+        if (gradeFilter) gradeFilter.addEventListener('change', applyFilters);
     })();
     </script>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

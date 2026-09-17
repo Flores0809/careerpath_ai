@@ -16,6 +16,23 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Only reinstall requirements if requirements.txt changed since the last
+REM successful install (compared against a saved snapshot in venv\). This
+REM avoids pip re-checking PyPI -- which looks like "downloading every
+REM time" -- on every single launch when nothing actually changed.
+fc /b requirements.txt venv\requirements.snapshot.txt >nul 2>&1
+if errorlevel 1 (
+    echo Installing/updating required packages...
+    pip install -r requirements.txt --quiet --disable-pip-version-check
+    if errorlevel 1 (
+        echo.
+        echo Could not install some required packages -- see any error above.
+        pause
+        exit /b 1
+    )
+    copy /y requirements.txt venv\requirements.snapshot.txt >nul
+)
+
 echo Starting matching service on http://localhost:5000 ...
 echo Keep this window open while using CareerPath AI. Close it to stop the service.
 echo.

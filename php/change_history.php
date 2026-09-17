@@ -101,10 +101,10 @@ function render_change_value($val)
 <title>CareerPath AI — Change History</title>
 <style>
     * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; margin: 0; padding: 40px 20px; color: #222; background: #faf7f5; }
-    .wrap { max-width: 1200px; margin: 0 auto; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 40px 20px; color: #222; }
+    .wrap { max-width: 1280px; margin: 0 auto; }
     h1 { color: #6e1423; margin-bottom: 4px; }
-    .subtitle { color: #666; margin-top: 0; margin-bottom: 24px; font-size: 14px; }
+    .subtitle { color: #666; margin-top: 0; margin-bottom: 24px; font-size: 15.5px; }
 
     .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
     .flash-error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
@@ -113,29 +113,29 @@ function render_change_value($val)
     .filter-bar select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; }
 
     .entry { background: #f5f5f5; border: 1px solid #eee; border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(74,12,23,0.05); }
-    .entry summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14px; flex-wrap: wrap; }
+    .entry summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 15.5px; flex-wrap: wrap; }
     .entry summary::-webkit-details-marker { display: none; }
     .entry-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .entry-label { font-weight: bold; color: #6e1423; }
-    .entry-meta { color: #888; font-size: 12.5px; }
-    .action-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+    .entry-meta { color: #888; font-size: 14px; }
+    .action-tag { font-size: 12.5px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
     .action-insert { background: #d1e7dd; color: #0f5132; }
     .action-update { background: #fff3cd; color: #856404; }
     .action-delete { background: #fdecea; color: #611a15; }
-    .table-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #f0dde1; color: #6e1423; }
-    .reverted-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #eee; color: #666; }
+    .table-tag { font-size: 12.5px; padding: 2px 8px; border-radius: 10px; background: #f0dde1; color: #6e1423; }
+    .reverted-tag { font-size: 12.5px; padding: 2px 8px; border-radius: 10px; background: #eee; color: #666; }
 
-    .diff-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    .diff-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14.5px; }
     .diff-table th, .diff-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #f2f2f2; }
-    .diff-table th { color: #888; font-size: 11px; text-transform: uppercase; }
+    .diff-table th { color: #888; font-size: 12.5px; text-transform: uppercase; }
     .diff-old { color: #b02a37; }
     .diff-new { color: #0f5132; }
     .diff-same { color: #666; }
 
     .revert-form { margin-top: 12px; }
-    button.btn { padding: 7px 16px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; }
-    .btn-revert { background: #6e1423; color: #fff; }
-    .empty { color: #888; font-style: italic; font-size: 14px; }
+    button.btn { padding: 7px 16px; border: none; border-radius: 6px; font-size: 14.5px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
+    .btn-primary { background: #6e1423; color: #fff; }
+    .empty { color: #888; font-style: italic; font-size: 15.5px; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
 </head>
@@ -217,11 +217,12 @@ function render_change_value($val)
                     <form method="POST" class="revert-form" onsubmit="return confirm('Revert this change? The values shown in \'Before\' above will be restored.');">
                         <input type="hidden" name="action" value="revert">
                         <input type="hidden" name="log_id" value="<?= (int) $e['log_id'] ?>">
-                        <button type="submit" class="btn btn-revert">↩ Revert this change</button>
+                        <button type="submit" class="btn btn-primary">↩ Revert this change</button>
                     </form>
                 <?php endif; ?>
             </details>
         <?php endforeach; ?>
     </div>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

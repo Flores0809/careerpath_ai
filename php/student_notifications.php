@@ -46,14 +46,14 @@ $categoryLabels = [
     .item.unread { background: #faf0f1; border-color: #e9c9ce; }
     .item .msg a { color: #6e1423; text-decoration: none; }
     .item .msg a:hover { text-decoration: underline; }
-    .item .meta { font-size: 12px; color: #888; margin-top: 4px; }
-    .cat-badge { display: inline-block; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 10px; margin-bottom: 5px; }
+    .item .meta { font-size: 13.5px; color: #888; margin-top: 4px; }
+    .cat-badge { display: inline-block; font-size: 12.5px; font-weight: bold; padding: 2px 8px; border-radius: 10px; margin-bottom: 5px; }
     .cat-note { background: #fff3cd; color: #856404; }
     .cat-consultation { background: #d1e7dd; color: #0f5132; }
     .cat-assessment { background: #e7d9f7; color: #4b2e83; }
     .item form { margin: 0; }
-    button.link-btn { background: none; border: none; color: #6e1423; cursor: pointer; font-size: 12px; text-decoration: underline; padding: 0; }
-    .btn { display: inline-block; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #6e1423; color: #fff; border: none; cursor: pointer; }
+    button.link-btn { background: none; border: none; color: #6e1423; cursor: pointer; font-size: 13.5px; text-decoration: underline; padding: 0; }
+    .btn { display: inline-block; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 14.5px; font-weight: bold; background: #6e1423; color: #fff; border: none; cursor: pointer; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
 </head>
@@ -96,5 +96,6 @@ $categoryLabels = [
             </div>
         <?php endforeach; ?>
     <?php endif; ?>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

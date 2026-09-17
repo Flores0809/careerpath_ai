@@ -24,7 +24,8 @@ if ($existingAdminCount > 0) {
         <p>Need another administrator or a counselor account? Log in as an
         existing administrator and create one from the Manage Users page.</p>
         <p><a href="login.php">Go to login</a></p>
-    </body>
+    <?php require __DIR__ . '/footer.php'; ?>
+</body>
     </html>
     <?php
     exit;
@@ -112,5 +113,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <button type="submit">Create administrator account</button>
     </form>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

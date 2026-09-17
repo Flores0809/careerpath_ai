@@ -66,6 +66,12 @@ CREATE TABLE careers (
     e_score              INT NOT NULL, -- Enterprising
     c_score              INT NOT NULL, -- Conventional
     source               VARCHAR(50) DEFAULT 'seed',
+    -- Local (Philippines) vs. international career — lets the results page
+    -- (php/submit.php) show both side by side for a student's dream career
+    -- when a counterpart exists. Set from php/careers.php at approval time
+    -- (based on the scraped entry's data_source), editable afterward on
+    -- php/careers_manage.php. (migration_19_career_scope.sql)
+    career_scope         ENUM('local','international') NOT NULL DEFAULT 'local',
     -- 'inactive' hides a career from the matching engine (app.py only pulls
     -- status='active') without deleting it, so recommendation history that
     -- references it stays intact. Set/cleared from php/careers_manage.php.
@@ -81,7 +87,10 @@ CREATE TABLE skill_requirements (
     skill_req_id       INT AUTO_INCREMENT PRIMARY KEY,
     career_id          INT NOT NULL,
     skill_name         VARCHAR(150) NOT NULL,
-    proficiency_level  ENUM('basic','intermediate','advanced') NOT NULL DEFAULT 'basic',
+    -- Free text (e.g. "Comfortable with basic HTML/CSS"), not a fixed
+    -- basic/intermediate/advanced enum — see migration_23_freetext_proficiency.sql
+    -- for why the rigid 3-level classification was dropped.
+    proficiency_level  VARCHAR(150) NOT NULL DEFAULT '',
     is_required        BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (career_id) REFERENCES careers(career_id) ON DELETE CASCADE
 );
@@ -92,6 +101,12 @@ CREATE TABLE skill_requirements (
 CREATE TABLE IF NOT EXISTS students (
     student_id     INT AUTO_INCREMENT PRIMARY KEY,
     name           VARCHAR(150) NOT NULL,
+    -- School-issued ID number printed on the student's physical MEII ID
+    -- card — separate from student_id (the internal DB row number).
+    -- Nullable (existing/test accounts may not have one) but UNIQUE once
+    -- set (migration_24_student_number.sql). Lets staff search Student
+    -- Lookup by the number actually on the card, not a DB row number.
+    student_number VARCHAR(50) NULL UNIQUE,
     email          VARCHAR(150) NOT NULL UNIQUE,
     password_hash  VARCHAR(255) NOT NULL,
     grade_level    VARCHAR(50) NULL,
@@ -120,9 +135,66 @@ CREATE TABLE IF NOT EXISTS student_profiles (
     -- submissions made before this field existed — those just show the
     -- flat recommendation list, same as always.
     dream_career_id   INT NULL,
+    -- AI-generated, student-facing commentary on this specific result
+    -- (migration 21). Best-effort: generated once by the matching
+    -- service right after this row is inserted (php/submit.php) and
+    -- cached here rather than regenerated on every page view. All three
+    -- stay NULL if the matching service/Gemini wasn't reachable at
+    -- submission time — pages fall back to showing verified data only,
+    -- same graceful-fallback convention used everywhere else in this
+    -- system (see crawler/enrichment_helper.py).
+    --   ai_summary            - personalized paraphrase of this
+    --                           submission's own RIASEC scores; no new
+    --                           facts, just explains numbers already
+    --                           computed deterministically.
+    --   ai_career_commentary  - why dream_career_id fits this student +
+    --                           skills to focus on, grounded in that
+    --                           career's counselor-approved description/
+    --                           key_subjects/skill_requirements where
+    --                           available.
+    --   ai_skills_are_suggested - set in PHP/Python code (never by the
+    --                           LLM itself) to true only when
+    --                           dream_career_id had no counselor-verified
+    --                           skill_requirements for the AI to draw on,
+    --                           so the skills mentioned above were
+    --                           invented rather than sourced from
+    --                           reviewed data. Pages show an "AI
+    --                           suggestion" label when this is true.
+    ai_summary              TEXT NULL,
+    ai_career_commentary    TEXT NULL,
+    ai_skills_are_suggested TINYINT(1) NOT NULL DEFAULT 0,
+    ai_commentary_generated_at TIMESTAMP NULL,
     submitted_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
     FOREIGN KEY (dream_career_id) REFERENCES careers(career_id) ON DELETE SET NULL
+);
+
+-- STUDENT_CAREER_INSIGHT entity (migration 22) — on-demand AI commentary,
+-- one row per (student, career) pair the student has actually clicked into
+-- on php/career_profile.php. Separate from student_profiles.ai_career_
+-- commentary above (which only ever covers ONE career — that submission's
+-- dream pick, generated automatically at submission time) — this table
+-- covers EVERY OTHER career a student explores, generated lazily the first
+-- time they open that career's profile page rather than upfront for every
+-- recommendation, then cached here so later visits don't re-call Gemini.
+-- Generated from whatever the student's most recent student_profiles row
+-- says at the moment they first view it — not re-generated if they later
+-- retake the assessment, same "generate once, cache forever" convention as
+-- student_profiles.ai_career_commentary.
+CREATE TABLE IF NOT EXISTS student_career_insights (
+    student_id              INT NOT NULL,
+    career_id                INT NOT NULL,
+    ai_career_commentary     TEXT NOT NULL,
+    -- Set in application code (never by the LLM itself) to true only when
+    -- this career had no counselor-verified skill_requirements for the AI
+    -- to draw on — same non-negotiable rule as student_profiles.ai_skills_
+    -- are_suggested, so career_profile.php can label AI-invented skill
+    -- mentions distinctly from verified ones here too.
+    ai_skills_are_suggested  TINYINT(1) NOT NULL DEFAULT 0,
+    generated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (student_id, career_id),
+    FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (career_id) REFERENCES careers(career_id) ON DELETE CASCADE
 );
 
 -- RECOMMENDATION entity — bridge table connecting STUDENT and CAREER,
@@ -198,7 +270,7 @@ CREATE TABLE pending_careers (
     salary                VARCHAR(100),
     description           TEXT,
     qualifications        TEXT,
-    -- AI-enriched versions (Gemini 2.5 Flash-Lite via matching-service/app.py's /enrich endpoint).
+    -- AI-enriched versions (Gemini 3.5 Flash-Lite via matching-service/app.py's /enrich endpoint).
     -- Kept alongside the raw scraped fields above rather than overwriting them,
     -- so the admin can compare before approving. NULL until "Enrich with AI" is used.
     ai_description         TEXT NULL,
@@ -226,6 +298,22 @@ CREATE TABLE pending_careers (
     reviewed_by           INT NULL,        -- FK to users.user_id; which account approved/rejected this
     FOREIGN KEY (reviewed_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
+
+-- Pending-side mirror of skill_requirements (migration_20_pending_career_skills.sql)
+-- — lets the AI enrichment call suggest required skills for a posting before
+-- it's approved, so the skills-verification mechanism isn't limited to
+-- careers that already made it into the live database. Copied into
+-- skill_requirements for the real career_id on approval (php/careers.php).
+CREATE TABLE IF NOT EXISTS pending_career_skills (
+    pending_skill_id   INT AUTO_INCREMENT PRIMARY KEY,
+    pending_id         INT NOT NULL,
+    skill_name         VARCHAR(150) NOT NULL,
+    -- Free text, same reasoning as skill_requirements.proficiency_level above.
+    proficiency_level  VARCHAR(150) NOT NULL DEFAULT '',
+    is_required        BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (pending_id) REFERENCES pending_careers(pending_id) ON DELETE CASCADE
+);
+
 -- CONSULTATIONS — Consultation Request & Appointment Scheduling between
 -- students and counselors. Not a named ERD entity in the capstone paper —
 -- see README for the paper-alignment note — built because it's on the
@@ -275,7 +363,11 @@ CREATE TABLE IF NOT EXISTS system_settings (
     updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-INSERT INTO system_settings (setting_key, setting_value, description) VALUES
+-- INSERT IGNORE (not plain INSERT): this table is deliberately left untouched
+-- by Data_Nuke.sql, so re-running this file afterward hits these same rows
+-- already present — IGNORE skips the duplicate-key conflict instead of
+-- erroring out and halting the rest of the script.
+INSERT IGNORE INTO system_settings (setting_key, setting_value, description) VALUES
     ('recommendation_count', '5', 'How many careers the matching engine returns per assessment (Top-N).'),
     ('site_name', 'CareerPath AI', 'Display name shown in page titles and nav bars.'),
     ('student_access_code', 'MEII2026', 'Code students must enter to self-register. Share this only with MEII students (e.g. announce it in class or print it on ID handouts); change it here if it leaks.');
@@ -294,7 +386,10 @@ CREATE TABLE IF NOT EXISTS career_categories (
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO career_categories (name, description) VALUES
+-- INSERT IGNORE (not plain INSERT): same reasoning as system_settings above —
+-- career_categories survives Data_Nuke.sql on purpose, so this must skip
+-- (not error on) the unique-name conflict when re-run afterward.
+INSERT IGNORE INTO career_categories (name, description) VALUES
 ('Technology & IT', 'Careers building, running, and securing software, networks, and digital systems.'),
 ('Healthcare & Medical', 'Careers diagnosing, treating, and caring for patients in hospitals, clinics, and labs.'),
 ('Business & Management', 'Careers running organizations — finance, banking, real estate, and operations.'),
@@ -306,25 +401,22 @@ INSERT INTO career_categories (name, description) VALUES
 ('Public Safety & Law Enforcement', 'Careers protecting communities — police, fire, corrections, forensic investigation.'),
 ('Agriculture & Environmental Science', 'Careers working with land, animals, water, and the natural environment.');
 
--- NOTE: if you already have a live `careerpath_ai` database (i.e. you're not
--- setting this up fresh), don't re-run this whole file — it will DROP and
--- reset your existing careers/pending_careers data. Instead, run, in order:
---   database/migration_2_ai_enrichment.sql   (adds ai_* columns)
---   database/migration_3_users_auth.sql      (adds users table + reviewed_by)
---   database/migration_4_student_accounts.sql (adds students/student_profiles/recommendations)
---   database/migration_5_counselor_log.sql     (adds counselor_log)
---   database/migration_6_career_status.sql     (widens careers.status to add 'inactive')
---   database/migration_7_international_sources.sql (adds data_source/country to pending_careers)
---   database/migration_8_skills_verification.sql    (adds proficiency_level, student skills/academic_average)
---   database/migration_9_counselor_outcomes.sql      (adds notes column to counselor_log)
---   database/migration_10_consultations_notifications_settings.sql (adds consultations/notifications/system_settings)
---   database/migration_11_career_categories.sql (adds career_category, dream_career_id)
---   database/migration_12_expand_careers.sql (adds 28 more careers so every industry cluster has real options)
---   database/migration_13_category_management.sql (adds career_categories lookup table: names + descriptions)
---   database/migration_14_change_log.sql (adds change_log table: before/after snapshots + undo)
---   database/migration_15_key_subjects.sql (adds key_subjects: recommended JHS/SHS subjects per career)
---   database/migration_16_student_access_code.sql (adds student_access_code system_setting)
---   database/migration_17_default_admin.sql (seeds a default administrator account)
+-- ONE FILE, NOT TWENTY-FOUR: this file is kept up to date as the single,
+-- complete schema — every migration_2 through migration_24 change (new
+-- columns, new tables, seed data) is already merged in above. Setting up a
+-- FRESH, EMPTY `careerpath_ai` database (including right after running
+-- Data_Nuke.sql)? Just run this one file. You do NOT need to also run the
+-- individual database/migration_N_*.sql files — they exist only as a
+-- historical record of each incremental change, and as an UPGRADE PATH for
+-- an already-deployed database that predates a given feature (see below).
+--
+-- NOTE: if you already have a live `careerpath_ai` database with real data
+-- you want to KEEP (i.e. this ISN'T a fresh setup), don't re-run this whole
+-- file — it will DROP and reset skill_requirements, careers, and
+-- pending_careers. Instead, run whichever migration_N_*.sql files add
+-- something your database doesn't have yet, in numeric order starting from
+-- migration_2_ai_enrichment.sql through migration_24_student_number.sql
+-- (each one's filename/header describes exactly what it adds).
 
 -- Seed data: RIASEC codes are approximate, based on commonly published
 -- Holland Code profiles for these occupations (O*NET-style), used here

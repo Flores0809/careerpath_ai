@@ -57,34 +57,37 @@ $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-a
         <?php endif; ?>
     </div>
     <div class="cp-nav-user">
-        <?= htmlspecialchars($currentUser['name']) ?>
+        <a href="staff_profile.php" class="cp-nav-user-name <?= $cpIsActive(['staff_profile.php']) ?>"><?= htmlspecialchars($currentUser['name']) ?></a>
         <span class="cp-role-badge"><?= htmlspecialchars($currentUser['role']) ?></span>
         · <a href="logout.php">Logout</a>
     </div>
 </div>
 <style>
-    .cp-nav { display: flex; align-items: center; background: linear-gradient(135deg, #6e1423 0%, #4a0c17 100%); color: #fff; padding: 12px 20px; border-radius: 8px; margin-bottom: 24px; font-size: 14px; flex-wrap: wrap; gap: 10px 16px; position: relative; }
+    .cp-nav { display: flex; align-items: center; background: linear-gradient(135deg, #6e1423 0%, #4a0c17 100%); color: #fff; padding: 12px 20px; border-radius: 8px; margin-bottom: 24px; font-size: 15.5px; flex-wrap: wrap; gap: 10px 16px; position: relative; }
     .cp-nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-right: 10px; flex-shrink: 0; }
     .cp-nav-logo { width: 36px; height: 36px; border-radius: 50%; background: #fff; object-fit: cover; flex-shrink: 0; }
     .cp-nav-brand-text { display: flex; flex-direction: column; line-height: 1.2; }
-    .cp-nav-school { font-size: 9px; text-transform: uppercase; letter-spacing: 0.4px; color: #e9c9ce; font-weight: normal; }
-    .cp-nav-title { font-size: 16px; font-weight: bold; color: #fff; }
+    .cp-nav-school { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; color: #e9c9ce; font-weight: normal; }
+    .cp-nav-title { font-size: 17.5px; font-weight: bold; color: #fff; }
     .cp-nav-links { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; flex: 1 1 auto; }
-    .cp-nav-item { color: #e9c9ce; text-decoration: none; padding: 8px 12px; border-radius: 6px; background: none; border: none; font: inherit; font-size: 14px; font-family: inherit; cursor: pointer; display: inline-block; box-sizing: border-box; line-height: 20px; vertical-align: middle; margin: 0; appearance: none; -webkit-appearance: none; }
+    .cp-nav-item { color: #e9c9ce; text-decoration: none; padding: 8px 12px; border-radius: 6px; background: none; border: none; font: inherit; font-size: 15.5px; font-family: inherit; cursor: pointer; display: inline-block; box-sizing: border-box; line-height: 20px; vertical-align: middle; margin: 0; appearance: none; -webkit-appearance: none; }
     a.cp-nav-item:hover, .cp-dropdown-toggle:hover { color: #fff; background: rgba(255,255,255,0.12); }
     .cp-nav-item.cp-active { color: #fff; background: rgba(255,255,255,0.18); font-weight: bold; }
-    .cp-caret { font-size: 10px; }
+    .cp-caret { font-size: 11.5px; }
 
     .cp-dropdown { position: relative; }
     .cp-dropdown-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; background: #fff; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); min-width: 190px; padding: 6px; z-index: 50; }
     .cp-dropdown.cp-open .cp-dropdown-menu { display: block; }
-    .cp-dropdown-menu a { display: block; color: #6e1423; text-decoration: none; padding: 9px 12px; border-radius: 6px; font-size: 13px; }
+    .cp-dropdown-menu a { display: block; color: #6e1423; text-decoration: none; padding: 9px 12px; border-radius: 6px; font-size: 14.5px; }
     .cp-dropdown-menu a:hover { background: #faf0f1; }
 
     .cp-nav-user { color: #fff; white-space: nowrap; margin-left: auto; text-align: right; flex-shrink: 0; }
     .cp-nav-user a { color: #ffd166; }
-    .cp-role-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 11px; text-transform: uppercase; margin: 0 4px; }
-    .cp-badge { background: #e63946; color: #fff; border-radius: 10px; padding: 1px 6px; font-size: 10px; font-weight: bold; margin-left: 2px; }
+    a.cp-nav-user-name { color: #fff; text-decoration: none; padding: 4px 8px; border-radius: 6px; transition: background-color 0.15s ease; }
+    a.cp-nav-user-name:hover { background: rgba(255,255,255,0.12); text-decoration: none; }
+    a.cp-nav-user-name.cp-active { background: rgba(255,255,255,0.18); font-weight: bold; }
+    .cp-role-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 12.5px; text-transform: uppercase; margin: 0 4px; }
+    .cp-badge { background: #e63946; color: #fff; border-radius: 10px; padding: 1px 6px; font-size: 11.5px; font-weight: bold; margin-left: 2px; }
 
     @media (max-width: 760px) {
         .cp-nav { flex-direction: column; align-items: stretch; }

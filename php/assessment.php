@@ -12,8 +12,11 @@
 // enjoy building or fixing things with my hands") to match this
 // assessment's existing 1-4 scale format, and simplified for a JHS/SHS
 // Filipino student audience. 7 of the 10 official items per RIASEC type
-// were selected; wording for 3 items (marked below) was further revised
-// per validator/panel feedback during defense.
+// were selected; wording for several items (marked below) was further
+// revised per validator/panel feedback and, separately, per client
+// feedback (e.g. R1 reframed around hands-on tasks, R6 stripped of named
+// professions so it reads as general practical/physical work rather than
+// pointing to one specific job) during defense prep.
 //
 // Requires a logged-in student account so results/history can be saved
 // (see php/student_auth.php, php/student_register.php, php/student_login.php).
@@ -44,60 +47,65 @@ foreach ($careerRows as $row) {
     $careersByCategory[$row['career_category']][] = ['id' => (int) $row['career_id'], 'title' => $row['career_title']];
 }
 
+// Verb-phrase consistency pass (per validator feedback: "use more consistent
+// and direct wording" instead of mixing "I would enjoy" / "I like" / "I am
+// comfortable" throughout) — nearly every item now uses "I enjoy," with
+// "I prefer" kept only for the two explicit A-vs-B comparison statements,
+// where it reads more naturally than "I enjoy."
 $questions = [
     'R' => [
-        'I enjoy working with tools, machines, or equipments.',
-        'I like building or fixing things with my hands.',
+        'I enjoy hands-on tasks that involve using tools, power equipment, or machinery.', // revised per client feedback
+        'I enjoy building or repairing everyday items, like furniture, gadgets, or small machines, with my hands.', // revised per validator feedback (clarified vague statement)
         'I prefer outdoor or physical activities over sitting at a desk.',
         'I enjoy participating in mechanical or electrical projects.', // revised per validator feedback
-        'I would enjoy driving or operating trucks, heavy equipment, or machinery.',
-        'I would enjoy physical outdoor work, like firefighting, construction, or emergency response.', // revised per validator feedback
-        'I would enjoy raising animals or growing crops/plants.',
+        'I enjoy driving or operating trucks, heavy equipment, or machinery.', // revised per validator feedback (wording consistency)
+        'I enjoy doing hands-on, physically demanding work to help solve urgent, real-world problems.', // revised per client feedback
+        'I enjoy raising animals or growing crops/plants.', // revised per validator feedback (wording consistency)
     ],
     'I' => [
         'I enjoy solving hard problems or puzzles.', // simplified per validator feedback
-        'I like doing research or experiments.', // simplified per validator feedback
-        'I am curious about how and why things work.',
+        'I enjoy doing research or experiments.', // revised per validator feedback (wording consistency)
+        'I enjoy figuring out how and why things work.', // revised per validator feedback (wording consistency)
         'I enjoy looking closely at information to find patterns.', // simplified per validator feedback
-        'I would enjoy creating new medicines or making new science discoveries.', // simplified per validator feedback
-        'I like studying scientific topics, such as outer space, weather, or diseases.',
-        'I would enjoy examine the causes of things, like diseases or unusual events.', // revised per validator feedback
+        'I enjoy creating new medicines or making new science discoveries.', // simplified per validator feedback
+        'I enjoy studying scientific topics, such as outer space, weather, or diseases.', // revised per validator feedback (wording consistency)
+        'I enjoy examining the causes of things, like diseases or unusual events.', // revised per validator feedback
     ],
     'A' => [
         'I enjoy creative activities like arts and crafts, writing, or music.', // revised per validator feedback
-        'I like coming up with original ideas or designs.',
-        'I prefer flexible, tasks over strict routines.', // revised per validator feedback
+        'I enjoy coming up with original ideas or designs.', // revised per validator feedback (wording consistency)
+        'I prefer flexible tasks over strict routines.', // revised per validator feedback
         'I enjoy expressing myself through art, media, or performance.',
-        'I would enjoy writing stories, plays, or scripts.',
-        'I like performing in front of others, such as singing, dancing, or acting.',
-        'I would enjoy creating visual art or effects, like drawing, painting, or filmmaking.',
+        'I enjoy writing stories, plays, or scripts.', // revised per validator feedback (wording consistency)
+        'I enjoy performing in front of others, such as singing, dancing, or acting.', // revised per validator feedback (wording consistency)
+        'I enjoy creating visual art or effects, like drawing, painting, or filmmaking.', // revised per validator feedback (wording consistency)
     ],
     'S' => [
         'I enjoy helping or caring for other people.', // revised per validator feedback
-        'I like working in teams and collaborating with others.',
-        'I am comfortable listening to and supporting people\'s problems.',
+        'I enjoy working in teams and collaborating with others.', // revised per validator feedback (wording consistency)
+        'I enjoy listening to and supporting people through their problems.', // revised per validator feedback (wording consistency)
         'I enjoy volunteering or community-oriented activities.',
-        'I would enjoy teaching or tutoring others, like classmates or younger students.',
-        'I like taking care of children, the elderly, or people who need assistance.',
-        'I would enjoy giving advice or guidance to help someone make a decision.',
+        'I enjoy teaching or tutoring others, like classmates or younger students.', // revised per validator feedback (wording consistency)
+        'I enjoy taking care of children, the elderly, or people who need assistance.', // revised per validator feedback (wording consistency)
+        'I enjoy giving advice or guidance to help someone make a decision.', // revised per validator feedback (wording consistency)
     ],
     'E' => [
         'I enjoy leading a group or convincing others to see my point of view.',
-        'I like taking initiative and starting new projects.',
-        'I am comfortable taking risks to achieve a goal.',
+        'I enjoy taking initiative and starting new projects.', // revised per validator feedback (wording consistency)
+        'I enjoy taking risks to achieve a goal.', // revised per validator feedback (wording consistency)
         'I enjoy selling, promoting, or negotiating.',
-        'I would enjoy being in charge of a group of people or a business.', // revised per validator feedback
-        'I like the idea of starting and running my own business someday.',
-        'I would enjoy marketing or advertising a product or service.',
+        'I enjoy being in charge of a group of people or a business.', // revised per validator feedback
+        'I am interested in starting and running my own business someday.', // revised per validator feedback (wording consistency)
+        'I enjoy marketing or advertising a product or service.', // revised per validator feedback (wording consistency)
     ],
     'C' => [
         'I enjoy organizing information, files, or schedules.',
-        'I like following clear plan, procedures, and instructions.', // revised per validator feedback
-        'I like being very careful and getting things exactly right, instead of guessing.', // simplified per validator feedback
+        'I enjoy following clear plans, procedures, and instructions.', // revised per validator feedback (wording consistency + grammar)
+        'I prefer being very careful and getting things exactly right, instead of guessing.', // simplified per validator feedback
         'I enjoy working with numbers, records, or spreadsheets.',
-        'I would enjoy keeping accurate records, like inventories, receipts, or attendance.',
-        'I like double-checking documents or data for errors before submitting them.',
-        'I would enjoy handling routine office tasks, like filing, sorting mail, or data entry.',
+        'I enjoy keeping accurate records, like inventories, receipts, or attendance.', // revised per validator feedback (wording consistency)
+        'I enjoy double-checking documents or data for errors before submitting them.', // revised per validator feedback (wording consistency)
+        'I enjoy handling routine office tasks, like filing, sorting mail, or data entry.', // revised per validator feedback (wording consistency)
     ],
 ];
 
@@ -124,10 +132,10 @@ $typeLabels = [
     legend { font-weight: bold; color: #6e1423; padding: 0 6px; }
     .question { margin: 14px 0; }
     .question p { margin: 0 0 6px 0; }
-    .scale { display: flex; gap: 40px; font-size: 14px; }
+    .scale { display: flex; gap: 40px; font-size: 15.5px; }
     .scale label { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
     .scale input[type="radio"] { width: 18px; height: 18px; }
-    button { background: #6e1423; color: #fff; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
+    button { background: #6e1423; color: #fff; border: none; padding: 12px 24px; border-radius: 6px; font-size: 17.5px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
     button:hover { background: #4a0c17; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
@@ -144,15 +152,15 @@ $typeLabels = [
     <form action="submit.php" method="POST" id="assessment-form">
         <fieldset>
             <legend>🎯 Your Dream Career</legend>
-            <p style="font-size:13px;color:#555;margin-top:0;">Before we get into the assessment — what career are you aiming for? Pick the field it falls under, then the specific career. We'll show you exactly how well your RIASEC profile fits <em>that</em> career, plus other careers you might not have considered.</p>
-            <label style="display:block;font-size:13px;font-weight:bold;margin:10px 0 4px;">Field / Industry</label>
+            <p style="font-size:14.5px;color:#555;margin-top:0;">Before we get into the assessment — what career are you aiming for? Pick the field it falls under, then the specific career. We'll show you exactly how well your RIASEC profile fits <em>that</em> career, plus other careers you might not have considered.</p>
+            <label style="display:block;font-size:14.5px;font-weight:bold;margin:10px 0 4px;">Field / Industry</label>
             <select id="dream_cluster" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;">
                 <option value="">— Select a field —</option>
                 <?php foreach (array_keys($careersByCategory) as $cat): ?>
                     <option value="<?= htmlspecialchars($cat) ?>"><?= htmlspecialchars($cat) ?></option>
                 <?php endforeach; ?>
             </select>
-            <label style="display:block;font-size:13px;font-weight:bold;margin:10px 0 4px;">Specific Career</label>
+            <label style="display:block;font-size:14.5px;font-weight:bold;margin:10px 0 4px;">Specific Career</label>
             <select name="dream_career_id" id="dream_career_id" required disabled style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;">
                 <option value="">— Select a field first —</option>
             </select>
@@ -178,14 +186,14 @@ $typeLabels = [
         <?php endforeach; ?>
 
         <fieldset>
-            <legend>Your Skills</legend>
-            <p style="font-size:13px;color:#555;margin-top:0;">List skills you already have, separated by commas — e.g. "computer basics, public speaking, first aid, basic coding". This is required so CareerPath AI can show which required skills you already meet for each recommended career, and which ones to work on.</p>
-            <textarea name="skills" rows="3" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;" placeholder="e.g. Microsoft Excel, teamwork, basic coding, customer service"></textarea>
+            <legend>Your Skills (optional)</legend>
+            <p style="font-size:14.5px;color:#555;margin-top:0;">List skills you already have, separated by commas (e.g. computer basics, public speaking, first aid). Optional — helps show which required skills you already meet. Not sure? Type "N/A".</p>
+            <textarea name="skills" rows="3" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;" placeholder="e.g. Microsoft Excel, teamwork, basic coding, customer service"></textarea>
         </fieldset>
 
         <fieldset>
             <legend>Academic Background</legend>
-            <p style="font-size:13px;color:#555;margin-top:0;">Your general/overall academic average (0–100). This is required so your recommendations can factor in your academic standing.</p>
+            <p style="font-size:14.5px;color:#555;margin-top:0;">Your general/overall academic average (0–100). This is required so your recommendations can factor in your academic standing.</p>
             <input type="number" name="academic_average" min="0" max="100" step="0.01" required style="width:140px;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;" placeholder="e.g. 88.5">
         </fieldset>
 
@@ -218,5 +226,6 @@ $typeLabels = [
             });
         });
     </script>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

@@ -50,6 +50,8 @@ import requests
 import pymysql
 import pymysql.cursors
 
+from enrichment_helper import auto_enrich_pending
+
 API_BASE = "https://api-v2.onetcenter.org"
 ONET_USERNAME = os.environ.get("ONET_USERNAME", "")
 ONET_PASSWORD = os.environ.get("ONET_PASSWORD", "")
@@ -201,15 +203,17 @@ def save_pending_career(conn, occupation, keyword):
     try:
         with conn.cursor() as cur:
             affected = cur.execute(sql, params)
+            new_pending_id = cur.lastrowid if affected else None
         conn.commit()
     except pymysql.err.OperationalError as e:
         print(f"  [!] DB connection hiccup ({e}); reconnecting and retrying once...")
         conn.ping(reconnect=True)
         with conn.cursor() as cur:
             affected = cur.execute(sql, params)
+            new_pending_id = cur.lastrowid if affected else None
         conn.commit()
 
-    return affected, job
+    return new_pending_id, job
 
 
 def run():
@@ -230,14 +234,15 @@ def run():
             for occ in occupations:
                 total_seen += 1
                 try:
-                    affected, job = save_pending_career(conn, occ, keyword)
+                    new_pending_id, job = save_pending_career(conn, occ, keyword)
                 except requests.RequestException as e:
                     print(f"  [!] Failed to fetch details for {occ.get('title')}: {e}")
                     continue
 
-                if affected:
+                if new_pending_id:
                     total_new += 1
                     print(f"  [+] Staged: {job['source_title']}")
+                    auto_enrich_pending(conn, new_pending_id, job["source_title"], job["description"], job["qualifications"])
                 else:
                     print(f"  [=] Already staged/seen: {job['source_title']}")
 

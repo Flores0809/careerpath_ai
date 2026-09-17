@@ -74,31 +74,36 @@ $totalCount = (int) $pdo->query("SELECT COUNT(*) FROM counselor_log")->fetchColu
 <style>
     body { font-family: Arial, sans-serif; max-width: 1280px; margin: 40px auto; padding: 0 20px; color: #222; }
     h1 { color: #6e1423; }
-    .sub { color: #666; font-size: 14px; margin-bottom: 20px; }
+    .sub { color: #666; font-size: 15.5px; margin-bottom: 20px; }
     .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-start; }
     .filter-bar select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; }
 
     /* Student filter — live-search combobox instead of a giant <select> */
     .student-filter { position: relative; }
     .student-filter-input-wrap { position: relative; }
-    .student-filter input[type=text] { padding: 6px 28px 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; font-size: 14px; width: 220px; }
+    .student-filter input[type=text] { padding: 6px 28px 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; font-size: 15.5px; width: 220px; }
     .student-filter input[type=text]:focus { outline: none; border-color: #6e1423; box-shadow: 0 0 0 2px rgba(110,20,35,0.12); }
-    .student-filter .clear-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #888; cursor: pointer; font-size: 15px; padding: 2px 4px; line-height: 1; }
+    .student-filter .clear-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #888; cursor: pointer; font-size: 16.5px; padding: 2px 4px; line-height: 1; }
     .student-filter .clear-btn:hover { color: #b02a37; }
     .student-suggestions { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.12); max-height: 220px; overflow-y: auto; z-index: 30; display: none; }
     .student-suggestions.open { display: block; }
-    .student-suggestions div { padding: 7px 12px; font-size: 13px; cursor: pointer; }
-    .student-suggestions div:hover, .student-suggestions div.active { background: #faf0f1; color: #6e1423; }
+    .student-suggestions div { padding: 7px 12px; font-size: 14.5px; cursor: pointer; }
+.student-suggestions div:hover, .student-suggestions div.active { background: #faf0f1; color: #6e1423; }
     .student-suggestions .no-match { color: #888; font-style: italic; cursor: default; }
     .student-suggestions .no-match:hover { background: none; color: #888; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
     th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
-    th { color: #6e1423; text-transform: uppercase; font-size: 11px; }
-    .action-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+    th { color: #6e1423; text-transform: uppercase; font-size: 12.5px; }
+    .action-tag { font-size: 12.5px; padding: 2px 8px; border-radius: 10px; }
     .action-viewed_profile { background: #e2e3e5; color: #41464b; }
     .action-recorded_outcome { background: #d1e7dd; color: #0f5132; }
     .empty { color: #666; font-style: italic; }
-    .notes { font-size: 12px; color: #555; max-width: 260px; }
+
+    /* Table panel — same card treatment as Manage Accounts */
+    .table-card { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 6px 18px 12px; }
+    .table-card table { margin-top: 6px; }
+    tbody tr:hover { background: rgba(110,20,35,0.04); }
+    .notes { font-size: 13.5px; color: #555; max-width: 320px; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
 </head>
@@ -210,19 +215,26 @@ $totalCount = (int) $pdo->query("SELECT COUNT(*) FROM counselor_log")->fetchColu
     <?php if (!$entries): ?>
         <p class="empty">No matching log entries.</p>
     <?php else: ?>
-        <table>
-            <tr><th>Date</th><th>Staff</th><th>Student</th><th>Action</th><th>Career</th><th>Notes</th></tr>
-            <?php foreach ($entries as $e): ?>
-                <tr>
-                    <td><?= date('M j, Y g:i A', strtotime($e['created_at'])) ?></td>
-                    <td><?= htmlspecialchars($e['counselor_name']) ?></td>
-                    <td><?= htmlspecialchars($e['student_name']) ?></td>
-                    <td><span class="action-tag action-<?= $e['action'] ?>"><?= htmlspecialchars(str_replace('_', ' ', $e['action'])) ?></span></td>
-                    <td><?= $e['career_title'] ? htmlspecialchars($e['career_title']) : '—' ?></td>
-                    <td class="notes"><?= $e['notes'] ? nl2br(htmlspecialchars($e['notes'])) : '—' ?></td>
-                </tr>
-            <?php endforeach; ?>
-        </table>
+        <div class="table-card">
+            <table>
+                <thead>
+                <tr><th>Date</th><th>Staff</th><th>Student</th><th>Action</th><th>Career</th><th>Notes</th></tr>
+                </thead>
+                <tbody>
+                <?php foreach ($entries as $e): ?>
+                    <tr>
+                        <td><?= date('M j, Y g:i A', strtotime($e['created_at'])) ?></td>
+                        <td><?= htmlspecialchars($e['counselor_name']) ?></td>
+                        <td><?= htmlspecialchars($e['student_name']) ?></td>
+                        <td><span class="action-tag action-<?= $e['action'] ?>"><?= htmlspecialchars(str_replace('_', ' ', $e['action'])) ?></span></td>
+                        <td><?= $e['career_title'] ? htmlspecialchars($e['career_title']) : '—' ?></td>
+                        <td class="notes"><?= $e['notes'] ? nl2br(htmlspecialchars($e['notes'])) : '—' ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     <?php endif; ?>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

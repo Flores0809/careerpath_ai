@@ -65,24 +65,24 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
     body > h1, body > .panel, body > .flash-success, body > .flash-error { max-width: 720px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; }
     .panel { background: #f5f5f5; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
-    .panel h2 { margin: 0 0 14px; color: #6e1423; font-size: 16px; }
-    label { display: block; font-size: 13px; font-weight: bold; margin: 10px 0 4px; }
+    .panel h2 { margin: 0 0 14px; color: #6e1423; font-size: 17.5px; }
+    label { display: block; font-size: 14.5px; font-weight: bold; margin: 10px 0 4px; }
     textarea, input[type=date], input[type=time] { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; box-sizing: border-box; }
     textarea { min-height: 70px; }
-    button { margin-top: 14px; padding: 9px 20px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; background: #6e1423; color: #fff; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
+    button { margin-top: 14px; padding: 9px 20px; border: none; border-radius: 6px; font-size: 15.5px; cursor: pointer; background: #6e1423; color: #fff; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
     .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
     .flash-error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
     .empty { color: #666; font-style: italic; }
     .item { border-top: 1px solid #eee; padding: 12px 0; }
     .item:first-of-type { border-top: none; }
     .item .top { display: flex; justify-content: space-between; align-items: baseline; }
-    .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+    .status-badge { font-size: 12.5px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
     .status-pending { background: #fff3cd; color: #856404; }
     .status-scheduled { background: #d1e7dd; color: #0f5132; }
     .status-completed { background: #f0dde1; color: #6e1423; }
     .status-cancelled { background: #e2e3e5; color: #41464b; }
-    .item .meta { font-size: 13px; color: #666; margin-top: 4px; }
-    .cancel-btn { background: none; border: none; color: #b02a37; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 0; margin-top: 6px; }
+    .item .meta { font-size: 14.5px; color: #666; margin-top: 4px; }
+    .cancel-btn { background: none; border: none; color: #b02a37; font-size: 13.5px; text-decoration: underline; cursor: pointer; padding: 0; margin-top: 6px; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
 </head>
@@ -146,5 +146,6 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

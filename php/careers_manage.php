@@ -70,12 +70,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'text' => 'AI-suggested RIASEC scores are shown below — review and click "Save Changes" to apply them, or edit further first.',
             ];
         }
+    } elseif ($action === 'ai_suggest_skills' && $careerId) {
+        // Backfills required skills for an ALREADY-APPROVED career that has
+        // none yet — the original seed catalog and any career approved
+        // before migration_20 added AI skill suggestions to the pending-side
+        // review flow never got this. Reuses the same /enrich endpoint the
+        // crawler pipeline already calls, just pointed at an approved
+        // career's own description instead of a raw scraped posting.
+        // Inserted directly (not staged for a separate review step) since a
+        // counselor triggered this deliberately here and can remove/edit any
+        // resulting row immediately with the existing "✕" button below —
+        // same as a skill they'd typed in by hand.
+        $careerStmt = $pdo->prepare("SELECT career_title, description, daily_task FROM careers WHERE career_id = :id");
+        $careerStmt->execute(['id' => $careerId]);
+        $careerRow = $careerStmt->fetch();
+
+        if (!$careerRow) {
+            $message = ['type' => 'error', 'text' => 'Could not find that career.'];
+        } else {
+            $categoryNames = $pdo->query("SELECT name FROM career_categories ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
+            $payload = json_encode([
+                'career_title' => $careerRow['career_title'],
+                'raw_description' => $careerRow['description'],
+                'raw_qualifications' => $careerRow['daily_task'],
+                'categories' => $categoryNames,
+            ]);
+
+            $ch = curl_init(ENRICH_SERVICE_URL);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $payload,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                CURLOPT_TIMEOUT => 35,
+            ]);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+
+            $result = $curlError ? null : json_decode($response, true);
+
+            if ($curlError || $httpCode !== 200 || !$result || empty($result['ai_enriched'])) {
+                $reason = $curlError ?: ($result['error'] ?? "HTTP $httpCode");
+                $message = ['type' => 'error', 'text' => "AI skill suggestion unavailable ($reason). Add skills manually below, or try again."];
+            } else {
+                // Skip anything that (case-insensitively) already exists for
+                // this career, in case this gets run more than once.
+                $existingStmt = $pdo->prepare("SELECT skill_name FROM skill_requirements WHERE career_id = :id");
+                $existingStmt->execute(['id' => $careerId]);
+                $existingNames = array_map('strtolower', $existingStmt->fetchAll(PDO::FETCH_COLUMN));
+
+                $insertSkill = $pdo->prepare(
+                    "INSERT INTO skill_requirements (career_id, skill_name, proficiency_level, is_required)
+                     VALUES (:career_id, :skill_name, :proficiency, :is_required)"
+                );
+                $addedCount = 0;
+                foreach (($result['skills'] ?? []) as $skill) {
+                    $skillName = trim($skill['skill_name'] ?? '');
+                    if ($skillName === '' || in_array(strtolower($skillName), $existingNames, true)) {
+                        continue;
+                    }
+                    $proficiency = mb_substr(trim($skill['proficiency_level'] ?? ''), 0, 150);
+                    $isRequired = !empty($skill['is_required']) ? 1 : 0;
+                    $insertSkill->execute([
+                        'career_id' => $careerId,
+                        'skill_name' => $skillName,
+                        'proficiency' => $proficiency,
+                        'is_required' => $isRequired,
+                    ]);
+                    $newSkillId = (int) $pdo->lastInsertId();
+                    log_change($pdo, 'skill_requirements', $newSkillId, $skillName, 'insert', null, [
+                        'career_id' => $careerId,
+                        'skill_name' => $skillName,
+                        'proficiency_level' => $proficiency,
+                        'is_required' => $isRequired,
+                    ], $currentUser['user_id']);
+                    $existingNames[] = strtolower($skillName);
+                    $addedCount++;
+                }
+                $message = $addedCount > 0
+                    ? ['type' => 'success', 'text' => "AI added $addedCount suggested skill(s) below — review, edit, or remove any before students see them."]
+                    : ['type' => 'error', 'text' => 'AI enrichment ran but returned no new skills to add (all suggestions already existed).'];
+            }
+        }
     } elseif ($action === 'add_skill' && $careerId) {
         $skillName = trim($_POST['skill_name'] ?? '');
-        $proficiency = $_POST['proficiency_level'] ?? 'basic';
-        if (!in_array($proficiency, ['basic', 'intermediate', 'advanced'], true)) {
-            $proficiency = 'basic';
-        }
+        // Free text now, not a fixed basic/intermediate/advanced enum — see
+        // migration_23_freetext_proficiency.sql.
+        $proficiency = mb_substr(trim($_POST['proficiency_level'] ?? ''), 0, 150);
         $isRequired = isset($_POST['is_required']) ? 1 : 0;
 
         if ($skillName === '') {
@@ -119,6 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $dailyTask = trim($_POST['daily_task'] ?? '');
         $pathway = trim($_POST['educational_pathway'] ?? '');
         $keySubjects = trim($_POST['key_subjects'] ?? '');
+        $careerScope = ($_POST['career_scope'] ?? '') === 'international' ? 'international' : 'local';
         $scores = [
             'r' => (int) ($_POST['r_score'] ?? 0),
             'i' => (int) ($_POST['i_score'] ?? 0),
@@ -142,13 +226,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare(
                 "UPDATE careers SET
                     career_title = :title, career_category = :category, description = :description, daily_task = :daily_task,
-                    educational_pathway = :pathway, key_subjects = :key_subjects,
+                    educational_pathway = :pathway, key_subjects = :key_subjects, career_scope = :scope,
                     r_score = :r, i_score = :i, a_score = :a, s_score = :s, e_score = :e, c_score = :c
                  WHERE career_id = :id"
             );
             $stmt->execute([
                 'title' => $title, 'category' => $category, 'description' => $description, 'daily_task' => $dailyTask,
-                'pathway' => $pathway, 'key_subjects' => $keySubjects !== '' ? $keySubjects : null,
+                'pathway' => $pathway, 'key_subjects' => $keySubjects !== '' ? $keySubjects : null, 'scope' => $careerScope,
                 'r' => $scores['r'], 'i' => $scores['i'], 'a' => $scores['a'],
                 's' => $scores['s'], 'e' => $scores['e'], 'c' => $scores['c'],
                 'id' => $careerId,
@@ -224,24 +308,24 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
     .panel { background: #f5f5f5; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 22px 26px; margin-bottom: 20px; }
 
     .search-form { display: flex; gap: 10px; }
-    .search-form input[type=text] { flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-    .search-form button { padding: 10px 20px; background: #6e1423; color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
+    .search-form input[type=text] { flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 6px; font-size: 15.5px; }
+    .search-form button { padding: 10px 20px; background: #6e1423; color: #fff; border: none; border-radius: 6px; font-size: 15.5px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
     .search-form button:hover { background: #4a0c17; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
 
     .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
     .flash-error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
 
     .career-row { border: 1px solid #eee; border-radius: 8px; padding: 14px 18px; margin-bottom: 12px; }
-    .career-row summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+    .career-row summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 15.5px; }
     .career-row summary::-webkit-details-marker { display: none; }
-    .career-row summary .title { font-weight: bold; color: #6e1423; font-size: 15px; }
-    .career-row summary .meta { color: #888; font-size: 12px; }
-    .status-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; text-transform: uppercase; margin-left: 8px; }
+    .career-row summary .title { font-weight: bold; color: #6e1423; font-size: 16.5px; }
+    .career-row summary .meta { color: #888; font-size: 13.5px; }
+    .status-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12.5px; text-transform: uppercase; margin-left: 8px; }
     .status-active { background: #d1e7dd; color: #0f5132; }
     .status-inactive { background: #eee; color: #666; }
     .status-pending { background: #fff3cd; color: #856404; }
 
-    label { display: block; font-size: 13px; font-weight: bold; margin: 12px 0 4px; }
+    label { display: block; font-size: 14.5px; font-weight: bold; margin: 12px 0 4px; }
     input[type=text], textarea { width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; box-sizing: border-box; }
     select[name=career_category] { width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; box-sizing: border-box; }
     textarea { min-height: 56px; }
@@ -249,10 +333,10 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
     .riasec-grid div { text-align: center; }
     .riasec-grid input { text-align: center; }
     .actions { margin-top: 14px; }
-    button.btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; margin-right: 8px; }
+    button.btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 14.5px; cursor: pointer; margin-right: 8px; }
     .btn-primary { background: #6e1423; color: #fff; }
     .btn-outline { background: #fff; color: #6e1423; border: 1px solid #6e1423; }
-    .empty { color: #888; font-style: italic; font-size: 14px; }
+    .empty { color: #888; font-style: italic; font-size: 15.5px; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
 </head>
@@ -318,7 +402,7 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
                             <option value="<?= htmlspecialchars($opt['name']) ?>" title="<?= htmlspecialchars($opt['description'] ?? '') ?>" <?= $opt['name'] === ($c['career_category'] ?? '') ? 'selected' : '' ?>><?= htmlspecialchars($opt['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <p style="font-size:12px;color:#888;margin:4px 0 0;">Need a new category, or want to edit what one covers? <a href="career_categories.php" style="color:#6e1423;">Manage Categories</a>.</p>
+                    <p style="font-size:13.5px;color:#888;margin:4px 0 0;">Need a new category, or want to edit what one covers? <a href="career_categories.php" style="color:#6e1423;">Manage Categories</a>.</p>
 
                     <label>Description</label>
                     <textarea name="description"><?= htmlspecialchars($c['description']) ?></textarea>
@@ -331,6 +415,13 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
 
                     <label>Key subjects (JHS/SHS subjects to focus on for this career)</label>
                     <input type="text" name="key_subjects" value="<?= htmlspecialchars($c['key_subjects'] ?? '') ?>" placeholder="e.g. Mathematics, Physics, Computer/ICT electives">
+
+                    <label>Local or International?</label>
+                    <select name="career_scope">
+                        <option value="local" <?= ($c['career_scope'] ?? 'local') === 'local' ? 'selected' : '' ?>>🇵🇭 Local (Philippines)</option>
+                        <option value="international" <?= ($c['career_scope'] ?? '') === 'international' ? 'selected' : '' ?>>🌍 International</option>
+                    </select>
+                    <p style="font-size:13.5px;color:#888;margin:4px 0 0;">Careers approved before this feature existed default to Local — correct it here if this one actually came from an international source. On the student results page, if a Local and International career share a similar title, both are shown side by side for the student's dream career.</p>
 
                     <label>
                         RIASEC scores (0–100)
@@ -358,7 +449,14 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
                 </form>
 
                 <div style="margin-top:16px;padding-top:14px;border-top:1px solid #eee;">
-                    <label style="margin-top:0;">Required skills (skills-verification mechanism)</label>
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                        <label style="margin-top:0;">Required skills (skills-verification mechanism)</label>
+                        <form method="POST" style="margin:0;">
+                            <input type="hidden" name="action" value="ai_suggest_skills">
+                            <input type="hidden" name="career_id" value="<?= (int) $c['career_id'] ?>">
+                            <button type="submit" class="btn btn-outline" style="padding:4px 10px;font-size:13.5px;">✨ Suggest Skills with AI</button>
+                        </form>
+                    </div>
                     <?php if (empty($skillsByCareer[$c['career_id']])): ?>
                         <p class="empty" style="margin:4px 0 10px;">No skills defined yet for this career.</p>
                     <?php else: ?>
@@ -367,9 +465,12 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
                                 <form method="POST" style="display:inline-block;margin:0 6px 6px 0;" onsubmit="return confirm('Remove this skill requirement?');">
                                     <input type="hidden" name="action" value="delete_skill">
                                     <input type="hidden" name="skill_req_id" value="<?= (int) $skill['skill_req_id'] ?>">
-                                    <button type="submit" class="btn btn-outline" style="padding:4px 10px;font-size:12px;">
+                                    <button type="submit" class="btn btn-outline" style="padding:4px 10px;font-size:13.5px;">
                                         <?= htmlspecialchars($skill['skill_name']) ?>
-                                        (<?= htmlspecialchars($skill['proficiency_level']) ?><?= $skill['is_required'] ? '' : ', optional' ?>) ✕
+                                        <?php $profNote = trim($skill['proficiency_level'] ?? ''); ?>
+                                        <?php if ($profNote !== '' || !$skill['is_required']): ?>
+                                            (<?= htmlspecialchars($profNote) ?><?= ($profNote !== '' && !$skill['is_required']) ? ', ' : '' ?><?= $skill['is_required'] ? '' : 'optional' ?>)
+                                        <?php endif; ?> ✕
                                     </button>
                                 </form>
                             <?php endforeach; ?>
@@ -380,12 +481,8 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
                         <input type="hidden" name="action" value="add_skill">
                         <input type="hidden" name="career_id" value="<?= (int) $c['career_id'] ?>">
                         <input type="text" name="skill_name" placeholder="e.g. basic coding" style="flex:1;min-width:160px;" required>
-                        <select name="proficiency_level" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;">
-                            <option value="basic">Basic</option>
-                            <option value="intermediate">Intermediate</option>
-                            <option value="advanced">Advanced</option>
-                        </select>
-                        <label style="display:flex;align-items:center;gap:4px;font-weight:normal;margin:0;font-size:13px;">
+                        <input type="text" name="proficiency_level" placeholder="What level is needed? (optional)" style="flex:1;min-width:200px;padding:6px 8px;border:1px solid #ccc;border-radius:4px;">
+                        <label style="display:flex;align-items:center;gap:4px;font-weight:normal;margin:0;font-size:14.5px;">
                             <input type="checkbox" name="is_required" value="1" checked style="width:auto;"> Required
                         </label>
                         <button type="submit" class="btn btn-primary" style="padding:6px 14px;">Add Skill</button>
@@ -394,5 +491,6 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
             </details>
         <?php endforeach; ?>
     </div>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

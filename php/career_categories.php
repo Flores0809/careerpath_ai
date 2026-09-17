@@ -135,6 +135,19 @@ $categories = $pdo->query(
      FROM career_categories cc
      ORDER BY cc.name"
 )->fetchAll();
+
+// Which actual careers sit under each category — so a "4 live" count on a
+// card isn't a black box staff have to go guess at over on Manage Careers.
+// Grouped in PHP (one query) rather than N queries, one per category.
+$careersByCategory = [];
+$careersListStmt = $pdo->query(
+    "SELECT career_id, career_title, career_category, career_scope, status
+     FROM careers
+     ORDER BY career_title"
+);
+foreach ($careersListStmt->fetchAll() as $c) {
+    $careersByCategory[$c['career_category']][] = $c;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -144,35 +157,45 @@ $categories = $pdo->query(
 <style>
     * { box-sizing: border-box; }
     body { font-family: Arial, sans-serif; margin: 0; padding: 40px 20px; color: #222; background: #faf7f5; }
-    .wrap { max-width: 1100px; margin: 0 auto; }
+    .wrap { max-width: 1280px; margin: 0 auto; }
     h1 { color: #6e1423; margin-bottom: 4px; }
     .subtitle { color: #666; margin-top: 0; margin-bottom: 24px; }
 
     .panel { background: #f5f5f5; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 22px 26px; margin-bottom: 20px; }
-    .panel h2 { margin: 0 0 14px; color: #6e1423; font-size: 16px; }
+    .panel h2 { margin: 0 0 14px; color: #6e1423; font-size: 17.5px; }
 
     .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
     .flash-error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
 
-    label { display: block; font-size: 13px; font-weight: bold; margin: 12px 0 4px; }
+    label { display: block; font-size: 14.5px; font-weight: bold; margin: 12px 0 4px; }
     label:first-child { margin-top: 0; }
     input[type=text], textarea { width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; box-sizing: border-box; }
     textarea { min-height: 50px; }
-    button.btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; margin-right: 8px; }
+    button.btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 14.5px; cursor: pointer; margin-right: 8px; }
     .btn-primary { background: #6e1423; color: #fff; }
     .btn-outline { background: #fff; color: #6e1423; border: 1px solid #6e1423; }
     .btn-danger { background: #fff; color: #b02a37; border: 1px solid #b02a37; }
     .actions { margin-top: 14px; }
 
     .category-row { border: 1px solid #eee; border-radius: 8px; padding: 14px 18px; margin-bottom: 12px; }
-    .category-row summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 14px; gap: 10px; }
+    .category-row summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 15.5px; gap: 10px; }
     .category-row summary::-webkit-details-marker { display: none; }
-    .category-row summary .title { font-weight: bold; color: #6e1423; font-size: 15px; }
-    .category-row summary .desc { color: #666; font-size: 12.5px; font-weight: normal; margin-top: 2px; }
+    .category-row summary .title { font-weight: bold; color: #6e1423; font-size: 16.5px; }
+    .category-row summary .desc { color: #666; font-size: 14px; font-weight: normal; margin-top: 2px; }
     .category-row summary .no-desc { color: #aaa; font-style: italic; font-weight: normal; }
-    .count-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: #f0dde1; color: #6e1423; white-space: nowrap; }
+    .count-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12.5px; background: #f0dde1; color: #6e1423; white-space: nowrap; }
     .count-tag.zero { background: #eee; color: #888; }
-    .empty { color: #888; font-style: italic; font-size: 14px; }
+    .empty { color: #888; font-style: italic; font-size: 15.5px; }
+
+    .careers-in-category { margin-top: 14px; padding: 12px 14px; background: #fff; border: 1px solid #eee; border-radius: 6px; }
+    .careers-in-category-label { margin: 0 0 8px; font-size: 13.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3px; color: #888; }
+    .careers-in-category-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .careers-in-category-list li { display: flex; align-items: center; gap: 8px; font-size: 15px; padding: 4px 0; border-bottom: 1px solid #f5f5f5; }
+    .careers-in-category-list li:last-child { border-bottom: none; }
+    .cic-title { font-weight: bold; color: #222; }
+    .cic-tag { font-size: 12px; padding: 1px 7px; border-radius: 10px; background: #f0dde1; color: #6e1423; }
+    .cic-scope-international { background: #e2e8f0; color: #1e3a5f; }
+    .cic-inactive { background: #eee; color: #888; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
 </head>
@@ -224,6 +247,26 @@ $categories = $pdo->query(
                     </span>
                 </summary>
 
+                <?php $catCareers = $careersByCategory[$cat['name']] ?? []; ?>
+                <div class="careers-in-category">
+                    <p class="careers-in-category-label">Careers in this category</p>
+                    <?php if (!$catCareers): ?>
+                        <p class="empty" style="margin:0;">No approved careers use this category yet.</p>
+                    <?php else: ?>
+                        <ul class="careers-in-category-list">
+                            <?php foreach ($catCareers as $c): ?>
+                                <li>
+                                    <span class="cic-title"><?= htmlspecialchars($c['career_title']) ?></span>
+                                    <span class="cic-tag cic-scope-<?= htmlspecialchars($c['career_scope'] ?? 'local') ?>"><?= htmlspecialchars(ucfirst($c['career_scope'] ?? 'local')) ?></span>
+                                    <?php if ($c['status'] !== 'active'): ?>
+                                        <span class="cic-tag cic-inactive"><?= htmlspecialchars(ucfirst($c['status'])) ?></span>
+                                    <?php endif; ?>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                </div>
+
                 <form method="POST" style="margin-top:14px;">
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="category_id" value="<?= (int) $cat['category_id'] ?>">
@@ -244,5 +287,6 @@ $categories = $pdo->query(
             </details>
         <?php endforeach; ?>
     </div>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

@@ -237,13 +237,13 @@ $welcome = isset($_GET['welcome']);
 <style>
     body { font-family: Arial, sans-serif; max-width: 1280px; margin: 40px auto; padding: 0 20px; color: #222; }
     h1 { color: #6e1423; }
-    h2 { color: #6e1423; font-size: 18px; margin-top: 34px; }
+    h2 { color: #6e1423; font-size: 19.5px; margin-top: 34px; }
     .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
     .flash-error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 15.5px; }
     th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
-    th { color: #555; font-size: 12px; text-transform: uppercase; }
-    .role-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; text-transform: uppercase; }
+    th { color: #555; font-size: 13.5px; text-transform: uppercase; }
+    .role-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12.5px; text-transform: uppercase; }
     .role-administrator { background: #e7d9f7; color: #4b2e83; }
     .role-counselor { background: #f0dde1; color: #6e1423; }
     .status-active { color: #0f5132; }
@@ -251,20 +251,20 @@ $welcome = isset($_GET['welcome']);
     form.inline { display: inline; }
     input[type=text], input[type=email], input[type=password], select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
     .card { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; }
-    label { display: block; font-size: 13px; font-weight: bold; margin: 10px 0 4px; }
+    label { display: block; font-size: 14.5px; font-weight: bold; margin: 10px 0 4px; }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    button { padding: 6px 14px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
+    button { padding: 6px 14px; border: none; border-radius: 6px; font-size: 14.5px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
     .btn-primary { background: #6e1423; color: #fff; }
     .btn-danger { background: #b02a37; color: #fff; }
     .btn-secondary { background: #6c757d; color: #fff; }
     .actions-cell button { margin: 2px 2px 2px 0; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
-    details summary { cursor: pointer; color: #6e1423; font-size: 13px; }
+    details summary { cursor: pointer; color: #6e1423; font-size: 14.5px; }
     .empty { color: #666; font-style: italic; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 
     /* Collapsible "create account" panel, styled as a button until opened */
     .create-toggle { margin-top: 18px; }
-    .create-toggle > summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; background: #6e1423; color: #fff; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; }
+    .create-toggle > summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; background: #6e1423; color: #fff; padding: 10px 20px; border-radius: 6px; font-size: 15.5px; font-weight: bold; cursor: pointer; }
     .create-toggle > summary::-webkit-details-marker { display: none; }
     .create-toggle > summary:hover { background: #4a0c17; }
     .create-toggle[open] > summary { margin-bottom: 16px; }
@@ -272,19 +272,19 @@ $welcome = isset($_GET['welcome']);
 
     /* Tabs for Administrators / Counselors / Students */
     .tabs { display: flex; gap: 4px; margin-top: 30px; border-bottom: 2px solid #eee; flex-wrap: wrap; }
-    .tab-btn { background: none; border: none; padding: 10px 18px; font-size: 14px; font-weight: bold; color: #888; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color 0.15s ease, border-color 0.15s ease; font-family: inherit; }
+    .tab-btn { background: none; border: none; padding: 10px 18px; font-size: 15.5px; font-weight: bold; color: #888; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color 0.15s ease, border-color 0.15s ease; font-family: inherit; }
     .tab-btn:hover { color: #6e1423; }
     .tab-btn.active { color: #6e1423; border-bottom-color: #6e1423; }
-    .tab-count { display: inline-block; background: #eee; color: #555; border-radius: 10px; padding: 1px 8px; font-size: 11px; margin-left: 5px; }
+    .tab-count { display: inline-block; background: #eee; color: #555; border-radius: 10px; padding: 1px 8px; font-size: 12.5px; margin-left: 5px; }
     .tab-btn.active .tab-count { background: #f0dde1; color: #6e1423; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
     /* Search bar */
     .search-bar { position: relative; max-width: 340px; margin: 18px 0 4px; }
-    .search-bar input { width: 100%; padding: 9px 14px 9px 32px; border: 1px solid #ccc; border-radius: 20px; font-size: 14px; box-sizing: border-box; }
+    .search-bar input { width: 100%; padding: 9px 14px 9px 32px; border: 1px solid #ccc; border-radius: 20px; font-size: 15.5px; box-sizing: border-box; }
     .search-bar input:focus { outline: none; border-color: #6e1423; box-shadow: 0 0 0 2px rgba(110,20,35,0.12); }
-    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; opacity: 0.55; pointer-events: none; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14.5px; opacity: 0.55; pointer-events: none; }
     .no-results-row td { text-align: center; color: #888; font-style: italic; padding: 18px 10px; }
 
     /* Table panel + row polish */
@@ -452,7 +452,7 @@ $welcome = isset($_GET['welcome']);
     </div>
 
     <div class="tab-panel" data-tab="students">
-        <p style="font-size:13px;color:#666;margin-top:0;">Students create their own accounts at <code>student_register.php</code> — administrators can view accounts, disable/re-enable them here (e.g. for misuse), and reset a student's password if they're locked out. Name/email/grade level still can't be edited here.</p>
+        <p style="font-size:14.5px;color:#666;margin-top:0;">Students create their own accounts at <code>student_register.php</code> — administrators can view accounts, disable/re-enable them here (e.g. for misuse), and reset a student's password if they're locked out. Name/email/grade level still can't be edited here.</p>
         <div class="table-card">
             <table>
                 <thead>
@@ -477,7 +477,7 @@ $welcome = isset($_GET['welcome']);
                         <td><?= (int) $s['submission_count'] ?></td>
                         <td class="status-<?= htmlspecialchars($s['status']) ?>"><?= htmlspecialchars($s['status']) ?></td>
                         <td class="actions-cell">
-                            <a href="students_lookup.php?view=<?= (int) $s['student_id'] ?>&from=users" class="btn-secondary" style="display:inline-block;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:13px;margin:2px 2px 2px 0;">View History</a>
+                            <a href="students_lookup.php?view=<?= (int) $s['student_id'] ?>&from=users" class="btn-secondary" style="display:inline-block;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:14.5px;margin:2px 2px 2px 0;">View History</a>
                             <details style="display:inline-block;vertical-align:top;">
                                 <summary>Reset password</summary>
                                 <form method="POST" style="margin-top:8px;">
@@ -551,5 +551,6 @@ $welcome = isset($_GET['welcome']);
         });
     })();
     </script>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

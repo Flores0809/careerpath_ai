@@ -12,6 +12,25 @@ if (current_student()) {
 
 $error = null;
 
+// Locked list of MEII grade/section names (from the official section list) —
+// dropdown only, no free text, so a student can't register under a
+// mistyped/nonexistent section. Add new sections here as MEII announces them.
+$gradeLevelOptions = [
+    'Grade 7A - HEMINGWAY',
+    'Grade 7B - SHAKESPEARE',
+    'Grade 7C - FITZGERALD',
+    'Grade 8A - KIPLING',
+    'Grade 8B - CHAUCER',
+    'Grade 8C - BLAKE',
+    'Grade 9A - TOLSTOY',
+    'Grade 9B - TOLKIEN',
+    'Grade 9C - ANDERSEN',
+    'Grade 10A - DICKENS',
+    'Grade 10B - TWAIN',
+    'Grade 11 - CURIE (GAS)',
+    'Grade 12 - MENDELEEV (GAS)',
+];
+
 // MEII doesn't issue students their own institutional email addresses (unlike
 // staff), so this can't be gated by an email-domain check the way many school
 // systems do. Instead, self-registration requires a shared access code that
@@ -28,6 +47,7 @@ try {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name'] ?? '');
+    $studentNumber = trim($_POST['student_number'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $gradeLevel = trim($_POST['grade_level'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -48,11 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hash = password_hash($password, PASSWORD_DEFAULT);
         try {
             $stmt = $pdo->prepare(
-                "INSERT INTO students (name, email, password_hash, grade_level, status)
-                 VALUES (:name, :email, :hash, :grade_level, 'active')"
+                "INSERT INTO students (name, student_number, email, password_hash, grade_level, status)
+                 VALUES (:name, :student_number, :email, :hash, :grade_level, 'active')"
             );
             $stmt->execute([
                 'name' => $name,
+                'student_number' => $studentNumber !== '' ? $studentNumber : null,
                 'email' => $email,
                 'hash' => $hash,
                 'grade_level' => $gradeLevel !== '' ? $gradeLevel : null,
@@ -69,7 +90,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: student_dashboard.php?welcome=1');
             exit;
         } catch (PDOException $e) {
-            $error = 'Could not create the account (that email may already be in use).';
+            // Log the real error either way — previously ANY failure here
+            // (even one unrelated to email, e.g. a missing/renamed column
+            // from a migration that hadn't been run yet) was shown to the
+            // student as "that email may already be in use", which was
+            // wrong and made a real bug look like a normal duplicate-signup
+            // message. Now we only claim "already in use" when the database
+            // actually reports a duplicate-key error (1062) on that specific
+            // column; anything else surfaces as a generic system-error
+            // message instead of a false accusation.
+            error_log('student_register.php: account creation failed — ' . $e->getMessage());
+            $sqlErrorCode = (int) ($e->errorInfo[1] ?? 0);
+            if ($sqlErrorCode === 1062 && str_contains($e->getMessage(), 'student_number')) {
+                $error = 'That LRN is already registered to another account.';
+            } elseif ($sqlErrorCode === 1062 && str_contains($e->getMessage(), 'email')) {
+                $error = 'That email is already registered to another account.';
+            } else {
+                $error = 'Could not create the account due to a system error. Please try again, or let your guidance counselor know if this keeps happening.';
+            }
         }
     }
 }
@@ -81,13 +119,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <title>CareerPath AI — Student Sign Up</title>
 <style>
     body { font-family: Arial, sans-serif; max-width: 440px; margin: 60px auto; padding: 0 20px; color: #222; }
-    h1 { color: #6e1423; font-size: 22px; }
-    .intro { color: #555; font-size: 14px; margin-bottom: 24px; }
-    label { display: block; font-size: 13px; font-weight: bold; margin: 14px 0 4px; }
+    h1 { color: #6e1423; font-size: 24px; }
+    .intro { color: #555; font-size: 15.5px; margin-bottom: 24px; }
+    label { display: block; font-size: 14.5px; font-weight: bold; margin: 14px 0 4px; }
     input[type=text], input[type=email], input[type=password] { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    button { margin-top: 20px; width: 100%; padding: 10px; background: #6e1423; color: #fff; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
-    .error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
-    .switch { margin-top: 18px; font-size: 13px; text-align: center; }
+    button { margin-top: 20px; width: 100%; padding: 10px; background: #6e1423; color: #fff; border: none; border-radius: 6px; font-size: 16.5px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
+    .error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 15.5px; }
+    .switch { margin-top: 18px; font-size: 14.5px; text-align: center; }
     .switch a { color: #6e1423; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
@@ -106,17 +144,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($requiredAccessCode !== ''): ?>
             <label>MEII student access code</label>
             <input type="text" name="access_code" value="" required autocomplete="off">
-            <p style="font-size:12px;color:#888;margin-top:2px;">Ask your guidance counselor or class adviser for this if you don't have it.</p>
+            <p style="font-size:13.5px;color:#888;margin-top:2px;">Ask your guidance counselor or class adviser for this if you don't have it.</p>
         <?php endif; ?>
 
         <label>Full name</label>
         <input type="text" name="name" value="<?= htmlspecialchars($_POST['name'] ?? '') ?>" required>
 
+        <label>LRN (optional)</label>
+        <input type="text" name="student_number" value="<?= htmlspecialchars($_POST['student_number'] ?? '') ?>" placeholder="Your 12-digit Learner Reference Number">
+
         <label>Email</label>
         <input type="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
 
         <label>Grade level (optional)</label>
-        <input type="text" name="grade_level" value="<?= htmlspecialchars($_POST['grade_level'] ?? '') ?>" placeholder="e.g. Grade 10, Grade 12 - STEM">
+        <select name="grade_level" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+            <option value="">— Select grade level —</option>
+            <?php foreach ($gradeLevelOptions as $option): ?>
+                <option value="<?= htmlspecialchars($option) ?>" <?= ($_POST['grade_level'] ?? '') === $option ? 'selected' : '' ?>><?= htmlspecialchars($option) ?></option>
+            <?php endforeach; ?>
+        </select>
 
         <label>Password (min. 8 characters)</label>
         <input type="password" name="password" required minlength="8">
@@ -129,5 +175,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <p class="switch">Already have an account? <a href="student_login.php">Log in</a></p>
     <p class="switch"><a href="index.php">&larr; Back to home</a></p>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

@@ -24,8 +24,18 @@ if not exist venv (
     call venv\Scripts\activate.bat
     echo Installing required packages...
     pip install -r requirements.txt
+    copy /y requirements.txt venv\requirements.snapshot.txt >nul
 ) else (
     call venv\Scripts\activate.bat
+    REM Only reinstall if requirements.txt changed since the last successful
+    REM install -- avoids pip re-checking PyPI (looks like re-downloading)
+    REM on every single launch when nothing actually changed.
+    fc /b requirements.txt venv\requirements.snapshot.txt >nul 2>&1
+    if errorlevel 1 (
+        echo Installing/updating required packages...
+        pip install -r requirements.txt --quiet --disable-pip-version-check
+        copy /y requirements.txt venv\requirements.snapshot.txt >nul
+    )
 )
 
 :menu

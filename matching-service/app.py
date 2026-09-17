@@ -1,17 +1,22 @@
 """
 CareerPath AI - Hybrid Recommendation Engine + AI Enrichment Layer
 --------------------------------------------------------------------
-Dedicated Python microservice with two independent jobs:
+Dedicated Python microservice with three independent jobs:
 
   1. /match   - RIASEC-based career matching using Scikit-learn cosine
                 similarity (Chapter III, Layer 2 - Python Flask Matching
                 Microservice). Runs completely independently of any
                 external AI service and needs only MySQL.
 
-  2. /enrich  - AI enrichment layer using the Gemini API (Gemini 2.5
+  2. /enrich  - AI enrichment layer using the Gemini API (Gemini 3.5
                 Flash-Lite) to turn a raw scraped career title/description
                 into a polished description, daily-task list, educational
-                pathway, and a suggested RIASEC vector. This is the
+                pathway, suggested RIASEC vector, and suggested required
+                skills. Called automatically by the crawler scripts right
+                after a new posting is staged (see crawler/*.py), so a
+                counselor opening Career Review usually finds entries
+                already enriched instead of having to trigger it by hand.
+                This is the
                 "secondary enrichment layer" described in the paper's
                 Technology Stack section — if the API key is missing or the
                 call fails for any reason, /enrich reports that clearly so
@@ -19,22 +24,44 @@ Dedicated Python microservice with two independent jobs:
                 fields untouched. Nothing here is required for /match to
                 keep working.
 
+  3. /student_commentary - AI commentary shown directly to a STUDENT about
+                their OWN assessment result (migration_21_student_ai_
+                commentary.sql), called once by php/submit.php right after a
+                new student_profiles row is inserted and cached on that row.
+                Unlike /enrich (which drafts NEW career content for a staff
+                member to review before anyone else sees it), this text is
+                never staff-reviewed before display -- to keep it
+                defensible, the prompt restricts Gemini to paraphrasing
+                data the system already computed/verified (the student's own
+                deterministic RIASEC scores, the counselor-approved career
+                record) rather than asserting new facts. The one exception
+                (suggesting skills for a career with no verified
+                skill_requirements yet) is flagged by a boolean this
+                endpoint computes itself in Python -- never left for the
+                model to self-report -- so the PHP pages can visibly label
+                that content as an AI suggestion rather than verified data.
+
 This only needs a MySQL connection to the `careerpath_ai` database created by
 database/schema.sql.
 
 Run:
     pip install -r requirements.txt
-    set GEMINI_API_KEY=...      (only needed for /enrich; get one at
+    Create a matching-service/.env file (git-ignored, never committed) with:
+        GEMINI_API_KEY=...      (only needed for /enrich and
+                                  /student_commentary; get one at
                                   https://aistudio.google.com/apikey)
     python app.py
 Then POST a RIASEC vector to http://localhost:5000/match
 Or POST a career title to http://localhost:5000/enrich
+Or POST a student's result to http://localhost:5000/student_commentary
 """
 
 import os
 import subprocess
 import sys
+import threading
 import time
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource
 import numpy as np
@@ -43,6 +70,11 @@ import pymysql
 import pymysql.cursors
 from pydantic import BaseModel
 
+# Loads matching-service/.env if present (git-ignored — see .gitignore) so
+# each teammate can keep their own GEMINI_API_KEY locally without it ever
+# being committed/pushed to GitHub. Safe to skip if the file doesn't exist.
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
 app = Flask(__name__)
 api = Api(app)
 
@@ -50,7 +82,7 @@ RIASEC_KEYS = ["R", "I", "A", "S", "E", "C"]
 
 # --- AI enrichment config -------------------------------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 _gemini_client = None
 
 
@@ -230,6 +262,18 @@ class RiasecScores(BaseModel):
     C: int
 
 
+class SuggestedSkill(BaseModel):
+    skill_name: str
+    # Free text (e.g. "Comfortable with basic HTML/CSS"), NOT a fixed
+    # basic/intermediate/advanced enum -- the project used to constrain this
+    # to those three buckets, but classifying every skill into one of three
+    # rigid levels turned out to be more trouble than it was worth, so this
+    # is now just a short descriptive phrase. See skill_requirements /
+    # pending_career_skills columns (both plain VARCHAR as of migration 23).
+    proficiency_level: str
+    is_required: bool
+
+
 class CareerEnrichment(BaseModel):
     """Structured output schema for Gemini — the SDK enforces this shape
     directly, so there's no free-form JSON parsing to defend against here."""
@@ -237,6 +281,22 @@ class CareerEnrichment(BaseModel):
     daily_task: str
     educational_pathway: str
     riasec: RiasecScores
+    # Feeds the skills-verification mechanism (skill_requirements /
+    # pending_career_skills) — see migration_20_pending_career_skills.sql.
+    # Staged here rather than written straight into skill_requirements
+    # because the posting isn't an approved career yet; a counselor
+    # reviews/edits these on careers.php before they're copied over on
+    # approval.
+    skills: list[SuggestedSkill]
+    # Best-guess Category / Industry Cluster, expected to be copied verbatim
+    # from the `categories` list given in the prompt (or left "" if nothing
+    # fits well). Kept as a plain str rather than a Literal/Enum because the
+    # valid set is whatever's currently in the career_categories table
+    # (counselor-managed on career_categories.php) -- it can't be hardcoded
+    # at class-definition time. call_gemini_enrichment() re-validates this
+    # against the actual list before trusting it, same defensive pattern
+    # already used below for proficiency_level.
+    category: str
 
 
 ENRICH_PROMPT_TEMPLATE = """You are an assistant helping a Philippine career-guidance system enrich \
@@ -247,6 +307,8 @@ Given the career/job title and raw scraped text below, produce:
 - daily_task: a short comma-separated list of 3-5 typical daily tasks.
 - educational_pathway: the typical Philippine degree/TVET path, e.g. "BS Information Technology" or "TVET / Vocational Certificate".
 - riasec: integer scores from 0-100 for each of R, I, A, S, E, C, representing the Holland Code / RIASEC profile of this career per Holland's Theory of Vocational Choice.
+- skills: 3 to 6 concrete required skills a Junior/Senior High School student could realistically start building toward this career. For each skill give: skill_name (short, e.g. "Basic coding" or "First aid"), proficiency_level (a short free-text phrase describing what's needed when first entering this field -- e.g. "Comfortable with basic HTML/CSS" or "Can follow food-safety protocols under supervision" -- concrete and specific, not a single word like "basic"), and is_required (true if essential, false if merely a plus).
+- category: pick the single best-fitting Category / Industry Cluster for this career from this exact list (copy the name character-for-character): {categories_list}. If genuinely none of them fit, return an empty string instead of guessing.
 
 Career/job title: {career_title}
 Raw scraped description (may be messy or empty): {raw_description}
@@ -254,20 +316,21 @@ Raw scraped qualifications (may be messy or empty): {raw_qualifications}
 """
 
 
-def call_gemini_enrichment(career_title, raw_description="", raw_qualifications=""):
+def call_gemini_enrichment(career_title, raw_description="", raw_qualifications="", valid_categories=None):
     client = get_gemini_client()
+    valid_categories = valid_categories or []
     prompt = ENRICH_PROMPT_TEMPLATE.format(
         career_title=career_title,
         raw_description=raw_description,
         raw_qualifications=raw_qualifications,
+        categories_list=", ".join(valid_categories) if valid_categories else "(no categories configured yet)",
     )
     response = client.models.generate_content(
         model=GEMINI_MODEL,
         contents=prompt,
         config={
-            "response_format": {
-                "text": {"mime_type": "application/json", "schema": CareerEnrichment.model_json_schema()}
-            },
+            "response_mime_type": "application/json",
+            "response_schema": CareerEnrichment,
         },
     )
     parsed = CareerEnrichment.model_validate_json(response.text)
@@ -277,19 +340,59 @@ def call_gemini_enrichment(career_title, raw_description="", raw_qualifications=
         for key in RIASEC_KEYS
     }
 
+    # proficiency_level is free text now (see SuggestedSkill above), so there's
+    # no fixed set of values to validate against -- just trim and cap the
+    # length to match the column (VARCHAR(150), same as skill_name). Capped
+    # at 6 skills so the review form on careers.php doesn't get unbounded.
+    skills = []
+    for s in parsed.skills[:6]:
+        name = (s.skill_name or "").strip()
+        if not name:
+            continue
+        level = (s.proficiency_level or "").strip()
+        skills.append({
+            "skill_name": name[:150],  # matches skill_name VARCHAR(150)
+            "proficiency_level": level[:150],  # matches proficiency_level VARCHAR(150)
+            "is_required": bool(s.is_required),
+        })
+
+    # Same defensive re-validation as proficiency_level above, but against a
+    # *dynamic* list (the current career_categories rows) instead of a fixed
+    # set -- Gemini is asked to copy a name verbatim, but never trusted to
+    # get that exactly right, so this only accepts an actual, currently-
+    # valid category (matched case-insensitively, canonical casing from the
+    # list wins). Anything else -- including a made-up category, or Gemini
+    # genuinely returning "" because nothing fit -- becomes "" here, which
+    # careers.php renders as "no category pre-selected," same as today.
+    category = (parsed.category or "").strip()
+    category_lookup = {c.strip().lower(): c.strip() for c in valid_categories}
+    category = category_lookup.get(category.lower(), "")
+
     return {
         "description": parsed.description.strip(),
         "daily_task": parsed.daily_task.strip(),
         "educational_pathway": parsed.educational_pathway.strip(),
         "riasec": clamped_riasec,
+        "skills": skills,
+        "category": category,
     }
 
 
 class EnrichResource(Resource):
     """
-    POST { "career_title": "...", "raw_description": "...", "raw_qualifications": "..." }
+    POST { "career_title": "...", "raw_description": "...", "raw_qualifications": "...",
+           "categories": ["Healthcare & Medical", "Technology & IT", ...] }
 
-    Returns 200 with {"ai_enriched": true, ...fields...} on success.
+    "categories" should be the caller's current list of career_categories
+    names (php/career_categories.php-managed) -- optional, but without it
+    the returned "category" will always be "" since there's nothing valid to
+    match against.
+
+    Returns 200 with {"ai_enriched": true, ...fields..., "skills": [...],
+    "category": "..."} on success. "category" is "" when nothing in the
+    given list was a good fit -- callers should treat that the same as "no
+    AI suggestion," leaving the category picker for a counselor to fill in
+    by hand, exactly as it works today.
     Returns 503 with {"ai_enriched": false, "error": "..."} if the API key is
     missing or the Gemini call fails for any reason — callers (careers.php)
     should treat this as "keep the raw scraped data as-is," matching the
@@ -304,9 +407,10 @@ class EnrichResource(Resource):
 
         raw_description = payload.get("raw_description", "") or ""
         raw_qualifications = payload.get("raw_qualifications", "") or ""
+        valid_categories = payload.get("categories") or []
 
         try:
-            result = call_gemini_enrichment(career_title, raw_description, raw_qualifications)
+            result = call_gemini_enrichment(career_title, raw_description, raw_qualifications, valid_categories)
             result["ai_enriched"] = True
             return result, 200
         except Exception as e:
@@ -314,6 +418,243 @@ class EnrichResource(Resource):
             # validation error, etc.) falls back gracefully rather than
             # crashing the request — the raw scraped data is still usable.
             return {"ai_enriched": False, "error": str(e)}, 503
+
+
+# --- Student-facing result commentary --------------------------------------
+class StudentCommentary(BaseModel):
+    """Structured output schema for Gemini. Deliberately has NO field for
+    "were skills suggested/invented" -- that determination is made in
+    Python from whether career_required_skills was empty, before the model
+    is ever called, so it can't be talked into mislabeling its own output."""
+    summary: str
+    career_commentary: str
+
+
+STUDENT_COMMENTARY_PROMPT_TEMPLATE = """You are a supportive career-guidance assistant helping a Filipino \
+Junior/Senior High School student understand their own RIASEC (Holland Code) career-assessment result. \
+Everything you write here is shown directly to the student, so keep it encouraging, age-appropriate, and \
+grounded ONLY in the specific numbers and details given below -- never invent facts about the student, \
+never diagnose, never promise future success, and never mention traits or data not given here.
+
+Produce two things:
+- summary: 2-4 sentences, second person ("you"), explaining what this student's own RIASEC scores say \
+about their interests and work style. Reference their actual highest-scoring trait(s) by name.
+- career_commentary: 3-5 sentences, second person, explaining why their chosen dream career could fit \
+someone with this RIASEC profile, plus concrete skills to start building. {skills_instruction}
+
+Student's RIASEC scores (0-100): R={r} I={i} A={a} S={s} E={e} C={c}
+Student's self-reported academic average (0-100, may be blank): {academic_average}
+Student's self-reported existing skills (may be blank): {student_skills}
+
+Dream career: {career_title}
+Career description (counselor-approved, may be blank): {career_description}
+Career's key subjects (counselor-curated, may be blank): {career_key_subjects}
+Career's verified required skills (counselor-approved, may be empty): {career_required_skills}
+"""
+
+
+def call_gemini_student_commentary(riasec, academic_average, student_skills, career_title,
+                                    career_description, career_key_subjects, career_required_skills):
+    client = get_gemini_client()
+
+    # This is the one decision the model doesn't get to make about itself --
+    # computed here, in plain Python, from data we already know is true.
+    has_verified_skills = bool(career_required_skills)
+    skills_instruction = (
+        "Base the skills you mention on the VERIFIED required skills list below "
+        "-- do not invent new ones."
+        if has_verified_skills else
+        "No verified required skills exist for this career yet, so suggest 3-4 realistic, general "
+        "skills a student could start building toward it, and phrase them as general suggestions "
+        "rather than an official requirement list."
+    )
+    skills_text = "; ".join(
+        f"{s.get('skill_name', '')} ({s.get('proficiency_level', 'basic')}"
+        f"{'' if s.get('is_required') else ', optional'})"
+        for s in career_required_skills
+    ) if career_required_skills else "(none on file)"
+
+    prompt = STUDENT_COMMENTARY_PROMPT_TEMPLATE.format(
+        skills_instruction=skills_instruction,
+        r=riasec.get("R", 0), i=riasec.get("I", 0), a=riasec.get("A", 0),
+        s=riasec.get("S", 0), e=riasec.get("E", 0), c=riasec.get("C", 0),
+        academic_average=academic_average if academic_average not in (None, "") else "(not provided)",
+        student_skills=student_skills or "(not provided)",
+        career_title=career_title,
+        career_description=career_description or "(not provided)",
+        career_key_subjects=career_key_subjects or "(not provided)",
+        career_required_skills=skills_text,
+    )
+
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+        config={
+            "response_mime_type": "application/json",
+            "response_schema": StudentCommentary,
+        },
+    )
+    parsed = StudentCommentary.model_validate_json(response.text)
+
+    return {
+        "summary": parsed.summary.strip(),
+        "career_commentary": parsed.career_commentary.strip(),
+        "skills_are_suggested": not has_verified_skills,
+    }
+
+
+class StudentCommentaryResource(Resource):
+    """
+    POST { "riasec": {"R":.., "I":.., "A":.., "S":.., "E":.., "C":..} (0-100),
+           "academic_average": number|null, "student_skills": string|null,
+           "career_title": string, "career_description": string|null,
+           "career_key_subjects": string|null,
+           "career_required_skills": [{"skill_name","proficiency_level","is_required"}, ...] }
+
+    Returns 200 with {"ai_commentary": true, "summary": "...",
+    "career_commentary": "...", "skills_are_suggested": bool} on success.
+    Returns 503 with {"ai_commentary": false, "error": "..."} if the API key
+    is missing or the Gemini call fails for any reason -- the caller
+    (php/submit.php) should treat this as "leave the ai_* columns NULL,"
+    same graceful-fallback convention as /enrich.
+    """
+
+    def post(self):
+        payload = request.get_json(force=True, silent=True) or {}
+        riasec = payload.get("riasec") or {}
+        career_title = (payload.get("career_title") or "").strip()
+
+        if not career_title or not all(k in riasec for k in RIASEC_KEYS):
+            return {
+                "ai_commentary": False,
+                "error": "career_title and a full 'riasec' object (R,I,A,S,E,C) are required",
+            }, 400
+
+        try:
+            result = call_gemini_student_commentary(
+                riasec=riasec,
+                academic_average=payload.get("academic_average"),
+                student_skills=payload.get("student_skills"),
+                career_title=career_title,
+                career_description=payload.get("career_description"),
+                career_key_subjects=payload.get("career_key_subjects"),
+                career_required_skills=payload.get("career_required_skills") or [],
+            )
+            result["ai_commentary"] = True
+            return result, 200
+        except Exception as e:
+            # Same non-fatal fallback pattern as EnrichResource -- a failure
+            # here must never block or break a student's assessment submission.
+            return {"ai_commentary": False, "error": str(e)}, 503
+
+
+# --- AI-assisted duplicate resolution ---------------------------------------
+# careers.php already flags a pending posting as a "possible duplicate" of an
+# already-approved career using title-similarity alone (PHP's similar_text(),
+# >=55% or exact match) -- cheap and explainable, but a known false-positive
+# source: a more specific title ("Ship Electrician") looks similar to a
+# broader one ("Electrician") despite being a genuinely different,
+# distinctly-specialized career. This endpoint adds a second, content-aware
+# opinion at APPROVAL time: given both careers' actual descriptions/tasks/
+# pathway (not just their titles), is this really the same real-world
+# career, or a different one that just has a similar name? careers.php uses
+# the answer to decide whether approving this posting should overwrite the
+# existing career in place (same_career: true) or insert as a new, separate
+# one (false, or this endpoint unavailable -- the safe default either way).
+class DuplicateVerdict(BaseModel):
+    same_career: bool
+    reasoning: str
+
+
+DUPLICATE_CHECK_PROMPT_TEMPLATE = """You are helping a Philippine career-guidance system's counselors decide \
+whether a newly-scraped job posting describes the SAME real-world career/occupation as one already in their \
+approved career database, or whether it's actually a distinct role/specialization that just happens to have a \
+similar title.
+
+Compare the two career profiles below. Judge based on the actual work, responsibilities, and typical path \
+described -- not just title wording. A more specific or specialized title (e.g. "Ship Electrician" vs \
+"Electrician", or "ICU Nurse" vs "Registered Nurse") usually describes a DIFFERENT, more specific career, not \
+a duplicate of the broader one -- unless the descriptions make clear they're genuinely describing the same \
+day-to-day role.
+
+New posting:
+Title: {posting_title}
+Description: {posting_description}
+
+Already-approved career:
+Title: {existing_title}
+Description: {existing_description}
+Typical tasks: {existing_daily_task}
+Educational pathway: {existing_educational_pathway}
+
+Decide: same_career (true ONLY if these genuinely describe the same real-world career/job role -- when in \
+doubt, prefer false), and reasoning (one brief sentence explaining the call, so a counselor auditing this \
+decision later understands why).
+"""
+
+
+def call_gemini_duplicate_check(posting_title, posting_description, existing_title, existing_description,
+                                 existing_daily_task, existing_educational_pathway):
+    client = get_gemini_client()
+    prompt = DUPLICATE_CHECK_PROMPT_TEMPLATE.format(
+        posting_title=posting_title,
+        posting_description=posting_description or "(none provided)",
+        existing_title=existing_title,
+        existing_description=existing_description or "(none provided)",
+        existing_daily_task=existing_daily_task or "(none provided)",
+        existing_educational_pathway=existing_educational_pathway or "(none provided)",
+    )
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+        config={
+            "response_mime_type": "application/json",
+            "response_schema": DuplicateVerdict,
+        },
+    )
+    parsed = DuplicateVerdict.model_validate_json(response.text)
+    return {
+        "same_career": bool(parsed.same_career),
+        "reasoning": (parsed.reasoning or "").strip(),
+    }
+
+
+class DuplicateCheckResource(Resource):
+    """
+    POST { "posting_title": "...", "posting_description": "...",
+           "existing_title": "...", "existing_description": "...",
+           "existing_daily_task": "...", "existing_educational_pathway": "..." }
+
+    Returns 200 with {"ai_available": true, "same_career": bool,
+    "reasoning": "..."} on success.
+    Returns 503 with {"ai_available": false, "error": "..."} if the API key
+    is missing or the Gemini call fails for any reason -- the caller
+    (php/careers.php) should treat that as "can't determine automatically"
+    and fall back to inserting as a new, separate career -- the same safe
+    default it already used before this endpoint existed, never guess at an
+    overwrite without a clear AI verdict.
+    """
+
+    def post(self):
+        payload = request.get_json(force=True, silent=True) or {}
+        posting_title = (payload.get("posting_title") or "").strip()
+        existing_title = (payload.get("existing_title") or "").strip()
+        if not posting_title or not existing_title:
+            return {"ai_available": False, "error": "posting_title and existing_title are required"}, 400
+
+        try:
+            result = call_gemini_duplicate_check(
+                posting_title,
+                payload.get("posting_description"),
+                existing_title,
+                payload.get("existing_description"),
+                payload.get("existing_daily_task"),
+                payload.get("existing_educational_pathway"),
+            )
+            result["ai_available"] = True
+            return result, 200
+        except Exception as e:
+            return {"ai_available": False, "error": str(e)}, 503
 
 
 # --- Web crawler launcher -------------------------------------------------
@@ -334,11 +675,70 @@ CRAWLER_SCRIPTS = {
 # so clicking the button twice in a row doesn't stack up duplicate crawls.
 _running_crawls = {}  # source -> {"process": Popen, "log_path": str, "started_at": float}
 
+CRAWL_SOURCE_LABELS = {
+    "philjobnet": "PhilJobNet (Philippines)",
+    "onet": "O*NET (International)",
+    "adzuna": "Adzuna (International)",
+    "remoteok": "RemoteOK (International)",
+}
+
+
+def _watch_crawl_and_notify(source, process, started_at, triggered_by_user_id):
+    """Runs in a background thread (not tied to any browser tab/HTTP
+    request) so whichever counselor/admin actually clicked "Run Crawler"
+    gets notified through the normal Notifications bell even if they've long
+    since navigated away from Career Review Queue -- they don't have to sit
+    and watch the page for a crawl that can take a couple minutes. Targeted
+    at that one account (not broadcast to every staff member) since this is
+    "did the thing I personally started just finish", not a site-wide
+    announcement. Writes straight to MySQL since this thread has no PHP
+    request to go through."""
+    exit_code = process.wait()
+    label = CRAWL_SOURCE_LABELS.get(source, source)
+    try:
+        conn = get_connection()
+        with conn.cursor() as cur:
+            if exit_code == 0:
+                cur.execute(
+                    "SELECT COUNT(*) AS n FROM pending_careers WHERE data_source = %s AND scraped_at >= FROM_UNIXTIME(%s)",
+                    (source, started_at),
+                )
+                new_count = cur.fetchone()["n"]
+                message = (
+                    f"{label} crawl finished — {new_count} new "
+                    f"{'entry' if new_count == 1 else 'entries'} added to Pending review."
+                )
+            else:
+                message = f"{label} crawl crashed (exit code {exit_code}) — check crawler/logs for details."
+            # user_id NULL falls back to a broadcast (e.g. if an older PHP
+            # build hasn't been updated to send it yet) rather than silently
+            # dropping the notification.
+            cur.execute(
+                "INSERT INTO notifications (audience, user_id, message, link, category) "
+                "VALUES ('staff', %s, %s, 'careers.php', 'crawler')",
+                (triggered_by_user_id, message),
+            )
+        conn.commit()
+        conn.close()
+    except Exception:
+        # Notification is a nice-to-have on top of the existing on-page
+        # status panel -- never let a DB hiccup here crash the watcher
+        # thread or leave the subprocess unreaped.
+        pass
+
 
 class CrawlResource(Resource):
     def post(self):
         payload = request.get_json(force=True, silent=True) or {}
         source = (payload.get("source") or "").strip().lower()
+        # Whoever clicked "Run Crawler" in careers.php -- passed through so
+        # the finish notification goes to them specifically, not every staff
+        # account. None if missing/invalid, which _watch_crawl_and_notify
+        # treats as a broadcast fallback.
+        try:
+            triggered_by_user_id = int(payload.get("user_id"))
+        except (TypeError, ValueError):
+            triggered_by_user_id = None
 
         if source not in CRAWLER_SCRIPTS:
             return {
@@ -376,7 +776,18 @@ class CrawlResource(Resource):
         except Exception as e:
             return {"started": False, "error": f"Failed to launch crawler: {e}"}, 500
 
-        _running_crawls[source] = {"process": process, "log_path": log_path, "started_at": time.time()}
+        started_at = time.time()
+        _running_crawls[source] = {"process": process, "log_path": log_path, "started_at": started_at}
+
+        # Fire-and-forget watcher -- separate from the on-page status panel
+        # (crawler_status.php polling), so the notification still lands even
+        # if nobody's browser tab is open when the crawl actually finishes.
+        threading.Thread(
+            target=_watch_crawl_and_notify,
+            args=(source, process, started_at, triggered_by_user_id),
+            daemon=True,
+        ).start()
+
         return {"started": True, "source": source, "pid": process.pid}, 200
 
 
@@ -419,8 +830,33 @@ class CrawlStatusResource(Resource):
 api.add_resource(MatchResource, "/match")
 api.add_resource(HealthResource, "/health")
 api.add_resource(EnrichResource, "/enrich")
+api.add_resource(StudentCommentaryResource, "/student_commentary")
+api.add_resource(DuplicateCheckResource, "/duplicate_check")
 api.add_resource(CrawlResource, "/crawl")
 api.add_resource(CrawlStatusResource, "/crawl/status")
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # debug=True used to be hardcoded here. That's a real security hole, not
+    # just a style nit: Flask's debug mode turns on the Werkzeug interactive
+    # debugger, which lets anyone who can trigger an unhandled exception (an
+    # unhandled error in ANY endpoint above) open a console and run arbitrary
+    # Python on this machine -- and combined with host="0.0.0.0" (listening
+    # on every network interface, not just this machine), that console is
+    # reachable by anyone else on the same network, e.g. school WiFi during a
+    # panel defense demo. Defaults to off now; set FLASK_DEBUG=1 in the
+    # environment if you specifically want it while developing locally.
+    # host="0.0.0.0" used to be hardcoded here too. None of these endpoints
+    # check any API key or auth token of their own -- the only thing
+    # stopping a random device on the same network from calling /crawl,
+    # /enrich, /duplicate_check, etc. directly (burning Gemini API quota, or
+    # kicking off crawls) was that php/config.php happens to only call
+    # localhost:5000. Binding to 0.0.0.0 exposed this on every network
+    # interface, not just this machine. Every one of these endpoints is only
+    # ever called by the PHP app running on this SAME machine (see
+    # php/config.php -- always "http://localhost:5000/..."), so there's no
+    # legitimate reason for it to be reachable from anywhere else. Override
+    # with MATCHING_SERVICE_HOST if this ever needs to run split across
+    # machines (and add real authentication first if so).
+    host = os.environ.get("MATCHING_SERVICE_HOST", "127.0.0.1")
+    debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
+    app.run(host=host, port=5000, debug=debug_mode)

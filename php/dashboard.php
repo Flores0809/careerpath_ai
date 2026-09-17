@@ -72,7 +72,7 @@ $welcome = isset($_GET['welcome']);
 <title>CareerPath AI — Dashboard</title>
 <style>
     * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; margin: 0; padding: 40px 20px; color: #222; background: #faf7f5; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 40px 20px; color: #222; }
     .wrap { max-width: 1280px; margin: 0 auto; position: relative; }
     .wrap-content { position: relative; z-index: 1; }
     .dashboard-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 65%; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
@@ -84,8 +84,8 @@ $welcome = isset($_GET['welcome']);
     .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px; }
     @media (max-width: 900px) { .stat-row { grid-template-columns: repeat(2, 1fr); } }
     .stat-card { background: #f5f5f5; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 18px 20px; }
-    .stat-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 6px; }
-    .stat-card .value { font-size: 26px; font-weight: bold; color: #6e1423; }
+    .stat-card .label { font-size: 13.5px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 6px; }
+    .stat-card .value { font-size: 27.5px; font-weight: bold; color: #6e1423; }
     .stat-card.pending .value { color: #b8860b; }
     .stat-card.rejected .value { color: #b02a37; }
     .stat-card.approved .value { color: #0f5132; }
@@ -95,22 +95,22 @@ $welcome = isset($_GET['welcome']);
     .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 28px; }
     @media (max-width: 900px) { .panels { grid-template-columns: 1fr; } }
     .panel { background: #f5f5f5; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 24px 26px; }
-    .panel h2 { margin: 0 0 16px; color: #6e1423; font-size: 16px; }
+    .panel h2 { margin: 0 0 16px; color: #6e1423; font-size: 17.5px; }
     .riasec-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-    .riasec-letter { width: 16px; font-weight: bold; color: #6e1423; font-size: 13px; }
+    .riasec-letter { width: 16px; font-weight: bold; color: #6e1423; font-size: 14.5px; }
     .riasec-track { flex: 1; background: #f5e6e8; border-radius: 6px; height: 12px; overflow: hidden; }
     .riasec-fill { background: linear-gradient(90deg, #6e1423, #b3465c); height: 100%; border-radius: 6px; }
-    .riasec-pct { width: 36px; text-align: right; font-size: 12px; color: #888; }
+    .riasec-pct { width: 36px; text-align: right; font-size: 13.5px; color: #888; }
 
-    .activity-item { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-top: 1px solid #eee; font-size: 14px; gap: 10px; }
+    .activity-item { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-top: 1px solid #eee; font-size: 15.5px; gap: 10px; }
     .activity-item:first-of-type { border-top: none; }
     .activity-item .title { font-weight: bold; color: #222; flex: 1; }
-    .activity-item .meta { color: #888; font-size: 12px; white-space: nowrap; }
-    .status-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; text-transform: uppercase; margin-right: 8px; }
+    .activity-item .meta { color: #888; font-size: 13.5px; white-space: nowrap; }
+    .status-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12.5px; text-transform: uppercase; margin-right: 8px; }
     .status-approved { background: #d1e7dd; color: #0f5132; }
     .status-rejected { background: #fdecea; color: #611a15; }
 
-    .empty { color: #888; font-style: italic; font-size: 14px; }
+    .empty { color: #888; font-style: italic; font-size: 15.5px; }
 </style>
 </head>
 <body>
@@ -172,7 +172,7 @@ $welcome = isset($_GET['welcome']);
                 <p class="empty" style="margin-top:0;"><?= $totalAssessments ?> assessments total · <?= $assessmentsThisWeek ?> in the last 7 days</p>
 
                 <?php if ($totalAssessments > 0): ?>
-                    <p style="font-size:13px;color:#666;margin:14px 0 6px;"><strong>Average RIASEC profile (all students)</strong></p>
+                    <p style="font-size:14.5px;color:#666;margin:14px 0 6px;"><strong>Average RIASEC profile (all students)</strong></p>
                     <?php
                         $avgLabels = ['r' => 'R', 'i' => 'I', 'a' => 'A', 's' => 'S', 'e' => 'E', 'c' => 'C'];
                     ?>
@@ -185,7 +185,7 @@ $welcome = isset($_GET['welcome']);
                         </div>
                     <?php endforeach; ?>
 
-                    <p style="font-size:13px;color:#666;margin:18px 0 6px;"><strong>Most recommended careers</strong></p>
+                    <p style="font-size:14.5px;color:#666;margin:18px 0 6px;"><strong>Most recommended careers</strong></p>
                     <?php if (!$topCareers): ?>
                         <p class="empty">No recommendations saved yet.</p>
                     <?php else: ?>
@@ -222,5 +222,6 @@ $welcome = isset($_GET['welcome']);
         </div>
         </div>
     </div>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

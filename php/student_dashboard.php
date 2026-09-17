@@ -115,7 +115,6 @@ foreach ($recentSubmissionsRaw as $sub) {
     ];
 }
 
-$riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)', 'a_score' => 'Artistic (A)', 's_score' => 'Social (S)', 'e_score' => 'Enterprising (E)', 'c_score' => 'Conventional (C)'];
 $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score' => 'Artistic', 's_score' => 'Social', 'e_score' => 'Enterprising', 'c_score' => 'Conventional'];
 ?>
 <!DOCTYPE html>
@@ -135,33 +134,33 @@ $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score
     .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 24px; }
     @media (max-width: 720px) { .stat-row { grid-template-columns: 1fr; } }
     .stat-card { background: #f5f5f5; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 20px 22px; }
-    .stat-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 6px; }
-    .stat-card .value { font-size: 26px; font-weight: bold; color: #6e1423; }
-    .stat-card .value.small { font-size: 17px; }
-    .stat-card .sub { font-size: 13px; color: #888; margin-top: 4px; }
+    .stat-card .label { font-size: 13.5px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 6px; }
+    .stat-card .value { font-size: 27.5px; font-weight: bold; color: #6e1423; }
+    .stat-card .value.small { font-size: 18.5px; }
+    .stat-card .sub { font-size: 14.5px; color: #888; margin-top: 4px; }
     a.stat-card-link { text-decoration: none; display: block; transition: box-shadow 0.15s; }
     a.stat-card-link:hover { box-shadow: 0 6px 20px rgba(74,12,23,0.16); }
 
     .panels { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 18px; margin-bottom: 28px; }
     @media (max-width: 720px) { .panels { grid-template-columns: 1fr; } }
     .panel { background: #f5f5f5; border-radius: 12px; box-shadow: 0 4px 16px rgba(74,12,23,0.08); padding: 24px 26px; }
-    .panel h2 { margin: 0 0 16px; color: #6e1423; font-size: 16px; }
+    .panel h2 { margin: 0 0 16px; color: #6e1423; font-size: 17.5px; }
 
     .riasec-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .riasec-bar-row .letter { width: 18px; font-weight: bold; color: #6e1423; font-size: 13px; }
-    .riasec-bar-row .name { width: 100px; font-size: 12px; color: #666; }
+    .riasec-bar-row .letter { width: 18px; font-weight: bold; color: #6e1423; font-size: 14.5px; }
+    .riasec-bar-row .name { width: 100px; font-size: 13.5px; color: #666; }
     .riasec-bar-track { flex: 1; background: #f5e6e8; border-radius: 6px; height: 14px; overflow: hidden; }
     .riasec-bar-fill { background: linear-gradient(90deg, #6e1423, #b3465c); height: 100%; border-radius: 6px; }
-    .riasec-bar-pct { width: 38px; text-align: right; font-size: 12px; color: #888; }
+    .riasec-bar-pct { width: 38px; text-align: right; font-size: 13.5px; color: #888; }
 
-    .activity-item { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-top: 1px solid #eee; font-size: 14px; }
+    .activity-item { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-top: 1px solid #eee; font-size: 15.5px; }
     .activity-item:first-of-type { border-top: none; }
     .activity-item .date { color: #666; }
     .activity-item .top-career { color: #6e1423; font-weight: bold; }
     .activity-item .top-career a, .stat-card .value.small a { color: #6e1423; text-decoration: none; }
     .activity-item .top-career a:hover, .stat-card .value.small a:hover { text-decoration: underline; }
 
-    .empty { color: #888; font-style: italic; font-size: 14px; }
+    .empty { color: #888; font-style: italic; font-size: 15.5px; }
 
     .welcome-banner { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
     .notes-banner { background: #fff3cd; border: 1px solid #ffe08a; color: #856404; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
@@ -218,11 +217,11 @@ $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score
             <div class="panel">
                 <h2>Latest RIASEC Snapshot</h2>
                 <?php if ($latestProfile): ?>
-                    <?php foreach ($riasecLabels as $col => $letter): ?>
+                    <?php foreach ($riasecNames as $col => $name): ?>
                         <?php $pct = round($latestProfile[$col] * 100); ?>
                         <div class="riasec-bar-row">
-                            <div class="letter"><?= $letter ?></div>
-                            <div class="name"><?= $riasecNames[$col] ?></div>
+                            <div class="letter"><?= strtoupper($col[0]) ?></div>
+                            <div class="name"><?= $name ?></div>
                             <div class="riasec-bar-track"><div class="riasec-bar-fill" style="width: <?= $pct ?>%;"></div></div>
                             <div class="riasec-bar-pct"><?= $pct ?>%</div>
                         </div>
@@ -250,5 +249,6 @@ $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score
         </div>
         </div>
     </div>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

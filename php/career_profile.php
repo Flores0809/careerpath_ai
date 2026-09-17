@@ -52,10 +52,127 @@ $latestSkillsStmt->execute(['id' => $currentStudent['student_id']]);
 $latestSkillsRaw = $latestSkillsStmt->fetchColumn();
 $skillMatch = compute_skill_match($pdo, $careerId, $latestSkillsRaw ?: null);
 
-$riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)', 'a_score' => 'Artistic (A)', 's_score' => 'Social (S)', 'e_score' => 'Enterprising (E)', 'c_score' => 'Conventional (C)'];
 $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score' => 'Artistic', 's_score' => 'Social', 'e_score' => 'Enterprising', 'c_score' => 'Conventional'];
 
-$proficiencyLabels = ['basic' => 'Basic', 'intermediate' => 'Intermediate', 'advanced' => 'Advanced'];
+// AI commentary on THIS career, for THIS student (migration_21 +
+// migration_22). Three-step lookup so every career a student opens gets an
+// insight, not just their dream pick, while never calling Gemini twice for
+// the same (student, career):
+//   1. If this career is (or was) a dream career this student already got
+//      commentary for at submission time, reuse it as-is — no extra API
+//      call, and the text matches what the results page/history already
+//      showed them.
+//   2. Else check student_career_insights for a cached result from an
+//      earlier visit to this exact career's profile page.
+//   3. Else this is the first time this student has opened this career —
+//      generate it now from their most recent RIASEC profile and cache it
+//      here so later visits are instant.
+// If this career isn't their dream career AND nothing is cached AND the
+// matching service is unreachable, the section just doesn't show — same
+// graceful-fallback convention used everywhere else, verified data only.
+$aiCareerCommentary = null;
+$aiSkillsAreSuggested = false;
+
+$dreamCommentaryStmt = $pdo->prepare(
+    "SELECT ai_career_commentary, ai_skills_are_suggested FROM student_profiles
+     WHERE student_id = :student_id AND dream_career_id = :career_id AND ai_career_commentary IS NOT NULL
+     ORDER BY submitted_at DESC LIMIT 1"
+);
+$dreamCommentaryStmt->execute(['student_id' => $currentStudent['student_id'], 'career_id' => $careerId]);
+$dreamCommentaryRow = $dreamCommentaryStmt->fetch();
+
+if ($dreamCommentaryRow) {
+    $aiCareerCommentary = $dreamCommentaryRow['ai_career_commentary'];
+    $aiSkillsAreSuggested = (bool) $dreamCommentaryRow['ai_skills_are_suggested'];
+} else {
+    $cachedInsightStmt = $pdo->prepare(
+        "SELECT ai_career_commentary, ai_skills_are_suggested FROM student_career_insights
+         WHERE student_id = :student_id AND career_id = :career_id"
+    );
+    $cachedInsightStmt->execute(['student_id' => $currentStudent['student_id'], 'career_id' => $careerId]);
+    $cachedInsightRow = $cachedInsightStmt->fetch();
+
+    if ($cachedInsightRow) {
+        $aiCareerCommentary = $cachedInsightRow['ai_career_commentary'];
+        $aiSkillsAreSuggested = (bool) $cachedInsightRow['ai_skills_are_suggested'];
+    } else {
+        // First time this student has opened THIS career's profile page —
+        // generate it now from their most recent RIASEC profile. Best-effort:
+        // any failure just leaves the AI Insights panel off this page load;
+        // nothing is cached on failure, so the next visit tries again.
+        $latestProfileStmt = $pdo->prepare(
+            "SELECT r_score, i_score, a_score, s_score, e_score, c_score, academic_average, skills
+             FROM student_profiles WHERE student_id = :id ORDER BY submitted_at DESC LIMIT 1"
+        );
+        $latestProfileStmt->execute(['id' => $currentStudent['student_id']]);
+        $latestProfile = $latestProfileStmt->fetch();
+
+        if ($latestProfile) {
+            try {
+                // Same PDO-returns-strings caveat as submit.php — cast
+                // is_required to a real bool before it crosses the JSON
+                // boundary, so Python's bool("0") == True footgun can't
+                // silently mark every skill "required."
+                $requiredSkillsForApi = array_map(function ($s) {
+                    $s['is_required'] = (bool) ((int) $s['is_required']);
+                    return $s;
+                }, $requiredSkills);
+
+                $commentaryPayload = json_encode([
+                    'riasec' => [
+                        'R' => round(((float) $latestProfile['r_score']) * 100, 1),
+                        'I' => round(((float) $latestProfile['i_score']) * 100, 1),
+                        'A' => round(((float) $latestProfile['a_score']) * 100, 1),
+                        'S' => round(((float) $latestProfile['s_score']) * 100, 1),
+                        'E' => round(((float) $latestProfile['e_score']) * 100, 1),
+                        'C' => round(((float) $latestProfile['c_score']) * 100, 1),
+                    ],
+                    'academic_average' => $latestProfile['academic_average'],
+                    'student_skills' => $latestProfile['skills'],
+                    'career_title' => $career['career_title'],
+                    'career_description' => $career['description'],
+                    'career_key_subjects' => $career['key_subjects'] ?? null,
+                    'career_required_skills' => $requiredSkillsForApi,
+                ]);
+
+                $chCommentary = curl_init(STUDENT_COMMENTARY_SERVICE_URL);
+                curl_setopt_array($chCommentary, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $commentaryPayload,
+                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                    CURLOPT_TIMEOUT => 35,
+                ]);
+                $commentaryResponse = curl_exec($chCommentary);
+                $commentaryHttpCode = curl_getinfo($chCommentary, CURLINFO_HTTP_CODE);
+                $commentaryCurlError = curl_error($chCommentary);
+                curl_close($chCommentary);
+
+                $commentaryResult = $commentaryCurlError ? null : json_decode($commentaryResponse, true);
+
+                if (!$commentaryCurlError && $commentaryHttpCode === 200 && !empty($commentaryResult['ai_commentary'])) {
+                    $aiCareerCommentary = $commentaryResult['career_commentary'];
+                    $aiSkillsAreSuggested = !empty($commentaryResult['skills_are_suggested']);
+
+                    $insertInsight = $pdo->prepare(
+                        "INSERT INTO student_career_insights (student_id, career_id, ai_career_commentary, ai_skills_are_suggested)
+                         VALUES (:student_id, :career_id, :commentary, :skills_are_suggested)
+                         ON DUPLICATE KEY UPDATE ai_career_commentary = VALUES(ai_career_commentary),
+                             ai_skills_are_suggested = VALUES(ai_skills_are_suggested), generated_at = NOW()"
+                    );
+                    $insertInsight->execute([
+                        'student_id' => $currentStudent['student_id'],
+                        'career_id' => $careerId,
+                        'commentary' => $aiCareerCommentary,
+                        'skills_are_suggested' => $aiSkillsAreSuggested ? 1 : 0,
+                    ]);
+                }
+            } catch (Exception $e) {
+                // Never let this block the page from rendering.
+            }
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -66,31 +183,35 @@ $proficiencyLabels = ['basic' => 'Basic', 'intermediate' => 'Intermediate', 'adv
     body { font-family: Arial, sans-serif; max-width: 1280px; margin: 40px auto; padding: 0 20px; color: #222; }
     body > h1, body > .source-note, body > .panel, body > a.back { max-width: 800px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; margin-bottom: 4px; }
-    .source-note { font-size: 12px; color: #888; margin-bottom: 22px; }
+    .source-note { font-size: 13.5px; color: #888; margin-bottom: 22px; }
     .panel { background: #f5f5f5; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
-    .panel h2 { margin: 0 0 12px; color: #6e1423; font-size: 16px; }
+    .panel h2 { margin: 0 0 12px; color: #6e1423; font-size: 17.5px; }
     .panel p { line-height: 1.5; }
 
     .riasec-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-    .riasec-bar-row .letter { width: 18px; font-weight: bold; color: #6e1423; font-size: 13px; }
-    .riasec-bar-row .name { width: 100px; font-size: 12px; color: #666; }
+    .riasec-bar-row .letter { width: 18px; font-weight: bold; color: #6e1423; font-size: 14.5px; }
+    .riasec-bar-row .name { width: 100px; font-size: 13.5px; color: #666; }
     .riasec-bar-track { flex: 1; background: #f5e6e8; border-radius: 6px; height: 14px; overflow: hidden; }
     .riasec-bar-fill { background: linear-gradient(90deg, #6e1423, #b3465c); height: 100%; border-radius: 6px; }
-    .riasec-bar-pct { width: 38px; text-align: right; font-size: 12px; color: #888; }
+    .riasec-bar-pct { width: 38px; text-align: right; font-size: 13.5px; color: #888; }
 
-    .skill-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-top: 1px solid #eee; font-size: 14px; }
+    .skill-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-top: 1px solid #eee; font-size: 15.5px; }
     .skill-row:first-of-type { border-top: none; }
-    .skill-row .req-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
+    .skill-row .req-badge { font-size: 12.5px; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
     .req-yes { background: #f8d7da; color: #842029; }
     .req-no { background: #e2e3e5; color: #41464b; }
-    .prof-badge { font-size: 11px; color: #666; }
-    .have-badge { font-size: 12px; font-weight: bold; }
+    .prof-badge { font-size: 12.5px; color: #666; }
+    .have-badge { font-size: 13.5px; font-weight: bold; }
     .have-yes { color: #0f5132; }
     .have-no { color: #856404; }
 
-    .skill-summary { font-size: 13px; color: #666; margin-bottom: 6px; }
+    .skill-summary { font-size: 14.5px; color: #666; margin-bottom: 6px; }
     .skill-summary .pct { font-weight: bold; color: #6e1423; }
-    .empty { color: #888; font-style: italic; font-size: 14px; }
+    .empty { color: #888; font-style: italic; font-size: 15.5px; }
+
+    .ai-insights-panel { background: #f3edfb; border-color: #e2d4f5; }
+    .ai-insights-panel h2 { color: #6f42c1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ai-suggestion-tag { background: #fff3cd; color: #856404; border: 1px solid #ffe69c; border-radius: 10px; padding: 2px 9px; font-size: 12px; font-weight: bold; cursor: help; }
 
     a.back { display: inline-block; margin-top: 6px; color: #6e1423; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
@@ -103,6 +224,18 @@ $proficiencyLabels = ['basic' => 'Basic', 'intermediate' => 'Intermediate', 'adv
 
     <h1><?= htmlspecialchars($career['career_title']) ?></h1>
     <p class="source-note">Career profile — sourced from <?= htmlspecialchars($career['source'] ?? 'seed') ?> data, reviewed by a counselor/administrator before publishing.</p>
+
+    <?php if ($aiCareerCommentary): ?>
+        <div class="panel ai-insights-panel">
+            <h2>
+                ✨ AI Insights — why this could fit you
+                <?php if ($aiSkillsAreSuggested): ?>
+                    <span class="ai-suggestion-tag" title="This career doesn't have a counselor-verified skills list yet, so any skills mentioned here are general AI suggestions, not a verified requirement.">AI-suggested skills</span>
+                <?php endif; ?>
+            </h2>
+            <p><?= nl2br(htmlspecialchars($aiCareerCommentary)) ?></p>
+        </div>
+    <?php endif; ?>
 
     <div class="panel">
         <h2>Description</h2>
@@ -128,11 +261,11 @@ $proficiencyLabels = ['basic' => 'Basic', 'intermediate' => 'Intermediate', 'adv
 
     <div class="panel">
         <h2>RIASEC Profile</h2>
-        <?php foreach ($riasecLabels as $col => $letter): ?>
+        <?php foreach ($riasecNames as $col => $name): ?>
             <?php $pct = round($career[$col]); ?>
             <div class="riasec-bar-row">
-                <div class="letter"><?= $letter ?></div>
-                <div class="name"><?= $riasecNames[$col] ?></div>
+                <div class="letter"><?= strtoupper($col[0]) ?></div>
+                <div class="name"><?= $name ?></div>
                 <div class="riasec-bar-track"><div class="riasec-bar-fill" style="width: <?= $pct ?>%;"></div></div>
                 <div class="riasec-bar-pct"><?= $pct ?>%</div>
             </div>
@@ -164,7 +297,10 @@ $proficiencyLabels = ['basic' => 'Basic', 'intermediate' => 'Intermediate', 'adv
                         <span class="req-badge <?= $skill['is_required'] ? 'req-yes' : 'req-no' ?>">
                             <?= $skill['is_required'] ? 'Required' : 'Preferred' ?>
                         </span>
-                        <span class="prof-badge">· <?= $proficiencyLabels[$skill['proficiency_level']] ?? ucfirst($skill['proficiency_level']) ?></span>
+                        <?php $profText = trim($skill['proficiency_level'] ?? ''); ?>
+                        <?php if ($profText !== ''): ?>
+                            <span class="prof-badge">· <?= htmlspecialchars($profText) ?></span>
+                        <?php endif; ?>
                     </span>
                     <?php if ($latestSkillsRaw): ?>
                         <span class="have-badge <?= $haveIt ? 'have-yes' : 'have-no' ?>">
@@ -177,5 +313,6 @@ $proficiencyLabels = ['basic' => 'Basic', 'intermediate' => 'Intermediate', 'adv
     </div>
 
     <a class="back" href="javascript:history.back()">&larr; Back</a>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

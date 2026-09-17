@@ -45,10 +45,10 @@ foreach ($settings as $s) {
     h1, .panel, .flash-success { max-width: 640px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; }
     .panel { background: #f5f5f5; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; }
-    label { display: block; font-size: 13px; font-weight: bold; margin: 14px 0 4px; }
-    .hint { font-size: 12px; color: #888; margin-top: 2px; }
+    label { display: block; font-size: 14.5px; font-weight: bold; margin: 14px 0 4px; }
+    .hint { font-size: 13.5px; color: #888; margin-top: 2px; }
     input[type=text], input[type=number] { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; box-sizing: border-box; }
-    button { margin-top: 18px; padding: 9px 20px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; background: #6e1423; color: #fff; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
+    button { margin-top: 18px; padding: 9px 20px; border: none; border-radius: 6px; font-size: 15.5px; cursor: pointer; background: #6e1423; color: #fff; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
     .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
@@ -81,5 +81,6 @@ foreach ($settings as $s) {
             <button type="submit">Save settings</button>
         </form>
     </div>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

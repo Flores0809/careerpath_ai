@@ -87,9 +87,9 @@ function cosine_similarity_riasec_history(array $a, array $b): float
     h1 { color: #6e1423; }
     .empty { color: #666; font-style: italic; }
     .submission { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; }
-    .submission-date { font-size: 13px; color: #666; margin-bottom: 10px; }
+    .submission-date { font-size: 14.5px; color: #666; margin-bottom: 10px; }
     .profile { background: #faf0f1; border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; white-space: nowrap; overflow-x: auto; }
-    .profile span { display: inline-block; margin-right: 12px; font-size: 12.5px; }
+    .profile span { display: inline-block; margin-right: 12px; font-size: 14px; }
     .career-row { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-top: 1px solid #eee; }
     .career-row:first-of-type { border-top: none; }
     .career-row .title { font-weight: bold; }
@@ -97,25 +97,30 @@ function cosine_similarity_riasec_history(array $a, array $b): float
     .career-row .title a:hover { text-decoration: underline; }
     .career-row .match { color: #6e1423; font-weight: bold; white-space: nowrap; margin-left: 12px; }
     a.back { display: inline-block; margin-top: 10px; color: #6e1423; }
-    .skill-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0; font-size: 11px; }
+    .skill-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0; font-size: 12.5px; }
     .skill-have { background: #d1e7dd; color: #0f5132; }
     .skill-need { background: #fff3cd; color: #856404; }
-    .skill-pct { font-size: 12px; color: #666; margin-top: 4px; }
+    .skill-pct { font-size: 13.5px; color: #666; margin-top: 4px; }
     .notes-panel { background: #faf0f1; border: 1px solid #f0dde1; border-radius: 8px; padding: 16px 20px; margin-bottom: 26px; }
-    .notes-panel h2 { margin: 0 0 12px; color: #6e1423; font-size: 17px; }
-    .note-item { border-top: 1px solid #f0dde1; padding: 10px 0; font-size: 14px; }
+    .notes-panel h2 { margin: 0 0 12px; color: #6e1423; font-size: 18.5px; }
+    .note-item { border-top: 1px solid #f0dde1; padding: 10px 0; font-size: 15.5px; }
     .note-item:first-of-type { border-top: none; }
-    .note-item .note-meta { font-size: 12px; color: #666; margin-bottom: 3px; }
+    .note-item .note-meta { font-size: 13.5px; color: #666; margin-bottom: 3px; }
     .note-item .note-career { color: #6e1423; font-weight: bold; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 
     .dream-row { background: #faf0f1; border: 1px solid #6e1423; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
-    .dream-row .dream-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6e1423; font-weight: bold; margin-bottom: 4px; }
+    .dream-row .dream-label { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.5px; color: #6e1423; font-weight: bold; margin-bottom: 4px; }
     .field-careers-row { border: 1px solid #eee; border-radius: 8px; padding: 4px 14px 2px; margin-bottom: 12px; }
     .field-careers-row .career-row { padding: 6px 0; }
-    .subjects-line { font-size: 12px; color: #666; margin-top: 3px; }
+    .subjects-line { font-size: 13.5px; color: #666; margin-top: 3px; }
+    .ai-insights-box { background: #f3edfb; border: 1px solid #e2d4f5; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 14px; color: #444; }
+    .ai-insights-box p { margin: 0; line-height: 1.6; }
+    .ai-insights-box-inline { margin: 10px 0 0; }
+    .ai-insights-label { font-weight: bold; color: #6f42c1; font-size: 13px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ai-suggestion-tag { background: #fff3cd; color: #856404; border: 1px solid #ffe69c; border-radius: 10px; padding: 2px 9px; font-size: 11.5px; font-weight: bold; cursor: help; }
     .explore-others-row { margin-top: 4px; }
-    .explore-others-row summary { cursor: pointer; font-weight: bold; color: #6e1423; font-size: 13.5px; padding: 8px 0; }
+    .explore-others-row summary { cursor: pointer; font-weight: bold; color: #6e1423; font-size: 15px; padding: 8px 0; }
 </style>
 </head>
 <body>
@@ -219,6 +224,13 @@ function cosine_similarity_riasec_history(array $a, array $b): float
                 </div>
             <?php endif; ?>
 
+            <?php if (!empty($profile['ai_summary'])): ?>
+                <div class="ai-insights-box">
+                    <div class="ai-insights-label">✨ AI Insights — a note on this result</div>
+                    <p><?= htmlspecialchars($profile['ai_summary']) ?></p>
+                </div>
+            <?php endif; ?>
+
             <?php if ($dreamCareer): ?>
                 <div class="dream-row">
                     <div class="dream-label">🎯 Dream Career<?= $dreamCareer['career_category'] ? ' · ' . htmlspecialchars($dreamCareer['career_category']) : '' ?></div>
@@ -228,6 +240,17 @@ function cosine_similarity_riasec_history(array $a, array $b): float
                     </div>
                     <?php if (!empty($dreamCareer['key_subjects'])): ?>
                         <div class="subjects-line">📚 Subjects to focus on: <?= htmlspecialchars($dreamCareer['key_subjects']) ?></div>
+                    <?php endif; ?>
+                    <?php if (!empty($profile['ai_career_commentary'])): ?>
+                        <div class="ai-insights-box ai-insights-box-inline">
+                            <div class="ai-insights-label">
+                                ✨ AI Insights
+                                <?php if (!empty($profile['ai_skills_are_suggested'])): ?>
+                                    <span class="ai-suggestion-tag" title="This career doesn't have a counselor-verified skills list yet, so any skills mentioned here are general AI suggestions, not a verified requirement.">AI-suggested skills</span>
+                                <?php endif; ?>
+                            </div>
+                            <p><?= htmlspecialchars($profile['ai_career_commentary']) ?></p>
+                        </div>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
@@ -293,5 +316,6 @@ function cosine_similarity_riasec_history(array $a, array $b): float
     <?php endforeach; ?>
 
     <a class="back" href="assessment.php">&larr; Take the assessment again</a>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

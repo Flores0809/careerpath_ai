@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'update_profile') {
         $name = trim($_POST['name'] ?? '');
+        $studentNumber = trim($_POST['student_number'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $gradeLevel = trim($_POST['grade_level'] ?? '');
 
@@ -29,23 +30,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $dupStmt = $pdo->prepare("SELECT student_id FROM students WHERE email = :email AND student_id != :id");
             $dupStmt->execute(['email' => $email, 'id' => $currentStudent['student_id']]);
+            $dupNumberStmt = $pdo->prepare("SELECT student_id FROM students WHERE student_number = :num AND student_id != :id");
+            $dupNumberStmt->execute(['num' => $studentNumber, 'id' => $currentStudent['student_id']]);
+
             if ($dupStmt->fetch()) {
                 $message = ['type' => 'error', 'text' => 'That email is already used by another account.'];
+            } elseif ($studentNumber !== '' && $dupNumberStmt->fetch()) {
+                $message = ['type' => 'error', 'text' => 'That LRN is already registered to another account.'];
             } else {
                 // Snapshot before/after so this shows up in Change History
                 // (php/change_history.php) same as any other account edit —
                 // previously this update wasn't logged at all.
                 $oldValues = [
                     'name' => $student['name'],
+                    'student_number' => $student['student_number'],
                     'email' => $student['email'],
                     'grade_level' => $student['grade_level'],
                 ];
 
                 $update = $pdo->prepare(
-                    "UPDATE students SET name = :name, email = :email, grade_level = :grade_level WHERE student_id = :id"
+                    "UPDATE students SET name = :name, student_number = :student_number, email = :email, grade_level = :grade_level WHERE student_id = :id"
                 );
                 $update->execute([
                     'name' => $name,
+                    'student_number' => $studentNumber !== '' ? $studentNumber : null,
                     'email' => $email,
                     'grade_level' => $gradeLevel !== '' ? $gradeLevel : null,
                     'id' => $currentStudent['student_id'],
@@ -53,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $newValues = [
                     'name' => $name,
+                    'student_number' => $studentNumber !== '' ? $studentNumber : null,
                     'email' => $email,
                     'grade_level' => $gradeLevel !== '' ? $gradeLevel : null,
                 ];
@@ -113,13 +122,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     body > h1, body > .panel, body > .flash-success, body > .flash-error { max-width: 640px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; }
     .panel { background: #f5f5f5; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
-    .panel h2 { margin: 0 0 14px; color: #6e1423; font-size: 16px; }
-    label { display: block; font-size: 13px; font-weight: bold; margin: 10px 0 4px; }
+    .panel h2 { margin: 0 0 14px; color: #6e1423; font-size: 17.5px; }
+    label { display: block; font-size: 14.5px; font-weight: bold; margin: 10px 0 4px; }
     input[type=text], input[type=email], input[type=password] { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; box-sizing: border-box; }
-    button { margin-top: 14px; padding: 9px 20px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; background: #6e1423; color: #fff; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
+    button { margin-top: 14px; padding: 9px 20px; border: none; border-radius: 6px; font-size: 15.5px; cursor: pointer; background: #6e1423; color: #fff; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
     .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
     .flash-error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
-    .member-since { font-size: 13px; color: #888; }
+    .member-since { font-size: 14.5px; color: #888; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 </style>
 </head>
@@ -140,6 +149,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="hidden" name="action" value="update_profile">
             <label>Full name</label>
             <input type="text" name="name" value="<?= htmlspecialchars($student['name']) ?>" required>
+            <label>LRN</label>
+            <input type="text" name="student_number" value="<?= htmlspecialchars($student['student_number'] ?? '') ?>" placeholder="Your 12-digit Learner Reference Number">
             <label>Email</label>
             <input type="email" name="email" value="<?= htmlspecialchars($student['email']) ?>" required>
             <label>Grade level</label>
@@ -162,5 +173,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <button type="submit">Change password</button>
         </form>
     </div>
+<?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>
