@@ -110,6 +110,10 @@ CREATE TABLE IF NOT EXISTS students (
     email          VARCHAR(150) NOT NULL UNIQUE,
     password_hash  VARCHAR(255) NOT NULL,
     grade_level    VARCHAR(50) NULL,
+    -- Requested by the client (migration_25_student_age.sql). Nullable at
+    -- the DB level (existing accounts predate this column), but required
+    -- going forward at sign-up — see php/student_register.php.
+    age            TINYINT UNSIGNED NULL,
     status         ENUM('active', 'disabled') NOT NULL DEFAULT 'active',
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

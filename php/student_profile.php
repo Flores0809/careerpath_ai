@@ -22,12 +22,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $studentNumber = trim($_POST['student_number'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $gradeLevel = trim($_POST['grade_level'] ?? '');
+        $ageRaw = trim($_POST['age'] ?? '');
 
-        if ($name === '' || $email === '') {
-            $message = ['type' => 'error', 'text' => 'Name and email are required.'];
+        // LRN, grade level, and age are all required per client request —
+        // same rule now enforced at sign-up (php/student_register.php).
+        if ($name === '' || $email === '' || $studentNumber === '' || $gradeLevel === '' || $ageRaw === '') {
+            $message = ['type' => 'error', 'text' => 'Name, LRN, email, grade level, and age are all required.'];
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $message = ['type' => 'error', 'text' => 'Please enter a valid email address.'];
+        } elseif (!ctype_digit($ageRaw) || (int) $ageRaw < 10 || (int) $ageRaw > 25) {
+            $message = ['type' => 'error', 'text' => 'Enter a valid age (10-25).'];
         } else {
+            $age = (int) $ageRaw;
             $dupStmt = $pdo->prepare("SELECT student_id FROM students WHERE email = :email AND student_id != :id");
             $dupStmt->execute(['email' => $email, 'id' => $currentStudent['student_id']]);
             $dupNumberStmt = $pdo->prepare("SELECT student_id FROM students WHERE student_number = :num AND student_id != :id");
@@ -35,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($dupStmt->fetch()) {
                 $message = ['type' => 'error', 'text' => 'That email is already used by another account.'];
-            } elseif ($studentNumber !== '' && $dupNumberStmt->fetch()) {
+            } elseif ($dupNumberStmt->fetch()) {
                 $message = ['type' => 'error', 'text' => 'That LRN is already registered to another account.'];
             } else {
                 // Snapshot before/after so this shows up in Change History
@@ -46,24 +52,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'student_number' => $student['student_number'],
                     'email' => $student['email'],
                     'grade_level' => $student['grade_level'],
+                    'age' => $student['age'],
                 ];
 
                 $update = $pdo->prepare(
-                    "UPDATE students SET name = :name, student_number = :student_number, email = :email, grade_level = :grade_level WHERE student_id = :id"
+                    "UPDATE students SET name = :name, student_number = :student_number, email = :email, grade_level = :grade_level, age = :age WHERE student_id = :id"
                 );
                 $update->execute([
                     'name' => $name,
-                    'student_number' => $studentNumber !== '' ? $studentNumber : null,
+                    'student_number' => $studentNumber,
                     'email' => $email,
-                    'grade_level' => $gradeLevel !== '' ? $gradeLevel : null,
+                    'grade_level' => $gradeLevel,
+                    'age' => $age,
                     'id' => $currentStudent['student_id'],
                 ]);
 
                 $newValues = [
                     'name' => $name,
-                    'student_number' => $studentNumber !== '' ? $studentNumber : null,
+                    'student_number' => $studentNumber,
                     'email' => $email,
-                    'grade_level' => $gradeLevel !== '' ? $gradeLevel : null,
+                    'grade_level' => $gradeLevel,
+                    'age' => $age,
                 ];
                 // changed_by is NULL (not a users.user_id — this was the
                 // student themselves, not staff) — change_history.php shows
@@ -74,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Keep the session (and nav greeting) in sync immediately.
                 $_SESSION['student_name'] = $name;
                 $_SESSION['student_email'] = $email;
-                $_SESSION['student_grade_level'] = $gradeLevel !== '' ? $gradeLevel : null;
+                $_SESSION['student_grade_level'] = $gradeLevel;
                 $message = ['type' => 'success', 'text' => 'Profile updated.'];
 
                 $stmt->execute(['id' => $currentStudent['student_id']]);
@@ -124,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .panel { background: #f5f5f5; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
     .panel h2 { margin: 0 0 14px; color: #6e1423; font-size: 17.5px; }
     label { display: block; font-size: 14.5px; font-weight: bold; margin: 10px 0 4px; }
-    input[type=text], input[type=email], input[type=password] { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; box-sizing: border-box; }
+    input[type=text], input[type=email], input[type=password], input[type=number] { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; box-sizing: border-box; }
     button { margin-top: 14px; padding: 9px 20px; border: none; border-radius: 6px; font-size: 15.5px; cursor: pointer; background: #6e1423; color: #fff; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
     .flash-success { background: #d1e7dd; border: 1px solid #a3cfbb; color: #0f5132; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
     .flash-error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px; }
@@ -150,11 +159,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label>Full name</label>
             <input type="text" name="name" value="<?= htmlspecialchars($student['name']) ?>" required>
             <label>LRN</label>
-            <input type="text" name="student_number" value="<?= htmlspecialchars($student['student_number'] ?? '') ?>" placeholder="Your 12-digit Learner Reference Number">
+            <input type="text" name="student_number" value="<?= htmlspecialchars($student['student_number'] ?? '') ?>" placeholder="Your 12-digit Learner Reference Number" required>
             <label>Email</label>
             <input type="email" name="email" value="<?= htmlspecialchars($student['email']) ?>" required>
             <label>Grade level</label>
-            <input type="text" name="grade_level" value="<?= htmlspecialchars($student['grade_level'] ?? '') ?>" placeholder="e.g. Grade 12">
+            <input type="text" name="grade_level" value="<?= htmlspecialchars($student['grade_level'] ?? '') ?>" placeholder="e.g. Grade 12" required>
+            <label>Age</label>
+            <input type="number" name="age" min="10" max="25" value="<?= htmlspecialchars($student['age'] ?? '') ?>" required>
             <p class="member-since">Member since <?= date('M j, Y', strtotime($student['created_at'])) ?></p>
             <button type="submit">Save changes</button>
         </form>

@@ -331,6 +331,9 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                             <?php if (!empty($viewedStudent['student_number'])): ?>
                                 · LRN <?= htmlspecialchars($viewedStudent['student_number']) ?>
                             <?php endif; ?>
+                            <?php if (!empty($viewedStudent['age'])): ?>
+                                · Age <?= (int) $viewedStudent['age'] ?>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -498,6 +501,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                             <th>Name</th>
                             <th>Email</th>
                             <th>Grade level</th>
+                            <th>Age</th>
                             <th>Assessments</th>
                             <th>Status</th>
                             <th></th>
@@ -509,13 +513,14 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                                 <td><?= htmlspecialchars($s['name']) ?></td>
                                 <td><?= htmlspecialchars($s['email']) ?></td>
                                 <td><?= htmlspecialchars($s['grade_level'] ?? '—') ?></td>
+                                <td><?= $s['age'] !== null ? (int) $s['age'] : '—' ?></td>
                                 <td><?= (int) $s['submission_count'] ?></td>
                                 <td class="status-<?= htmlspecialchars($s['status']) ?>"><?= htmlspecialchars($s['status']) ?></td>
                                 <td><a class="view-link" href="students_lookup.php?view=<?= (int) $s['student_id'] ?>">View →</a></td>
                             </tr>
                         <?php endforeach; ?>
                         <tr id="student-no-results" style="display:none;">
-                            <td colspan="8" class="empty" style="text-align:center;">No students match your search.</td>
+                            <td colspan="9" class="empty" style="text-align:center;">No students match your search.</td>
                         </tr>
                     </table>
                 <?php endif; ?>

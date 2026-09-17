@@ -50,14 +50,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $studentNumber = trim($_POST['student_number'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $gradeLevel = trim($_POST['grade_level'] ?? '');
+    $ageRaw = trim($_POST['age'] ?? '');
     $password = $_POST['password'] ?? '';
     $confirm = $_POST['confirm'] ?? '';
     $accessCode = trim($_POST['access_code'] ?? '');
 
-    if ($name === '' || $email === '' || $password === '') {
-        $error = 'Name, email, and password are required.';
+    // LRN, grade level, and age are all required per client request — no
+    // longer optional the way they briefly were. JHS/SHS students run
+    // roughly ages 11-19; the bound is a sanity check, not a strict cutoff.
+    if ($name === '' || $email === '' || $password === '' || $studentNumber === '' || $gradeLevel === '' || $ageRaw === '') {
+        $error = 'Name, LRN, email, grade level, age, and password are all required.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Enter a valid email address.';
+    } elseif (!ctype_digit($ageRaw) || (int) $ageRaw < 10 || (int) $ageRaw > 25) {
+        $error = 'Enter a valid age (10-25).';
+    } elseif (!in_array($gradeLevel, $gradeLevelOptions, true)) {
+        $error = 'Select a valid grade level from the list.';
     } elseif (strlen($password) < 8) {
         $error = 'Password must be at least 8 characters.';
     } elseif ($password !== $confirm) {
@@ -65,18 +73,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($requiredAccessCode !== '' && !hash_equals($requiredAccessCode, $accessCode)) {
         $error = 'That access code is incorrect. Ask your guidance counselor or class adviser for the current MEII student access code.';
     } else {
+        $age = (int) $ageRaw;
         $hash = password_hash($password, PASSWORD_DEFAULT);
         try {
             $stmt = $pdo->prepare(
-                "INSERT INTO students (name, student_number, email, password_hash, grade_level, status)
-                 VALUES (:name, :student_number, :email, :hash, :grade_level, 'active')"
+                "INSERT INTO students (name, student_number, email, password_hash, grade_level, age, status)
+                 VALUES (:name, :student_number, :email, :hash, :grade_level, :age, 'active')"
             );
             $stmt->execute([
                 'name' => $name,
-                'student_number' => $studentNumber !== '' ? $studentNumber : null,
+                'student_number' => $studentNumber,
                 'email' => $email,
                 'hash' => $hash,
-                'grade_level' => $gradeLevel !== '' ? $gradeLevel : null,
+                'grade_level' => $gradeLevel,
+                'age' => $age,
             ]);
             $newStudentId = (int) $pdo->lastInsertId();
 
@@ -150,19 +160,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label>Full name</label>
         <input type="text" name="name" value="<?= htmlspecialchars($_POST['name'] ?? '') ?>" required>
 
-        <label>LRN (optional)</label>
-        <input type="text" name="student_number" value="<?= htmlspecialchars($_POST['student_number'] ?? '') ?>" placeholder="Your 12-digit Learner Reference Number">
+        <label>LRN</label>
+        <input type="text" name="student_number" value="<?= htmlspecialchars($_POST['student_number'] ?? '') ?>" placeholder="Your 12-digit Learner Reference Number" required>
 
         <label>Email</label>
         <input type="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
 
-        <label>Grade level (optional)</label>
-        <select name="grade_level" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <label>Grade level</label>
+        <select name="grade_level" required style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
             <option value="">— Select grade level —</option>
             <?php foreach ($gradeLevelOptions as $option): ?>
                 <option value="<?= htmlspecialchars($option) ?>" <?= ($_POST['grade_level'] ?? '') === $option ? 'selected' : '' ?>><?= htmlspecialchars($option) ?></option>
             <?php endforeach; ?>
         </select>
+
+        <label>Age</label>
+        <input type="number" name="age" min="10" max="25" value="<?= htmlspecialchars($_POST['age'] ?? '') ?>" required style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
 
         <label>Password (min. 8 characters)</label>
         <input type="password" name="password" required minlength="8">
