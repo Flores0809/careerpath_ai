@@ -9,9 +9,11 @@
 -- showing static text with no way to jump to it.
 --
 -- Nullable: NULL for anything still pending or rejected (nothing to link
--- to), and for anything approved before this migration existed (no way to
--- retroactively know which career it became without re-matching by title,
--- which isn't reliable since titles can be edited on approval).
+-- to). For entries already approved BEFORE this migration existed, the
+-- backfill below opportunistically fills in the link by matching on exact
+-- title — this works for most existing rows since career_title usually
+-- isn't edited away from source_title on approval, but any row where it
+-- WAS edited stays NULL (no reliable way to know which career it became).
 --
 -- Real FOREIGN KEY, matching this table's existing convention for
 -- reviewed_by -> users.user_id. ON DELETE SET NULL: if a career is ever
@@ -26,3 +28,11 @@ USE careerpath_ai;
 ALTER TABLE pending_careers
     ADD COLUMN approved_career_id INT NULL AFTER status,
     ADD FOREIGN KEY (approved_career_id) REFERENCES careers(career_id) ON DELETE SET NULL;
+
+-- One-time backfill for rows approved before this column existed — links
+-- by exact title match against the live careers table. Safe to re-run
+-- (only touches rows that are still NULL).
+UPDATE pending_careers pc
+JOIN careers c ON c.career_title = pc.source_title
+SET pc.approved_career_id = c.career_id
+WHERE pc.status = 'approved' AND pc.approved_career_id IS NULL;
