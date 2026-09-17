@@ -14,46 +14,78 @@ require_once __DIR__ . '/notifications_helper.php';
 
 $currentStudent = require_student_login();
 
-$types = ['R', 'I', 'A', 'S', 'E', 'C'];
-$maxPerType = 7 * 4; // 7 questions x max score of 4
-
-$riasec = [];
-foreach ($types as $type) {
-    $answers = $_POST[$type] ?? [];
-    $sum = array_sum(array_map('intval', $answers));
-    $riasec[$type] = round($sum / $maxPerType, 4); // normalize to 0-1
-}
-
-// Skills verification mechanism (Specific Objective 2 / Research Gap #4) —
-// captured alongside RIASEC so recommendations can show a skills gap, not
-// just a personality match. Optional per client feedback: a student who
-// skips it just doesn't get a skills-match percentage (compute_skill_match()
-// in skills_helper.php already returns null rather than a misleading 0% for
-// a blank skills field) — academic average below is still required.
-// The form's placeholder tells students unsure what to put to type "N/A" —
-// treat that (and "none"/"n/a", any casing/punctuation) the same as a blank
-// field everywhere downstream, so it doesn't get stored or scored as if it
-// were a real (and misleadingly low) list of skills.
-$studentSkillsRaw = trim($_POST['skills'] ?? '');
-if (preg_match('/^n\.?\/?\s?a\.?$|^none$/i', $studentSkillsRaw)) {
-    $studentSkillsRaw = '';
-}
-$academicAverageRaw = trim($_POST['academic_average'] ?? '');
-if ($academicAverageRaw === '' || !is_numeric($academicAverageRaw)) {
-    http_response_code(400);
-    die('Academic average is required. <a href="assessment.php">Go back</a>');
-}
-$academicAverage = max(0, min(100, (float) $academicAverageRaw));
-
-// Dream career (php/assessment.php's cluster -> job picker, required there).
-// Same server-side enforcement pattern as academic average above.
-$dreamCareerId = (int) ($_POST['dream_career_id'] ?? 0);
-if ($dreamCareerId <= 0) {
-    http_response_code(400);
-    die('Please choose a dream career. <a href="assessment.php">Go back</a>');
-}
-
 $pdo = get_db();
+
+// Post/Redirect/Get: a fresh submission (POST) is scored, saved, and then
+// redirected to this same page as a GET with ?profile_id=. That GET is what
+// actually renders the results below. This means the browser's history entry
+// for the results page is a plain GET, so pressing Back just re-fetches it —
+// no "Confirm Form Resubmission" prompt, and (more importantly) nothing in
+// the render path re-runs the matching-service call, the Gemini commentary
+// call, or the student_profiles/recommendations INSERTs on every back-nav or
+// refresh. Everything the render code needs on the GET path is reloaded from
+// the DB instead of recomputed, so results look identical either way.
+$isReplay = $_SERVER['REQUEST_METHOD'] !== 'POST' && !empty($_GET['profile_id']);
+
+$replayProfile = null;
+if ($isReplay) {
+    $replayStmt = $pdo->prepare("SELECT * FROM student_profiles WHERE profile_id = :id AND student_id = :sid");
+    $replayStmt->execute(['id' => (int) $_GET['profile_id'], 'sid' => $currentStudent['student_id']]);
+    $replayProfile = $replayStmt->fetch();
+    if (!$replayProfile) {
+        http_response_code(404);
+        die('Result not found. <a href="assessment.php">Take the assessment</a>');
+    }
+
+    // Reload everything the scoring/rendering code below needs from the
+    // saved row instead of $_POST — this branch never touches $_POST.
+    $riasec = [
+        'R' => (float) $replayProfile['r_score'], 'I' => (float) $replayProfile['i_score'], 'A' => (float) $replayProfile['a_score'],
+        'S' => (float) $replayProfile['s_score'], 'E' => (float) $replayProfile['e_score'], 'C' => (float) $replayProfile['c_score'],
+    ];
+    $studentSkillsRaw = $replayProfile['skills'] ?? '';
+    $academicAverage = (float) $replayProfile['academic_average'];
+    $dreamCareerId = (int) ($replayProfile['dream_career_id'] ?? 0);
+} else {
+    $types = ['R', 'I', 'A', 'S', 'E', 'C'];
+    $maxPerType = 7 * 4; // 7 questions x max score of 4
+
+    $riasec = [];
+    foreach ($types as $type) {
+        $answers = $_POST[$type] ?? [];
+        $sum = array_sum(array_map('intval', $answers));
+        $riasec[$type] = round($sum / $maxPerType, 4); // normalize to 0-1
+    }
+
+    // Skills verification mechanism (Specific Objective 2 / Research Gap #4) —
+    // captured alongside RIASEC so recommendations can show a skills gap, not
+    // just a personality match. Optional per client feedback: a student who
+    // skips it just doesn't get a skills-match percentage (compute_skill_match()
+    // in skills_helper.php already returns null rather than a misleading 0% for
+    // a blank skills field) — academic average below is still required.
+    // The form's placeholder tells students unsure what to put to type "N/A" —
+    // treat that (and "none"/"n/a", any casing/punctuation) the same as a blank
+    // field everywhere downstream, so it doesn't get stored or scored as if it
+    // were a real (and misleadingly low) list of skills.
+    $studentSkillsRaw = trim($_POST['skills'] ?? '');
+    if (preg_match('/^n\.?\/?\s?a\.?$|^none$/i', $studentSkillsRaw)) {
+        $studentSkillsRaw = '';
+    }
+    $academicAverageRaw = trim($_POST['academic_average'] ?? '');
+    if ($academicAverageRaw === '' || !is_numeric($academicAverageRaw)) {
+        http_response_code(400);
+        die('Academic average is required. <a href="assessment.php">Go back</a>');
+    }
+    $academicAverage = max(0, min(100, (float) $academicAverageRaw));
+
+    // Dream career (php/assessment.php's cluster -> job picker, required there).
+    // Same server-side enforcement pattern as academic average above.
+    $dreamCareerId = (int) ($_POST['dream_career_id'] ?? 0);
+    if ($dreamCareerId <= 0) {
+        http_response_code(400);
+        die('Please choose a dream career. <a href="assessment.php">Go back</a>');
+    }
+}
 
 $riasecTypeNames = ['R' => 'Realistic', 'I' => 'Investigative', 'A' => 'Artistic', 'S' => 'Social', 'E' => 'Enterprising', 'C' => 'Conventional'];
 
@@ -154,6 +186,14 @@ $dreamCareer = $dreamStmt->fetch();
 $dreamCareerData = null;
 if ($dreamCareer) {
     $dreamCareerData = build_career_match_data($dreamCareer, $studentVectorAssoc);
+    // On a replayed (GET) view, the AI commentary was already generated and
+    // cached on student_profiles the first time this profile was submitted —
+    // reuse it here instead of calling Gemini again on every back-nav/refresh.
+    if ($isReplay) {
+        $dreamCareerData['ai_summary'] = $replayProfile['ai_summary'] ?? null;
+        $dreamCareerData['ai_career_commentary'] = $replayProfile['ai_career_commentary'] ?? null;
+        $dreamCareerData['ai_skills_are_suggested'] = !empty($replayProfile['ai_skills_are_suggested']);
+    }
 }
 
 // If a Local and an International career for essentially the same role both
@@ -211,54 +251,93 @@ if ($dreamCareerData && $dreamCareerData['career_category']) {
     });
 }
 
-// Call the Python matching microservice. Top-N is configurable from the
-// Administrator Module's System Settings page (php/settings.php); falls
-// back to 5 if the setting row is missing for any reason.
-$topN = 5;
-try {
-    $settingStmt = get_db()->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'recommendation_count'");
-    $settingStmt->execute();
-    $settingValue = $settingStmt->fetchColumn();
-    if ($settingValue !== false && (int) $settingValue > 0) {
-        $topN = (int) $settingValue;
-    }
-} catch (Exception $e) {
-    // system_settings table missing (pre-migration_10 install) — keep default.
-}
-$payload = json_encode(['riasec' => $riasec, 'top_n' => $topN]);
-
-$ch = curl_init(MATCHING_SERVICE_URL);
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST => true,
-    CURLOPT_POSTFIELDS => $payload,
-    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-    CURLOPT_TIMEOUT => 10,
-]);
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlError = curl_error($ch);
-curl_close($ch);
-
 $result = null;
 $errorMessage = null;
+$hasMatchResults = false;
 
-if ($curlError) {
-    $errorMessage = "Could not reach the matching engine: $curlError. Is the Flask service running (python app.py) on port 5000?";
-} else {
-    $result = json_decode($response, true);
-    if ($httpCode !== 200 || !$result || isset($result['error'])) {
-        $errorMessage = $result['error'] ?? "Matching engine returned an unexpected response (HTTP $httpCode).";
+if ($isReplay) {
+    // Rebuild the "other careers" list purely from what was already saved —
+    // no Flask call, no re-insert. Each recommended career is re-run through
+    // build_career_match_data(), the same local/deterministic function used
+    // above for the dream career and field careers, so it comes back with
+    // the exact same shape render_career_card() needs (title, description,
+    // top_dimensions, career_riasec, etc.) — the raw Flask response never
+    // had to be cached for this to work, since match_score is a pure
+    // function of $riasec (unchanged, reloaded from the saved profile) and
+    // the career's own row.
+    $recStmt = $pdo->prepare(
+        "SELECT career_id FROM recommendations WHERE profile_id = :id ORDER BY rank_position ASC"
+    );
+    $recStmt->execute(['id' => (int) $replayProfile['profile_id']]);
+    $recCareerIds = array_map('intval', $recStmt->fetchAll(PDO::FETCH_COLUMN));
+
+    $reconstructed = [];
+    if ($recCareerIds) {
+        $placeholders = implode(',', array_fill(0, count($recCareerIds), '?'));
+        $careersStmt = $pdo->prepare("SELECT * FROM careers WHERE career_id IN ($placeholders)");
+        $careersStmt->execute($recCareerIds);
+        $careersById = [];
+        foreach ($careersStmt->fetchAll() as $row) {
+            $careersById[(int) $row['career_id']] = $row;
+        }
+        foreach ($recCareerIds as $cid) {
+            if (isset($careersById[$cid])) {
+                $reconstructed[] = build_career_match_data($careersById[$cid], $studentVectorAssoc);
+            }
+        }
     }
+    $result = ['recommendations' => $reconstructed];
+    $hasMatchResults = !empty($reconstructed);
+} else {
+    // Call the Python matching microservice. Top-N is configurable from the
+    // Administrator Module's System Settings page (php/settings.php); falls
+    // back to 5 if the setting row is missing for any reason.
+    $topN = 5;
+    try {
+        $settingStmt = get_db()->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'recommendation_count'");
+        $settingStmt->execute();
+        $settingValue = $settingStmt->fetchColumn();
+        if ($settingValue !== false && (int) $settingValue > 0) {
+            $topN = (int) $settingValue;
+        }
+    } catch (Exception $e) {
+        // system_settings table missing (pre-migration_10 install) — keep default.
+    }
+    $payload = json_encode(['riasec' => $riasec, 'top_n' => $topN]);
+
+    $ch = curl_init(MATCHING_SERVICE_URL);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT => 10,
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlError) {
+        $errorMessage = "Could not reach the matching engine: $curlError. Is the Flask service running (python app.py) on port 5000?";
+    } else {
+        $result = json_decode($response, true);
+        if ($httpCode !== 200 || !$result || isset($result['error'])) {
+            $errorMessage = $result['error'] ?? "Matching engine returned an unexpected response (HTTP $httpCode).";
+        }
+    }
+    $hasMatchResults = !$errorMessage && $result && !empty($result['recommendations']);
 }
 
 // Save this submission + its recommendations so the student can look back
 // at it later on student_history.php. Saved whenever we have either a
 // dream-career fit (computed locally, doesn't need the matching service) or
 // a successful matching-service result — so a Flask hiccup doesn't wipe out
-// the dream-career half of the feature.
-$hasMatchResults = !$errorMessage && $result && !empty($result['recommendations']);
-if ($dreamCareerData || $hasMatchResults) {
+// the dream-career half of the feature. Skipped entirely on replay — this
+// exact profile was already saved the first time it was submitted, and
+// re-running it here on every back-nav/refresh is exactly the duplicate-save
+// bug the redirect above exists to prevent.
+if (!$isReplay && ($dreamCareerData || $hasMatchResults)) {
     try {
         $pdo->beginTransaction();
 
@@ -394,6 +473,14 @@ if ($dreamCareerData || $hasMatchResults) {
         } catch (Exception $e) {
             // ignore
         }
+
+        // Post/Redirect/Get: send the browser to a plain GET URL for this
+        // same profile instead of rendering the results directly off this
+        // POST. See $isReplay above — this is what makes the Back button
+        // land on a safe re-fetch instead of a "Confirm Form Resubmission"
+        // prompt, without duplicating this save on every back-nav.
+        header('Location: submit.php?profile_id=' . $profileId);
+        exit;
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
