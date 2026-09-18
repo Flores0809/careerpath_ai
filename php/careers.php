@@ -896,6 +896,46 @@ if ($statusFilter === 'pending') {
             </summary>
 
             <div class="pending-body">
+                <?php if ($isEnriched): ?>
+                    <details class="enrich-compare">
+                        <summary>📄 Raw scraped data vs. ✨ AI-enriched — click to compare before editing below</summary>
+                        <div class="duplicate-detail">
+                            <table class="duplicate-compare">
+                                <tr>
+                                    <th></th>
+                                    <th>Raw (scraped)</th>
+                                    <th>AI-enriched</th>
+                                </tr>
+                                <tr>
+                                    <td>Description</td>
+                                    <td><?= htmlspecialchars($row['description'] ?: '—') ?></td>
+                                    <td><?= htmlspecialchars($row['ai_description'] ?: '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Daily tasks / qualifications</td>
+                                    <td><?= htmlspecialchars($row['qualifications'] ?: '—') ?></td>
+                                    <td><?= htmlspecialchars($row['ai_daily_task'] ?: '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Educational pathway</td>
+                                    <td><?= htmlspecialchars($row['education_level'] ?: '—') ?></td>
+                                    <td><?= htmlspecialchars($row['ai_educational_pathway'] ?: '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Category</td>
+                                    <td>— (the crawler doesn't suggest one)</td>
+                                    <td><?= htmlspecialchars($row['career_category'] ?: '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>RIASEC</td>
+                                    <td>R <?= (int) $row['suggested_r_score'] ?> · I <?= (int) $row['suggested_i_score'] ?> · A <?= (int) $row['suggested_a_score'] ?> · S <?= (int) $row['suggested_s_score'] ?> · E <?= (int) $row['suggested_e_score'] ?> · C <?= (int) $row['suggested_c_score'] ?><br><span style="font-weight:normal;font-size:12px;color:#8a7aa8;">(keyword-based rule of thumb)</span></td>
+                                    <td>R <?= (int) $row['ai_r_score'] ?> · I <?= (int) $row['ai_i_score'] ?> · A <?= (int) $row['ai_a_score'] ?> · S <?= (int) $row['ai_s_score'] ?> · E <?= (int) $row['ai_e_score'] ?> · C <?= (int) $row['ai_c_score'] ?></td>
+                                </tr>
+                            </table>
+                            <p class="duplicate-detail-hint">The form below is pre-filled from the AI-enriched column. If the AI version looks wrong (or the raw scrape actually had it right), edit the fields below before approving — this comparison is just to help you spot the difference, it doesn't change anything by itself.</p>
+                        </div>
+                    </details>
+                <?php endif; ?>
                 <?php if (!empty($row['_duplicate_of'])): ?>
                     <?php $dup = $row['_duplicate_of']; ?>
                     <details class="duplicate-badge">
@@ -957,47 +997,6 @@ if ($statusFilter === 'pending') {
                     <?= htmlspecialchars($row['employment_type'] ?? '—') ?> ·
                     <?= htmlspecialchars($row['salary'] ?? '—') ?>
                 </p>
-
-                <?php if ($isEnriched): ?>
-                    <details class="enrich-compare">
-                        <summary>📄 Raw scraped data vs. ✨ AI-enriched — click to compare before editing below</summary>
-                        <div class="duplicate-detail">
-                            <table class="duplicate-compare">
-                                <tr>
-                                    <th></th>
-                                    <th>Raw (scraped)</th>
-                                    <th>AI-enriched</th>
-                                </tr>
-                                <tr>
-                                    <td>Description</td>
-                                    <td><?= htmlspecialchars($row['description'] ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($row['ai_description'] ?: '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Daily tasks / qualifications</td>
-                                    <td><?= htmlspecialchars($row['qualifications'] ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($row['ai_daily_task'] ?: '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Educational pathway</td>
-                                    <td><?= htmlspecialchars($row['education_level'] ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($row['ai_educational_pathway'] ?: '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Category</td>
-                                    <td>— (the crawler doesn't suggest one)</td>
-                                    <td><?= htmlspecialchars($row['career_category'] ?: '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>RIASEC</td>
-                                    <td>R <?= (int) $row['suggested_r_score'] ?> · I <?= (int) $row['suggested_i_score'] ?> · A <?= (int) $row['suggested_a_score'] ?> · S <?= (int) $row['suggested_s_score'] ?> · E <?= (int) $row['suggested_e_score'] ?> · C <?= (int) $row['suggested_c_score'] ?><br><span style="font-weight:normal;font-size:12px;color:#8a7aa8;">(keyword-based rule of thumb)</span></td>
-                                    <td>R <?= (int) $row['ai_r_score'] ?> · I <?= (int) $row['ai_i_score'] ?> · A <?= (int) $row['ai_a_score'] ?> · S <?= (int) $row['ai_s_score'] ?> · E <?= (int) $row['ai_e_score'] ?> · C <?= (int) $row['ai_c_score'] ?></td>
-                                </tr>
-                            </table>
-                            <p class="duplicate-detail-hint">The form below is pre-filled from the AI-enriched column. If the AI version looks wrong (or the raw scrape actually had it right), edit the fields below before approving — this comparison is just to help you spot the difference, it doesn't change anything by itself.</p>
-                        </div>
-                    </details>
-                <?php endif; ?>
 
                 <form method="POST">
                     <input type="hidden" name="pending_id" value="<?= (int) $row['pending_id'] ?>">
