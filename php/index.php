@@ -63,7 +63,7 @@ $currentStaff = current_user();
         <div class="hero">
             <div class="eyebrow">Meridian Educational Institution Inc.</div>
             <h1>CareerPath AI</h1>
-            <p>An AI-powered career guidance system that matches JHS/SHS students to careers using a RIASEC personality assessment, skills and academic profile, and a hybrid recommendation engine with AI-generated career insights.</p>
+            <p>A JHS/SHS AI-assisted career guidance system that matches students to careers using a RIASEC personality assessment, skills and academic profile, and a hybrid recommendation engine with AI-generated career insights.</p>
         </div>
 
         <div class="content">
