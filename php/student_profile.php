@@ -28,6 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // same rule now enforced at sign-up (php/student_register.php).
         if ($name === '' || $email === '' || $studentNumber === '' || $gradeLevel === '' || $ageRaw === '') {
             $message = ['type' => 'error', 'text' => 'Name, LRN, email, grade level, and age are all required.'];
+        } elseif (!ctype_digit($studentNumber) || strlen($studentNumber) !== 12) {
+            $message = ['type' => 'error', 'text' => 'LRN must be exactly 12 digits.'];
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $message = ['type' => 'error', 'text' => 'Please enter a valid email address.'];
         } elseif (!ctype_digit($ageRaw) || (int) $ageRaw < 10 || (int) $ageRaw > 25) {
@@ -159,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label>Full name</label>
             <input type="text" name="name" value="<?= htmlspecialchars($student['name']) ?>" required>
             <label>LRN</label>
-            <input type="text" name="student_number" value="<?= htmlspecialchars($student['student_number'] ?? '') ?>" placeholder="Your 12-digit Learner Reference Number" required>
+            <input type="text" name="student_number" value="<?= htmlspecialchars($student['student_number'] ?? '') ?>" placeholder="Your 12-digit Learner Reference Number" pattern="\d{12}" maxlength="12" inputmode="numeric" title="12 digits, numbers only" required>
             <label>Email</label>
             <input type="email" name="email" value="<?= htmlspecialchars($student['email']) ?>" required>
             <label>Grade level</label>

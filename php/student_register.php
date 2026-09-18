@@ -60,6 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // roughly ages 11-19; the bound is a sanity check, not a strict cutoff.
     if ($name === '' || $email === '' || $password === '' || $studentNumber === '' || $gradeLevel === '' || $ageRaw === '') {
         $error = 'Name, LRN, email, grade level, age, and password are all required.';
+    } elseif (!ctype_digit($studentNumber) || strlen($studentNumber) !== 12) {
+        $error = 'LRN must be exactly 12 digits.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Enter a valid email address.';
     } elseif (!ctype_digit($ageRaw) || (int) $ageRaw < 10 || (int) $ageRaw > 25) {
@@ -161,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <input type="text" name="name" value="<?= htmlspecialchars($_POST['name'] ?? '') ?>" required>
 
         <label>LRN</label>
-        <input type="text" name="student_number" value="<?= htmlspecialchars($_POST['student_number'] ?? '') ?>" placeholder="Your 12-digit Learner Reference Number" required>
+        <input type="text" name="student_number" value="<?= htmlspecialchars($_POST['student_number'] ?? '') ?>" placeholder="Your 12-digit Learner Reference Number" pattern="\d{12}" maxlength="12" inputmode="numeric" title="12 digits, numbers only" required>
 
         <label>Email</label>
         <input type="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
