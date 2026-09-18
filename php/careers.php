@@ -904,6 +904,52 @@ if ($statusFilter === 'pending') {
             </summary>
 
             <div class="pending-body">
+                <?php if (!empty($row['_duplicate_of'])): ?>
+                    <?php $dup = $row['_duplicate_of']; ?>
+                    <details class="duplicate-badge">
+                        <summary>⚠️ Possible duplicate <span class="duplicate-scope-tag duplicate-scope-<?= htmlspecialchars($dup['career_scope']) ?>"><?= htmlspecialchars(ucfirst($dup['career_scope'])) ?></span>: "<?= htmlspecialchars($dup['career_title']) ?>" is already approved (<?= round($dup['_match_percent']) ?>% title match) — click to compare, then decide if it's a real duplicate or just a similar title.</summary>
+                        <div class="duplicate-detail">
+                            <table class="duplicate-compare">
+                                <tr>
+                                    <th></th>
+                                    <th>This posting</th>
+                                    <th>Approved career</th>
+                                </tr>
+                                <tr>
+                                    <td>Title</td>
+                                    <td><?= htmlspecialchars($row['source_title'] ?? '—') ?></td>
+                                    <td><?= htmlspecialchars($dup['career_title']) ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Category</td>
+                                    <td><?= htmlspecialchars($row['career_category'] ?? '—') ?></td>
+                                    <td><?= htmlspecialchars($dup['career_category'] ?? '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Description</td>
+                                    <td><?= htmlspecialchars($descriptionDefault ?: '—') ?></td>
+                                    <td><?= htmlspecialchars($dup['description'] ?? '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Daily tasks</td>
+                                    <td><?= htmlspecialchars($dailyTaskDefault ?: '—') ?></td>
+                                    <td><?= htmlspecialchars($dup['daily_task'] ?? '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Educ. pathway</td>
+                                    <td><?= htmlspecialchars($pathwayDefault ?: '—') ?></td>
+                                    <td><?= htmlspecialchars($dup['educational_pathway'] ?? '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>RIASEC</td>
+                                    <td>R <?= number_format((float) $rDefault, 0) ?> · I <?= number_format((float) $iDefault, 0) ?> · A <?= number_format((float) $aDefault, 0) ?> · S <?= number_format((float) $sDefault, 0) ?> · E <?= number_format((float) $eDefault, 0) ?> · C <?= number_format((float) $cDefault, 0) ?></td>
+                                    <td>R <?= number_format((float) $dup['r_score'], 2) ?> · I <?= number_format((float) $dup['i_score'], 2) ?> · A <?= number_format((float) $dup['a_score'], 2) ?> · S <?= number_format((float) $dup['s_score'], 2) ?> · E <?= number_format((float) $dup['e_score'], 2) ?> · C <?= number_format((float) $dup['c_score'], 2) ?></td>
+                                </tr>
+                            </table>
+                            <p class="duplicate-detail-hint">Title similarity only — <?= round($dup['_match_percent']) ?>% overlap. A lower percentage (well under 100%) often means a distinct specialization (e.g. "Ship Electrician" vs. "Electrician"), not a true duplicate — compare the rows above before rejecting this entry.</p>
+                        </div>
+                    </details>
+                <?php endif; ?>
                 <div class="meta card-meta-row">
                     <span>Keyword: <?= htmlspecialchars($row['search_keyword']) ?></span>
                     <span><?= htmlspecialchars($row['country'] ?? '—') ?></span>
@@ -1010,53 +1056,6 @@ if ($statusFilter === 'pending') {
                 <?php if ($isEnriched): ?>
                     </div>
                 </div>
-                <?php endif; ?>
-
-                <?php if (!empty($row['_duplicate_of'])): ?>
-                    <?php $dup = $row['_duplicate_of']; ?>
-                    <details class="duplicate-badge">
-                        <summary>⚠️ Possible duplicate <span class="duplicate-scope-tag duplicate-scope-<?= htmlspecialchars($dup['career_scope']) ?>"><?= htmlspecialchars(ucfirst($dup['career_scope'])) ?></span>: "<?= htmlspecialchars($dup['career_title']) ?>" is already approved (<?= round($dup['_match_percent']) ?>% title match) — click to compare, then decide if it's a real duplicate or just a similar title.</summary>
-                        <div class="duplicate-detail">
-                            <table class="duplicate-compare">
-                                <tr>
-                                    <th></th>
-                                    <th>This posting</th>
-                                    <th>Approved career</th>
-                                </tr>
-                                <tr>
-                                    <td>Title</td>
-                                    <td><?= htmlspecialchars($row['source_title'] ?? '—') ?></td>
-                                    <td><?= htmlspecialchars($dup['career_title']) ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Category</td>
-                                    <td><?= htmlspecialchars($row['career_category'] ?? '—') ?></td>
-                                    <td><?= htmlspecialchars($dup['career_category'] ?? '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Description</td>
-                                    <td><?= htmlspecialchars($descriptionDefault ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($dup['description'] ?? '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Daily tasks</td>
-                                    <td><?= htmlspecialchars($dailyTaskDefault ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($dup['daily_task'] ?? '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Educ. pathway</td>
-                                    <td><?= htmlspecialchars($pathwayDefault ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($dup['educational_pathway'] ?? '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>RIASEC</td>
-                                    <td>R <?= number_format((float) $rDefault, 0) ?> · I <?= number_format((float) $iDefault, 0) ?> · A <?= number_format((float) $aDefault, 0) ?> · S <?= number_format((float) $sDefault, 0) ?> · E <?= number_format((float) $eDefault, 0) ?> · C <?= number_format((float) $cDefault, 0) ?></td>
-                                    <td>R <?= number_format((float) $dup['r_score'], 2) ?> · I <?= number_format((float) $dup['i_score'], 2) ?> · A <?= number_format((float) $dup['a_score'], 2) ?> · S <?= number_format((float) $dup['s_score'], 2) ?> · E <?= number_format((float) $dup['e_score'], 2) ?> · C <?= number_format((float) $dup['c_score'], 2) ?></td>
-                                </tr>
-                            </table>
-                            <p class="duplicate-detail-hint">Title similarity only — <?= round($dup['_match_percent']) ?>% overlap. A lower percentage (well under 100%) often means a distinct specialization (e.g. "Ship Electrician" vs. "Electrician"), not a true duplicate — compare the rows above before rejecting this entry.</p>
-                        </div>
-                    </details>
                 <?php endif; ?>
             </div>
         </details>
