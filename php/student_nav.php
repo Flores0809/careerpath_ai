@@ -11,6 +11,7 @@ $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-a
 <div class="cp-nav">
     <a href="student_dashboard.php" class="cp-nav-brand">
         <img src="assets/img/logo.png" alt="Meridian Educational Institution Inc. logo" class="cp-nav-logo">
+        <img src="assets/img/logo-hex.png" alt="CareerPath AI logo" class="cp-nav-logo cp-nav-logo-hex">
         <span class="cp-nav-brand-text">
             <span class="cp-nav-school">Meridian Educational Institution Inc.</span>
             <span class="cp-nav-title">CareerPath AI</span>
@@ -40,6 +41,7 @@ $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-a
     .cp-nav { display: flex; align-items: center; background: linear-gradient(135deg, #6e1423 0%, #4a0c17 100%); color: #fff; padding: 12px 20px; border-radius: 8px; margin-bottom: 24px; font-size: 15.5px; flex-wrap: wrap; gap: 10px 16px; position: relative; }
     .cp-nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-right: 10px; flex-shrink: 0; }
     .cp-nav-logo { width: 36px; height: 36px; border-radius: 50%; background: #fff; object-fit: cover; flex-shrink: 0; }
+    .cp-nav-logo-hex { border-radius: 0; background: none; width: 34px; height: auto; object-fit: contain; }
     .cp-nav-brand-text { display: flex; flex-direction: column; line-height: 1.2; }
     .cp-nav-school { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; color: #e9c9ce; font-weight: normal; }
     .cp-nav-title { font-size: 17.5px; font-weight: bold; color: #fff; }
