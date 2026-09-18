@@ -682,6 +682,20 @@ if ($statusFilter === 'pending') {
     .duplicate-scope-tag.duplicate-scope-international { background: #e2e8f0; color: #1e3a5f; }
     .duplicate-scope-tag.duplicate-scope-local { background: #f0dde1; color: #6e1423; }
     .duplicate-detail-hint { margin: 0 0 10px; font-size: 13px; color: #8a5a5a; font-style: italic; line-height: 1.5; }
+    /* Raw-vs-AI-enriched comparison — same table layout/pattern as the
+       duplicate-compare block above, re-themed purple (matching this page's
+       existing "AI" accent color, .pending-ai-tag/.ai-badge) instead of red,
+       since this isn't a warning — it's just showing what the AI changed. */
+    .enrich-compare { background: #f9f6fd; color: #4a2f7a; border: 1px solid #e2d4f5; border-radius: 6px; padding: 12px 16px; font-size: 14px; margin-bottom: 16px; }
+    .enrich-compare summary { cursor: pointer; font-weight: bold; list-style: none; line-height: 1.6; }
+    .enrich-compare summary::-webkit-details-marker { display: none; }
+    .enrich-compare summary::before { content: "▸ "; margin-right: 2px; }
+    .enrich-compare[open] summary::before { content: "▾ "; }
+    .enrich-compare .duplicate-detail { border-top: 1px solid #e2d4f5; }
+    .enrich-compare .duplicate-compare th, .enrich-compare .duplicate-compare td { border-bottom: 1px solid #ebe0f7; }
+    .enrich-compare .duplicate-compare th { color: #6f42c1; }
+    .enrich-compare .duplicate-compare td:first-child { color: #6f42c1; width: 140px; }
+    .enrich-compare .duplicate-detail-hint { color: #7a5a9a; }
     .source-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12.5px; }
     .source-philjobnet { background: #f0dde1; color: #6e1423; }
     .source-kalibrr { background: #cfe8ff; color: #0b4f8a; }
@@ -921,6 +935,46 @@ if ($statusFilter === 'pending') {
                                 </tr>
                             </table>
                             <p class="duplicate-detail-hint">Title similarity only — <?= round($dup['_match_percent']) ?>% overlap. A lower percentage (well under 100%) often means a distinct specialization (e.g. "Ship Electrician" vs. "Electrician"), not a true duplicate — compare the rows above before rejecting this entry.</p>
+                        </div>
+                    </details>
+                <?php endif; ?>
+                <?php if ($isEnriched): ?>
+                    <details class="enrich-compare">
+                        <summary>📄 Raw scraped data vs. ✨ AI-enriched — click to compare before editing below</summary>
+                        <div class="duplicate-detail">
+                            <table class="duplicate-compare">
+                                <tr>
+                                    <th></th>
+                                    <th>Raw (scraped)</th>
+                                    <th>AI-enriched</th>
+                                </tr>
+                                <tr>
+                                    <td>Description</td>
+                                    <td><?= htmlspecialchars($row['description'] ?: '—') ?></td>
+                                    <td><?= htmlspecialchars($row['ai_description'] ?: '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Daily tasks / qualifications</td>
+                                    <td><?= htmlspecialchars($row['qualifications'] ?: '—') ?></td>
+                                    <td><?= htmlspecialchars($row['ai_daily_task'] ?: '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Educational pathway</td>
+                                    <td><?= htmlspecialchars($row['education_level'] ?: '—') ?></td>
+                                    <td><?= htmlspecialchars($row['ai_educational_pathway'] ?: '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Category</td>
+                                    <td>— (the crawler doesn't suggest one)</td>
+                                    <td><?= htmlspecialchars($row['career_category'] ?: '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>RIASEC</td>
+                                    <td>R <?= (int) $row['suggested_r_score'] ?> · I <?= (int) $row['suggested_i_score'] ?> · A <?= (int) $row['suggested_a_score'] ?> · S <?= (int) $row['suggested_s_score'] ?> · E <?= (int) $row['suggested_e_score'] ?> · C <?= (int) $row['suggested_c_score'] ?><br><span style="font-weight:normal;font-size:12px;color:#8a7aa8;">(keyword-based rule of thumb)</span></td>
+                                    <td>R <?= (int) $row['ai_r_score'] ?> · I <?= (int) $row['ai_i_score'] ?> · A <?= (int) $row['ai_a_score'] ?> · S <?= (int) $row['ai_s_score'] ?> · E <?= (int) $row['ai_e_score'] ?> · C <?= (int) $row['ai_c_score'] ?></td>
+                                </tr>
+                            </table>
+                            <p class="duplicate-detail-hint">The form below is pre-filled from the AI-enriched column. If the AI version looks wrong (or the raw scrape actually had it right), edit the fields below before approving — this comparison is just to help you spot the difference, it doesn't change anything by itself.</p>
                         </div>
                     </details>
                 <?php endif; ?>
