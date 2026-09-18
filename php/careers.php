@@ -667,10 +667,7 @@ if ($statusFilter === 'pending') {
     .new-section-heading { border-top: none; margin-top: 4px; }
     .new-badge { display: inline-block; background: #ffc107; color: #664d03; font-weight: bold; padding: 2px 8px; border-radius: 10px; font-size: 12.5px; margin-right: 6px; }
     .duplicate-badge { background: #fdecea; color: #842029; border: 1px solid #f5c2c7; border-radius: 6px; padding: 12px 16px; font-size: 14px; margin-bottom: 16px; }
-    .duplicate-badge summary { cursor: pointer; font-weight: bold; list-style: none; line-height: 1.6; }
-    .duplicate-badge summary::-webkit-details-marker { display: none; }
-    .duplicate-badge summary::before { content: "▸ "; margin-right: 2px; }
-    .duplicate-badge[open] summary::before { content: "▾ "; }
+    .duplicate-heading { margin: 0; font-weight: bold; line-height: 1.6; }
     .duplicate-detail { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f5c2c7; font-weight: normal; }
     .duplicate-compare { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
     .duplicate-compare th, .duplicate-compare td { text-align: left; padding: 6px 10px; font-size: 13.5px; vertical-align: top; border-bottom: 1px solid #f5d9dc; }
@@ -1014,8 +1011,8 @@ if ($statusFilter === 'pending') {
 
                 <?php if (!empty($row['_duplicate_of'])): ?>
                     <?php $dup = $row['_duplicate_of']; ?>
-                    <details class="duplicate-badge">
-                        <summary>⚠️ Possible duplicate <span class="duplicate-scope-tag duplicate-scope-<?= htmlspecialchars($dup['career_scope']) ?>"><?= htmlspecialchars(ucfirst($dup['career_scope'])) ?></span>: "<?= htmlspecialchars($dup['career_title']) ?>" is already approved (<?= round($dup['_match_percent']) ?>% title match) — click to compare, then decide if it's a real duplicate or just a similar title.</summary>
+                    <div class="duplicate-badge">
+                        <p class="duplicate-heading">⚠️ Possible duplicate <span class="duplicate-scope-tag duplicate-scope-<?= htmlspecialchars($dup['career_scope']) ?>"><?= htmlspecialchars(ucfirst($dup['career_scope'])) ?></span>: "<?= htmlspecialchars($dup['career_title']) ?>" is already approved (<?= round($dup['_match_percent']) ?>% title match) — compare below, then decide if it's a real duplicate or just a similar title.</p>
                         <div class="duplicate-detail">
                             <table class="duplicate-compare">
                                 <tr>
@@ -1056,7 +1053,7 @@ if ($statusFilter === 'pending') {
                             </table>
                             <p class="duplicate-detail-hint">Title similarity only — <?= round($dup['_match_percent']) ?>% overlap. A lower percentage (well under 100%) often means a distinct specialization (e.g. "Ship Electrician" vs. "Electrician"), not a true duplicate — compare the rows above before rejecting this entry.</p>
                         </div>
-                    </details>
+                    </div>
                 <?php endif; ?>
             </div>
         </details>
