@@ -38,6 +38,7 @@ $currentStaff = current_user();
     .card { background: #f5f5f5; border-radius: 12px; box-shadow: 0 8px 24px rgba(74,12,23,0.12); padding: 32px 28px; }
     .card .icon { font-size: 28px; margin-bottom: 10px; }
     .card h2 { color: #6e1423; margin: 0 0 8px; font-size: 20px; text-align: center; }
+    .card p.tagline { color: #6e1423; font-weight: bold; font-size: 15.5px; text-align: center; margin: 0 0 10px; }
     .card p.desc { color: #555; font-size: 15.5px; line-height: 1.5; margin-bottom: 22px; min-height: 42px; }
 
     .welcome-box { background: #faf0f1; border-radius: 8px; padding: 14px 16px; margin-bottom: 18px; font-size: 15.5px; }
@@ -70,6 +71,7 @@ $currentStaff = current_user();
             <div class="cards">
             <div class="card">
                 <h2>Students</h2>
+                <p class="tagline">Start Your Personalized Career Journey</p>
                 <p class="desc">Take the RIASEC assessment, verify your skills, and get personalized career recommendations — with AI-generated insights on how each career fits you.</p>
 
                 <?php if ($currentStudent): ?>
@@ -91,6 +93,7 @@ $currentStaff = current_user();
 
             <div class="card">
                 <h2>Staff</h2>
+                <p class="tagline">Manage Accounts and Approve Careers</p>
                 <p class="desc">Administrators manage staff accounts and system settings. Counselors review, edit, and approve AI-enriched career postings, and support students directly through Student Lookup.</p>
 
                 <?php if ($currentStaff): ?>
