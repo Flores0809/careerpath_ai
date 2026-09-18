@@ -690,16 +690,24 @@ if ($statusFilter === 'pending') {
        orphaned once the form ran longer than the reference box, so this
        matches the duplicate box's own full-width row layout instead, which
        doesn't have that problem regardless of content height. */
-    .enrich-compare { background: #f9f6fd; color: #4a2f7a; border: 1px solid #e2d4f5; border-radius: 6px; padding: 12px 16px; font-size: 14px; margin-bottom: 16px; }
-    .enrich-compare summary { cursor: pointer; font-weight: bold; list-style: none; line-height: 1.6; }
-    .enrich-compare summary::-webkit-details-marker { display: none; }
-    .enrich-compare summary::before { content: "▸ "; margin-right: 2px; }
-    .enrich-compare[open] summary::before { content: "▾ "; }
-    .enrich-compare .duplicate-detail { border-top: 1px solid #e2d4f5; }
-    .enrich-compare .duplicate-compare th, .enrich-compare .duplicate-compare td { border-bottom: 1px solid #ebe0f7; }
-    .enrich-compare .duplicate-compare th { color: #6f42c1; }
-    .enrich-compare .duplicate-compare td:first-child { color: #6f42c1; width: 140px; }
-    .enrich-compare .duplicate-detail-hint { color: #7a5a9a; }
+    /* Raw-vs-AI-enriched comparison, permanent two-column layout (not a
+       click-to-expand table) — left column is the raw scraped text,
+       read-only reference; right column is the existing editable form
+       (pre-filled from AI enrichment). Side by side by default so a
+       counselor can scan both without an extra click. Stacks on narrow
+       screens since a 260px reference column doesn't leave the form enough
+       room below ~820px. */
+    .pending-columns { display: flex; gap: 20px; align-items: flex-start; }
+    .pending-raw-col { flex: 0 0 260px; background: #f7f7f7; border: 1px solid #e2e2e2; border-radius: 8px; padding: 14px 16px; }
+    .pending-raw-heading { font-weight: bold; color: #555; font-size: 13px; margin-bottom: 8px; }
+    .raw-fields dt { font-weight: bold; color: #6e1423; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 12px; }
+    .raw-fields dt:first-child { margin-top: 0; }
+    .raw-fields dd { margin: 3px 0 0; font-size: 13px; color: #555; line-height: 1.5; }
+    .pending-form-col { flex: 1; min-width: 0; }
+    @media (max-width: 820px) {
+        .pending-columns { flex-direction: column; }
+        .pending-raw-col { flex: 1 1 auto; width: 100%; box-sizing: border-box; }
+    }
     .source-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12.5px; }
     .source-philjobnet { background: #f0dde1; color: #6e1423; }
     .source-kalibrr { background: #cfe8ff; color: #0b4f8a; }
@@ -896,92 +904,6 @@ if ($statusFilter === 'pending') {
             </summary>
 
             <div class="pending-body">
-                <?php if ($isEnriched): ?>
-                    <details class="enrich-compare">
-                        <summary>📄 Raw scraped data vs. ✨ AI-enriched — click to compare before editing below</summary>
-                        <div class="duplicate-detail">
-                            <table class="duplicate-compare">
-                                <tr>
-                                    <th></th>
-                                    <th>Raw (scraped)</th>
-                                    <th>AI-enriched</th>
-                                </tr>
-                                <tr>
-                                    <td>Description</td>
-                                    <td><?= htmlspecialchars($row['description'] ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($row['ai_description'] ?: '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Daily tasks / qualifications</td>
-                                    <td><?= htmlspecialchars($row['qualifications'] ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($row['ai_daily_task'] ?: '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Educational pathway</td>
-                                    <td><?= htmlspecialchars($row['education_level'] ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($row['ai_educational_pathway'] ?: '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Category</td>
-                                    <td>— (the crawler doesn't suggest one)</td>
-                                    <td><?= htmlspecialchars($row['career_category'] ?: '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>RIASEC</td>
-                                    <td>R <?= (int) $row['suggested_r_score'] ?> · I <?= (int) $row['suggested_i_score'] ?> · A <?= (int) $row['suggested_a_score'] ?> · S <?= (int) $row['suggested_s_score'] ?> · E <?= (int) $row['suggested_e_score'] ?> · C <?= (int) $row['suggested_c_score'] ?><br><span style="font-weight:normal;font-size:12px;color:#8a7aa8;">(keyword-based rule of thumb)</span></td>
-                                    <td>R <?= (int) $row['ai_r_score'] ?> · I <?= (int) $row['ai_i_score'] ?> · A <?= (int) $row['ai_a_score'] ?> · S <?= (int) $row['ai_s_score'] ?> · E <?= (int) $row['ai_e_score'] ?> · C <?= (int) $row['ai_c_score'] ?></td>
-                                </tr>
-                            </table>
-                            <p class="duplicate-detail-hint">The form below is pre-filled from the AI-enriched column. If the AI version looks wrong (or the raw scrape actually had it right), edit the fields below before approving — this comparison is just to help you spot the difference, it doesn't change anything by itself.</p>
-                        </div>
-                    </details>
-                <?php endif; ?>
-                <?php if (!empty($row['_duplicate_of'])): ?>
-                    <?php $dup = $row['_duplicate_of']; ?>
-                    <details class="duplicate-badge">
-                        <summary>⚠️ Possible duplicate <span class="duplicate-scope-tag duplicate-scope-<?= htmlspecialchars($dup['career_scope']) ?>"><?= htmlspecialchars(ucfirst($dup['career_scope'])) ?></span>: "<?= htmlspecialchars($dup['career_title']) ?>" is already approved (<?= round($dup['_match_percent']) ?>% title match) — click to compare, then decide if it's a real duplicate or just a similar title.</summary>
-                        <div class="duplicate-detail">
-                            <table class="duplicate-compare">
-                                <tr>
-                                    <th></th>
-                                    <th>This posting</th>
-                                    <th>Approved career</th>
-                                </tr>
-                                <tr>
-                                    <td>Title</td>
-                                    <td><?= htmlspecialchars($row['source_title'] ?? '—') ?></td>
-                                    <td><?= htmlspecialchars($dup['career_title']) ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Category</td>
-                                    <td><?= htmlspecialchars($row['career_category'] ?? '—') ?></td>
-                                    <td><?= htmlspecialchars($dup['career_category'] ?? '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Description</td>
-                                    <td><?= htmlspecialchars($descriptionDefault ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($dup['description'] ?? '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Daily tasks</td>
-                                    <td><?= htmlspecialchars($dailyTaskDefault ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($dup['daily_task'] ?? '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Educ. pathway</td>
-                                    <td><?= htmlspecialchars($pathwayDefault ?: '—') ?></td>
-                                    <td><?= htmlspecialchars($dup['educational_pathway'] ?? '—') ?></td>
-                                </tr>
-                                <tr>
-                                    <td>RIASEC</td>
-                                    <td>R <?= number_format((float) $rDefault, 0) ?> · I <?= number_format((float) $iDefault, 0) ?> · A <?= number_format((float) $aDefault, 0) ?> · S <?= number_format((float) $sDefault, 0) ?> · E <?= number_format((float) $eDefault, 0) ?> · C <?= number_format((float) $cDefault, 0) ?></td>
-                                    <td>R <?= number_format((float) $dup['r_score'], 2) ?> · I <?= number_format((float) $dup['i_score'], 2) ?> · A <?= number_format((float) $dup['a_score'], 2) ?> · S <?= number_format((float) $dup['s_score'], 2) ?> · E <?= number_format((float) $dup['e_score'], 2) ?> · C <?= number_format((float) $dup['c_score'], 2) ?></td>
-                                </tr>
-                            </table>
-                            <p class="duplicate-detail-hint">Title similarity only — <?= round($dup['_match_percent']) ?>% overlap. A lower percentage (well under 100%) often means a distinct specialization (e.g. "Ship Electrician" vs. "Electrician"), not a true duplicate — compare the rows above before rejecting this entry.</p>
-                        </div>
-                    </details>
-                <?php endif; ?>
                 <div class="meta card-meta-row">
                     <span>Keyword: <?= htmlspecialchars($row['search_keyword']) ?></span>
                     <span><?= htmlspecialchars($row['country'] ?? '—') ?></span>
@@ -997,6 +919,26 @@ if ($statusFilter === 'pending') {
                     <?= htmlspecialchars($row['employment_type'] ?? '—') ?> ·
                     <?= htmlspecialchars($row['salary'] ?? '—') ?>
                 </p>
+
+                <?php if ($isEnriched): ?>
+                <div class="pending-columns">
+                    <div class="pending-raw-col">
+                        <div class="pending-raw-heading">📄 Raw scraped data (reference only)</div>
+                        <dl class="raw-fields">
+                            <dt>Description</dt>
+                            <dd><?= htmlspecialchars($row['description'] ?: '—') ?></dd>
+                            <dt>Daily tasks / qualifications</dt>
+                            <dd><?= htmlspecialchars($row['qualifications'] ?: '—') ?></dd>
+                            <dt>Educational pathway</dt>
+                            <dd><?= htmlspecialchars($row['education_level'] ?: '—') ?></dd>
+                            <dt>Category</dt>
+                            <dd>— the crawler doesn't suggest one</dd>
+                            <dt>Suggested RIASEC (keyword rule of thumb)</dt>
+                            <dd>R <?= (int) $row['suggested_r_score'] ?> · I <?= (int) $row['suggested_i_score'] ?> · A <?= (int) $row['suggested_a_score'] ?> · S <?= (int) $row['suggested_s_score'] ?> · E <?= (int) $row['suggested_e_score'] ?> · C <?= (int) $row['suggested_c_score'] ?></dd>
+                        </dl>
+                    </div>
+                    <div class="pending-form-col">
+                <?php endif; ?>
 
                 <form method="POST">
                     <input type="hidden" name="pending_id" value="<?= (int) $row['pending_id'] ?>">
@@ -1064,6 +1006,58 @@ if ($statusFilter === 'pending') {
                         <button type="submit" name="action" value="reject" class="reject" onclick="return confirm('Reject this entry?');">Reject</button>
                     </div>
                 </form>
+
+                <?php if ($isEnriched): ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($row['_duplicate_of'])): ?>
+                    <?php $dup = $row['_duplicate_of']; ?>
+                    <details class="duplicate-badge">
+                        <summary>⚠️ Possible duplicate <span class="duplicate-scope-tag duplicate-scope-<?= htmlspecialchars($dup['career_scope']) ?>"><?= htmlspecialchars(ucfirst($dup['career_scope'])) ?></span>: "<?= htmlspecialchars($dup['career_title']) ?>" is already approved (<?= round($dup['_match_percent']) ?>% title match) — click to compare, then decide if it's a real duplicate or just a similar title.</summary>
+                        <div class="duplicate-detail">
+                            <table class="duplicate-compare">
+                                <tr>
+                                    <th></th>
+                                    <th>This posting</th>
+                                    <th>Approved career</th>
+                                </tr>
+                                <tr>
+                                    <td>Title</td>
+                                    <td><?= htmlspecialchars($row['source_title'] ?? '—') ?></td>
+                                    <td><?= htmlspecialchars($dup['career_title']) ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Category</td>
+                                    <td><?= htmlspecialchars($row['career_category'] ?? '—') ?></td>
+                                    <td><?= htmlspecialchars($dup['career_category'] ?? '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Description</td>
+                                    <td><?= htmlspecialchars($descriptionDefault ?: '—') ?></td>
+                                    <td><?= htmlspecialchars($dup['description'] ?? '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Daily tasks</td>
+                                    <td><?= htmlspecialchars($dailyTaskDefault ?: '—') ?></td>
+                                    <td><?= htmlspecialchars($dup['daily_task'] ?? '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Educ. pathway</td>
+                                    <td><?= htmlspecialchars($pathwayDefault ?: '—') ?></td>
+                                    <td><?= htmlspecialchars($dup['educational_pathway'] ?? '—') ?></td>
+                                </tr>
+                                <tr>
+                                    <td>RIASEC</td>
+                                    <td>R <?= number_format((float) $rDefault, 0) ?> · I <?= number_format((float) $iDefault, 0) ?> · A <?= number_format((float) $aDefault, 0) ?> · S <?= number_format((float) $sDefault, 0) ?> · E <?= number_format((float) $eDefault, 0) ?> · C <?= number_format((float) $cDefault, 0) ?></td>
+                                    <td>R <?= number_format((float) $dup['r_score'], 2) ?> · I <?= number_format((float) $dup['i_score'], 2) ?> · A <?= number_format((float) $dup['a_score'], 2) ?> · S <?= number_format((float) $dup['s_score'], 2) ?> · E <?= number_format((float) $dup['e_score'], 2) ?> · C <?= number_format((float) $dup['c_score'], 2) ?></td>
+                                </tr>
+                            </table>
+                            <p class="duplicate-detail-hint">Title similarity only — <?= round($dup['_match_percent']) ?>% overlap. A lower percentage (well under 100%) often means a distinct specialization (e.g. "Ship Electrician" vs. "Electrician"), not a true duplicate — compare the rows above before rejecting this entry.</p>
+                        </div>
+                    </details>
+                <?php endif; ?>
             </div>
         </details>
         <?php
