@@ -667,6 +667,7 @@ class DuplicateCheckResource(Resource):
 CRAWLER_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "crawler")
 CRAWLER_SCRIPTS = {
     "philjobnet": "crawler.py",
+    "kalibrr": "kalibrr_client.py",
     "onet": "onet_client.py",
     "adzuna": "adzuna_client.py",
     "remoteok": "remoteok_client.py",
@@ -677,6 +678,7 @@ _running_crawls = {}  # source -> {"process": Popen, "log_path": str, "started_a
 
 CRAWL_SOURCE_LABELS = {
     "philjobnet": "PhilJobNet (Philippines)",
+    "kalibrr": "Kalibrr (Philippines)",
     "onet": "O*NET (International)",
     "adzuna": "Adzuna (International)",
     "remoteok": "RemoteOK (International)",

@@ -44,22 +44,27 @@ echo ============================================
 echo   CareerPath AI - Web Crawler
 echo ============================================
 echo   1. PhilJobNet (Philippines - no setup needed)
-echo   2. RemoteOK (International - no setup needed)
-echo   3. O*NET (International - needs ONET_USERNAME / ONET_PASSWORD)
-echo   4. Adzuna (International - needs ADZUNA_APP_ID / ADZUNA_APP_KEY)
-echo   5. Exit
+echo   2. Kalibrr (Philippines - no setup needed)
+echo   3. RemoteOK (International - no setup needed)
+echo   4. O*NET (International - needs ONET_USERNAME / ONET_PASSWORD)
+echo   5. Adzuna (International - needs ADZUNA_APP_ID / ADZUNA_APP_KEY)
+echo   6. Exit
 echo ============================================
-set /p choice="Choose an option (1-5): "
+set /p choice="Choose an option (1-6): "
 
 if "%choice%"=="1" (
     python crawler.py
     goto end
 )
 if "%choice%"=="2" (
-    python remoteok_client.py
+    python kalibrr_client.py
     goto end
 )
 if "%choice%"=="3" (
+    python remoteok_client.py
+    goto end
+)
+if "%choice%"=="4" (
     if "%ONET_USERNAME%"=="" (
         echo.
         echo ONET_USERNAME / ONET_PASSWORD are not set for this session.
@@ -69,7 +74,7 @@ if "%choice%"=="3" (
     python onet_client.py
     goto end
 )
-if "%choice%"=="4" (
+if "%choice%"=="5" (
     if "%ADZUNA_APP_ID%"=="" (
         echo.
         echo ADZUNA_APP_ID / ADZUNA_APP_KEY are not set for this session.
@@ -79,7 +84,7 @@ if "%choice%"=="4" (
     python adzuna_client.py
     goto end
 )
-if "%choice%"=="5" goto end
+if "%choice%"=="6" goto end
 
 echo Invalid choice, try again.
 goto menu

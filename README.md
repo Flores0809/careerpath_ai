@@ -9,7 +9,7 @@ loop described in Chapter III of the capstone paper.
 - `database/schema.sql` — MySQL schema + 18 seed careers with RIASEC vectors, plus `pending_careers` (crawler staging), `users` (administrators + counselors), and `students`/`student_profiles`/`recommendations` (student accounts + assessment history)
 - `matching-service/` — Python/Flask microservice running the Hybrid Recommendation Engine (Scikit-learn cosine similarity)
 - `php/` — PHP front end: a front landing page (`index.php`) that routes to either path; student sign up/login (`student_register.php`/`student_login.php`), a student dashboard (`student_dashboard.php`), the intake form (`assessment.php`), results page (`submit.php`), assessment history (`student_history.php`), and a standing career profile page (`career_profile.php`) linked from any recommended career title; staff login (`login.php`), a staff dashboard (`dashboard.php`), career review queue (`careers.php`), live career editing (`careers_manage.php`), student search (`students_lookup.php`), and administrator-only account management (`users.php`)
-- `crawler/` — four data-collection scripts staging entries into the same review queue: `crawler.py` scrapes real PH job postings from **PhilJobNet** (philjobnet.gov.ph); `onet_client.py`, `adzuna_client.py`, and `remoteok_client.py` add **international** coverage (official occupation standards + live postings across several countries) — added after panel feedback that the system needed non-PH requirements too. See section 4 below.
+- `crawler/` — five data-collection scripts staging entries into the same review queue: `crawler.py` scrapes real PH job postings from **PhilJobNet** (philjobnet.gov.ph), `kalibrr_client.py` adds a second PH source (**Kalibrr**); `onet_client.py`, `adzuna_client.py`, and `remoteok_client.py` add **international** coverage (official occupation standards + live postings across several countries) — added after panel feedback that the system needed non-PH requirements too. See section 4 below.
 - **AI enrichment** — the matching-service's `/enrich` endpoint calls the Gemini API (Gemini 3.5 Flash-Lite) to turn a raw scraped posting into a polished description, daily-task list, educational pathway, and a suggested RIASEC vector, wired into `careers.php`'s "✨ Enrich with AI" button
 - **Staff accounts + roles** — two roles, **administrator** (creates/manages counselor and administrator accounts, and can view/moderate student accounts, via `users.php`) and **counselor** (reviews, edits, approves, or rejects careers via `careers.php`). See section 5 below.
 - **Student accounts + history** — students self-register (`student_register.php`) and log in (`student_login.php`) to take the RIASEC assessment; every submission and its ranked recommendations are saved and viewable later on `student_history.php`. This matches the STUDENT / STUDENT_PROFILE / RECOMMENDATION entities in the paper's ERD (Chapter III, Figure 11). See section 6 below.
@@ -176,6 +176,24 @@ reviewed each entry (`reviewed_by`) for later auditing.
 > If a scraped card comes through with a field blank (e.g. missing location),
 > that's fine — just fill it in manually on the admin page before approving.
 > Tell me what came through wrong and I can adjust the parser's selectors.
+
+**`kalibrr_client.py`** — a second Philippine source, alongside the
+PhilJobNet crawler above: [Kalibrr](https://www.kalibrr.com), a private-sector
+PH job board (robots.txt only disallows `/root` and `/candidate/profile` —
+job listings are unrestricted). Same setup, no API key needed:
+
+```bash
+python kalibrr_client.py
+```
+
+One real limitation: Kalibrr's individual job-detail pages render their full
+description/qualifications client-side via JavaScript, so a plain HTTP
+request (what this script sees) can't read them — only the listing page's
+title/employer/location/salary/employment type. The description comes in
+blank for these entries; `enrichment_helper.py`'s existing auto-enrichment
+already handles that case (it works from the title alone) and fills in a
+full description via Gemini for a counselor to review, same as any other
+thin entry.
 
 ### International sources (O*NET, Adzuna, RemoteOK)
 

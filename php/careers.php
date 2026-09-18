@@ -26,6 +26,7 @@ $focusPendingId = (int) ($_POST['pending_id'] ?? 0);
 
 $sourceLabels = [
     'philjobnet' => 'PhilJobNet (Philippines)',
+    'kalibrr' => 'Kalibrr (Philippines)',
     'onet' => 'O*NET (International)',
     'adzuna' => 'Adzuna (International)',
     'remoteok' => 'RemoteOK (International)',
@@ -368,42 +369,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     } elseif ($action === 'run_crawler') {
-        // Starts crawler/*.py as a background subprocess on the matching
-        // service (see matching-service/app.py's CrawlResource) so a
-        // counselor/admin never has to open a terminal to run it. This
-        // request returns immediately — the crawl itself keeps running in
-        // the background and results are polled via CRAWL_STATUS_SERVICE_URL.
-        $crawlSource = $_POST['source'] ?? '';
-        if (!array_key_exists($crawlSource, $sourceLabels)) {
-            $message = ['type' => 'error', 'text' => 'Unknown crawler source.'];
+        // Starts one or more crawler/*.py scripts as background subprocesses
+        // on the matching service (see matching-service/app.py's
+        // CrawlResource) so a counselor/admin never has to open a terminal.
+        // Each request returns immediately — the crawl itself keeps running
+        // in the background and results are polled via CRAWL_STATUS_SERVICE_URL.
+        //
+        // Sources are now checkboxes (name="sources[]") instead of a single
+        // <select>, so a counselor can kick off several at once with one
+        // click. This doesn't need any concurrency work on the Python side —
+        // CrawlResource already tracks one in-flight subprocess *per source*
+        // (keyed by source name in _running_crawls), so firing off a POST
+        // per selected source here just launches that many genuinely
+        // separate, already-parallel subprocesses. This loop is only about
+        // letting the UI request several in one click; each individual
+        // /crawl call is the same one the single-source flow always used.
+        $crawlSources = array_values(array_intersect((array) ($_POST['sources'] ?? []), array_keys($sourceLabels)));
+        if (!$crawlSources) {
+            $message = ['type' => 'error', 'text' => 'Pick at least one source to crawl.'];
         } else {
-            $ch = curl_init(CRAWL_SERVICE_URL);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => json_encode(['source' => $crawlSource, 'user_id' => $currentUser['user_id']]),
-                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-                CURLOPT_TIMEOUT => 10, // just needs to confirm the subprocess started, not wait for it
-            ]);
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError = curl_error($ch);
-            curl_close($ch);
+            $started = [];
+            $failed = [];
+            foreach ($crawlSources as $crawlSource) {
+                $ch = curl_init(CRAWL_SERVICE_URL);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => json_encode(['source' => $crawlSource, 'user_id' => $currentUser['user_id']]),
+                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                    CURLOPT_TIMEOUT => 10, // just needs to confirm the subprocess started, not wait for it
+                ]);
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlError = curl_error($ch);
+                curl_close($ch);
 
-            $result = $curlError ? null : json_decode($response, true);
+                $result = $curlError ? null : json_decode($response, true);
 
-            if ($curlError) {
-                $message = [
-                    'type' => 'error',
-                    'text' => "Could not reach the matching service ($curlError). Make sure python app.py (matching-service) is running.",
-                ];
-            } elseif (!$result || empty($result['started'])) {
-                $message = ['type' => 'error', 'text' => 'Crawler could not start: ' . ($result['error'] ?? "HTTP $httpCode")];
-            } else {
+                if ($curlError) {
+                    $failed[] = "{$sourceLabels[$crawlSource]} (could not reach the matching service — is python app.py running?)";
+                } elseif (!$result || empty($result['started'])) {
+                    $failed[] = "{$sourceLabels[$crawlSource]} (" . ($result['error'] ?? "HTTP $httpCode") . ')';
+                } else {
+                    $started[] = $sourceLabels[$crawlSource];
+                }
+            }
+
+            if ($started && !$failed) {
+                $label = count($started) === 1 ? $started[0] : implode(', ', $started);
                 $message = [
                     'type' => 'success',
-                    'text' => "{$sourceLabels[$crawlSource]} crawler started in the background. New entries will appear in Pending as they're found — refresh in a minute or two, or watch the status below.",
+                    'text' => "$label crawler" . (count($started) > 1 ? 's' : '') . " started in the background. New entries will appear in Pending as they're found — refresh in a minute or two, or watch the status below.",
                 ];
+            } elseif ($started && $failed) {
+                $message = [
+                    'type' => 'success',
+                    'text' => 'Started: ' . implode(', ', $started) . '. Could not start: ' . implode('; ', $failed),
+                ];
+            } else {
+                $message = ['type' => 'error', 'text' => 'Crawler(s) could not start: ' . implode('; ', $failed)];
             }
         }
     }
@@ -660,6 +684,7 @@ if ($statusFilter === 'pending') {
     .duplicate-detail-hint { margin: 0 0 10px; font-size: 13px; color: #8a5a5a; font-style: italic; line-height: 1.5; }
     .source-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12.5px; }
     .source-philjobnet { background: #f0dde1; color: #6e1423; }
+    .source-kalibrr { background: #cfe8ff; color: #0b4f8a; }
     .source-onet { background: #e7d9f7; color: #4b2e83; }
     .source-adzuna { background: #d1e7dd; color: #0f5132; }
     .source-remoteok { background: #fff3cd; color: #856404; }
@@ -692,8 +717,10 @@ if ($statusFilter === 'pending') {
 
     /* Run Web Crawler panel */
     .crawler-panel { max-width: 1100px; margin: 0 auto 20px; background: #faf0f1; border: 1px solid #f0dde1; border-radius: 8px; padding: 16px 20px; }
-    .crawler-panel-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .crawler-panel-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
     .crawler-panel select { padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; font-size: 14.5px; }
+    .crawler-check { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: normal; color: #444; white-space: nowrap; }
+    .crawler-check input { margin: 0; }
     .crawler-panel button { background: #6e1423; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; font-size: 14.5px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
     .crawler-panel button:hover:not(:disabled) { background: #4a0c17; }
     .crawler-panel button:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -712,18 +739,17 @@ if ($statusFilter === 'pending') {
     <h1>Career Review Queue</h1>
 
     <div class="crawler-panel">
-        <form method="POST" class="crawler-panel-row">
+        <form method="POST" class="crawler-panel-row" id="crawler-form">
             <input type="hidden" name="action" value="run_crawler">
             <strong>Run Web Crawler:</strong>
-            <select name="source" id="crawler-source">
-                <option value="philjobnet">PhilJobNet (Philippines — no setup needed)</option>
-                <option value="remoteok">RemoteOK (International — no setup needed)</option>
-                <option value="onet">O*NET (International — needs ONET_USERNAME/PASSWORD)</option>
-                <option value="adzuna">Adzuna (International — needs ADZUNA_APP_ID/KEY)</option>
-            </select>
-            <button type="submit">▶ Run Crawler</button>
+            <label class="crawler-check"><input type="checkbox" name="sources[]" value="philjobnet" checked> PhilJobNet (PH — no setup needed)</label>
+            <label class="crawler-check"><input type="checkbox" name="sources[]" value="kalibrr" checked> Kalibrr (PH — no setup needed)</label>
+            <label class="crawler-check"><input type="checkbox" name="sources[]" value="remoteok"> RemoteOK (Intl — no setup needed)</label>
+            <label class="crawler-check"><input type="checkbox" name="sources[]" value="onet"> O*NET (Intl — needs ONET_USERNAME/PASSWORD)</label>
+            <label class="crawler-check"><input type="checkbox" name="sources[]" value="adzuna"> Adzuna (Intl — needs ADZUNA_APP_ID/KEY)</label>
+            <button type="submit">▶ Run Selected</button>
         </form>
-        <p class="hint">Runs in the background on the matching service (must be running — see <code>!START_HERE - Run Matching Service.bat</code>). New postings appear in the Pending tab as they're found; this page won't freeze while it runs.</p>
+        <p class="hint">Check as many sources as you want and run them together — each starts its own background crawl on the matching service (must be running — see <code>!START_HERE - Run Matching Service.bat</code>). New postings appear in the Pending tab as they're found; this page won't freeze while it runs.</p>
         <div class="crawler-status" id="crawler-status"></div>
         <pre class="crawler-log" id="crawler-log"></pre>
     </div>
@@ -790,9 +816,9 @@ if ($statusFilter === 'pending') {
             No <?= htmlspecialchars($statusFilter) ?> entries<?= $sourceFilter !== '' ? ' from ' . htmlspecialchars($sourceLabels[$sourceFilter]) : '' ?><?= $ageFilter === 'new' ? ' scraped in the last 24 hours' : ($ageFilter === 'older' ? ' older than 24 hours' : '') ?><?= $aiFilter === 'enriched' ? ' that are AI-enriched' : ($aiFilter === 'not_enriched' ? ' that still need AI enrichment' : '') ?>.
             <?php if ($statusFilter === 'pending'): ?>
                 Use "Run Web Crawler" above to fetch more, or run one of the scripts manually:
-                <code>python crawler/crawler.py</code> (Philippines), <code>python crawler/onet_client.py</code>,
-                <code>python crawler/adzuna_client.py</code>, or <code>python crawler/remoteok_client.py</code>
-                (international).
+                <code>python crawler/crawler.py</code> or <code>python crawler/kalibrr_client.py</code> (Philippines),
+                <code>python crawler/onet_client.py</code>, <code>python crawler/adzuna_client.py</code>, or
+                <code>python crawler/remoteok_client.py</code> (international).
             <?php endif; ?>
         </p>
     <?php endif; ?>
@@ -1046,42 +1072,72 @@ if ($statusFilter === 'pending') {
     // Live status for the "Run Web Crawler" panel — polls crawler_status.php
     // (same-origin proxy to the matching service) every few seconds so staff
     // can watch a crawl finish without manually refreshing the page.
+    //
+    // Now polls every checkbox's source at once (not just one selected
+    // value), since multiple crawlers can genuinely be running in parallel —
+    // each checkbox fires its own independent /crawl subprocess on the
+    // matching service (see careers.php's run_crawler handler + app.py's
+    // CrawlResource, which already tracks one in-flight process per source).
+    // One status line per source; the log panel shows whichever source is
+    // still running, or the most recently finished one if none are.
     (function () {
-        var sourceSelect = document.getElementById('crawler-source');
+        var checkboxes = document.querySelectorAll('#crawler-form input[name="sources[]"]');
         var statusEl = document.getElementById('crawler-status');
         var logEl = document.getElementById('crawler-log');
-        if (!sourceSelect || !statusEl) return;
+        if (!checkboxes.length || !statusEl) return;
+
+        var sourceLabels = <?= json_encode($sourceLabels) ?>;
+
+        function describe(source, data) {
+            var label = sourceLabels[source] || source;
+            if (data.state === 'running') {
+                return '<div><span class="spinner"></span>' + label + ': running for ' + data.elapsed_seconds + 's...</div>';
+            } else if (data.state === 'finished' && data.exit_code === 0) {
+                return '<div>' + label + ': finished (ran for ' + data.elapsed_seconds + 's).</div>';
+            } else if (data.state === 'finished') {
+                return '<div>' + label + ': crashed after ' + data.elapsed_seconds + 's (exit code ' + data.exit_code + ').</div>';
+            } else if (data.state === 'unreachable') {
+                return '<div>' + label + ': matching service not reachable.</div>';
+            }
+            return '';
+        }
 
         function poll() {
-            var source = sourceSelect.value;
-            fetch('crawler_status.php?source=' + encodeURIComponent(source))
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.state === 'running') {
-                        statusEl.innerHTML = '<span class="spinner"></span>Running for ' + data.elapsed_seconds + 's...';
-                    } else if (data.state === 'finished' && data.exit_code === 0) {
-                        statusEl.textContent = 'Finished (ran for ' + data.elapsed_seconds + 's). Check the Pending tab for new entries.';
-                    } else if (data.state === 'finished') {
-                        statusEl.textContent = 'Crashed after ' + data.elapsed_seconds + 's (exit code ' + data.exit_code + ') — see the log below.';
-                    } else if (data.state === 'unreachable') {
-                        statusEl.textContent = 'Matching service not reachable — make sure it is running.';
-                    } else {
-                        statusEl.textContent = '';
-                    }
-                    if (data.log_tail) {
-                        logEl.textContent = data.log_tail;
-                        logEl.style.display = 'block';
-                        logEl.scrollTop = logEl.scrollHeight;
-                    } else {
-                        logEl.style.display = 'none';
-                    }
-                })
-                .catch(function () { /* matching service likely not running yet — stay quiet, the run button's own error message already covers this */ });
+            var sources = Array.prototype.filter.call(checkboxes, function (cb) { return cb.checked; })
+                .map(function (cb) { return cb.value; });
+            if (!sources.length) {
+                statusEl.innerHTML = '';
+                logEl.style.display = 'none';
+                return;
+            }
+
+            Promise.all(sources.map(function (source) {
+                return fetch('crawler_status.php?source=' + encodeURIComponent(source))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) { return { source: source, data: data }; })
+                    .catch(function () { return { source: source, data: { state: 'idle' } }; });
+            })).then(function (results) {
+                var lines = results.map(function (r) { return describe(r.source, r.data); }).filter(Boolean);
+                statusEl.innerHTML = lines.join('') || 'Check the Pending tab for new entries.';
+
+                // Prefer the log of whichever source is currently running;
+                // fall back to the most recently finished one.
+                var running = results.find(function (r) { return r.data.state === 'running' && r.data.log_tail; });
+                var finished = results.slice().reverse().find(function (r) { return r.data.state === 'finished' && r.data.log_tail; });
+                var chosen = running || finished;
+                if (chosen) {
+                    logEl.textContent = chosen.source + ':\n' + chosen.data.log_tail;
+                    logEl.style.display = 'block';
+                    logEl.scrollTop = logEl.scrollHeight;
+                } else {
+                    logEl.style.display = 'none';
+                }
+            });
         }
 
         poll();
         setInterval(poll, 4000);
-        sourceSelect.addEventListener('change', poll);
+        checkboxes.forEach(function (cb) { cb.addEventListener('change', poll); });
     })();
     </script>
 <?php require __DIR__ . '/footer.php'; ?>

@@ -13,7 +13,7 @@ require_role(['administrator', 'counselor']);
 header('Content-Type: application/json');
 
 $source = $_GET['source'] ?? '';
-$allowed = ['philjobnet', 'onet', 'adzuna', 'remoteok'];
+$allowed = ['philjobnet', 'kalibrr', 'onet', 'adzuna', 'remoteok'];
 if (!in_array($source, $allowed, true)) {
     http_response_code(400);
     echo json_encode(['error' => 'Unknown source']);
