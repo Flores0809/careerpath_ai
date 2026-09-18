@@ -72,7 +72,6 @@ $currentStaff = current_user();
             <div class="card">
                 <h2>Students</h2>
                 <p class="tagline">Start Your Personalized Career Journey</p>
-                <p class="desc">Take the RIASEC assessment, verify your skills, and get personalized career recommendations — with AI-generated insights on how each career fits you.</p>
 
                 <?php if ($currentStudent): ?>
                     <div class="welcome-box">
@@ -94,7 +93,6 @@ $currentStaff = current_user();
             <div class="card">
                 <h2>Staff</h2>
                 <p class="tagline">Manage Accounts and Approve Careers</p>
-                <p class="desc">Administrators manage staff accounts and system settings. Counselors review, edit, and approve AI-enriched career postings, and support students directly through Student Lookup.</p>
 
                 <?php if ($currentStaff): ?>
                     <div class="welcome-box">
