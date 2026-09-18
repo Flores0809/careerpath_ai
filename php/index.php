@@ -34,7 +34,6 @@ $currentStaff = current_user();
     .auth-left { flex: 0 0 42%; background: linear-gradient(135deg, #4a0c17 0%, #6e1423 100%); color: #fff; padding: 56px 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
     .auth-logo { width: 92px; height: auto; margin-bottom: 18px; }
     .auth-left h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: 0.5px; }
-    .auth-left .eyebrow { text-transform: uppercase; letter-spacing: 1.5px; font-size: 12px; color: #e9c9ce; margin: 0 0 14px; }
     .auth-divider { width: 60px; height: 2px; background: rgba(255,255,255,0.45); border: none; margin: 16px 0; }
     .auth-tagline { font-size: 15px; color: #f0dde1; line-height: 1.6; max-width: 300px; margin: 0; }
 
@@ -70,7 +69,6 @@ $currentStaff = current_user();
         <div class="auth-shell">
             <div class="auth-left">
                 <img src="assets/img/logo-hex.png" alt="" class="auth-logo">
-                <div class="eyebrow">Meridian Educational Institution Inc.</div>
                 <h1>CareerPath AI</h1>
                 <hr class="auth-divider">
                 <p class="auth-tagline">JH/SH AI-assisted career guidance system</p>
