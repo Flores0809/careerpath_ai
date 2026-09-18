@@ -69,11 +69,11 @@ $currentStaff = current_user();
         <div>
         <div class="auth-shell">
             <div class="auth-left">
-                <img src="assets/img/logo.png" alt="" class="auth-logo">
+                <img src="assets/img/logo-hex.png" alt="" class="auth-logo">
                 <div class="eyebrow">Meridian Educational Institution Inc.</div>
                 <h1>CareerPath AI</h1>
                 <hr class="auth-divider">
-                <p class="auth-tagline">A JHS/SHS AI-assisted career guidance system that matches students to careers using a RIASEC personality assessment, skills and academic profile, and a hybrid recommendation engine with AI-generated career insights.</p>
+                <p class="auth-tagline">JH/SH AI-assisted career guidance system</p>
             </div>
 
             <div class="auth-right">
