@@ -9,6 +9,7 @@ $cpCurrentPage = basename($_SERVER['PHP_SELF'] ?? '');
 $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-active' : '';
 ?>
 <div class="cp-nav">
+    <div class="cp-nav-top">
     <a href="student_dashboard.php" class="cp-nav-brand">
         <img src="assets/img/logo.png" alt="Meridian Educational Institution Inc. logo" class="cp-nav-logo">
         <img src="assets/img/logo-hex.png" alt="CareerPath AI logo" class="cp-nav-logo cp-nav-logo-hex">
@@ -17,6 +18,11 @@ $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-a
             <span class="cp-nav-title">CareerPath AI</span>
         </span>
     </a>
+    <div class="cp-nav-user">
+        <a href="student_profile.php" class="cp-nav-user-name"><?= htmlspecialchars($currentStudent['name']) ?></a>
+        · <a href="student_logout.php">Logout</a>
+    </div>
+    </div>
     <div class="cp-nav-links">
         <a class="cp-nav-item <?= $cpIsActive(['student_dashboard.php']) ?>" href="student_dashboard.php">Dashboard</a>
 
@@ -32,20 +38,17 @@ $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-a
         <a class="cp-nav-item <?= $cpIsActive(['student_profile.php']) ?>" href="student_profile.php">My Profile</a>
         <a class="cp-nav-item <?= $cpIsActive(['student_notifications.php']) ?>" href="student_notifications.php">Notifications<?php if ($cpNavUnread > 0): ?> <span class="cp-badge"><?= $cpNavUnread ?></span><?php endif; ?></a>
     </div>
-    <div class="cp-nav-user">
-        <a href="student_profile.php" class="cp-nav-user-name"><?= htmlspecialchars($currentStudent['name']) ?></a>
-        · <a href="student_logout.php">Logout</a>
-    </div>
 </div>
 <style>
-    .cp-nav { display: flex; align-items: center; background: linear-gradient(135deg, #6e1423 0%, #4a0c17 100%); color: #fff; padding: 12px 20px; border-radius: 8px; margin-bottom: 24px; font-size: 15.5px; flex-wrap: wrap; gap: 10px 16px; position: relative; }
+    .cp-nav { display: flex; flex-direction: column; gap: 10px; background: linear-gradient(135deg, #6e1423 0%, #4a0c17 100%); color: #fff; padding: 12px 20px; border-radius: 8px; margin-bottom: 24px; font-size: 15.5px; position: relative; }
+    .cp-nav-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
     .cp-nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-right: 10px; flex-shrink: 0; }
     .cp-nav-logo { width: 36px; height: 36px; border-radius: 50%; background: #fff; object-fit: cover; flex-shrink: 0; }
     .cp-nav-logo-hex { border-radius: 0; background: none; width: 34px; height: auto; object-fit: contain; }
     .cp-nav-brand-text { display: flex; flex-direction: column; line-height: 1.2; }
     .cp-nav-school { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; color: #e9c9ce; font-weight: normal; }
     .cp-nav-title { font-size: 17.5px; font-weight: bold; color: #fff; }
-    .cp-nav-links { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; flex: 1 1 auto; }
+    .cp-nav-links { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 10px; }
     .cp-nav-item { color: #e9c9ce; text-decoration: none; padding: 8px 12px; border-radius: 6px; background: none; border: none; font: inherit; font-size: 15.5px; font-family: inherit; cursor: pointer; display: inline-block; box-sizing: border-box; line-height: 20px; vertical-align: middle; margin: 0; appearance: none; -webkit-appearance: none; }
     a.cp-nav-item:hover, .cp-dropdown-toggle:hover { color: #fff; background: rgba(255,255,255,0.12); }
     .cp-nav-item.cp-active { color: #fff; background: rgba(255,255,255,0.18); font-weight: bold; }
@@ -57,17 +60,17 @@ $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-a
     .cp-dropdown-menu a { display: block; color: #6e1423; text-decoration: none; padding: 9px 12px; border-radius: 6px; font-size: 14.5px; }
     .cp-dropdown-menu a:hover { background: #faf0f1; }
 
-    .cp-nav-user { color: #fff; white-space: nowrap; margin-left: auto; text-align: right; flex-shrink: 0; }
+    .cp-nav-user { color: #fff; white-space: nowrap; text-align: right; flex-shrink: 0; }
     .cp-nav-user a { color: #ffd166; }
     a.cp-nav-user-name { color: #fff; text-decoration: none; padding: 4px 8px; border-radius: 6px; transition: background-color 0.15s ease; }
     a.cp-nav-user-name:hover { background: rgba(255,255,255,0.12); text-decoration: none; }
     .cp-badge { background: #e63946; color: #fff; border-radius: 10px; padding: 1px 6px; font-size: 11.5px; font-weight: bold; margin-left: 2px; }
 
     @media (max-width: 760px) {
-        .cp-nav { flex-direction: column; align-items: stretch; }
+        .cp-nav-top { flex-direction: column; align-items: flex-start; }
         .cp-nav-links { flex-direction: column; align-items: stretch; }
         .cp-dropdown-menu { position: static; box-shadow: none; padding-left: 12px; }
-        .cp-nav-user { text-align: right; }
+        .cp-nav-user { text-align: left; }
     }
 </style>
 <script>
