@@ -56,6 +56,37 @@ foreach ($faq as $entry) {
     }
 }
 
+// Second pass: nothing matched exactly, so tolerate small typos (a
+// missing space, a dropped/extra letter) by allowing a keyword to match
+// an input token that's only 1-2 edits away from it, via levenshtein().
+// Weighted lower than an exact match so a clean match always wins ties.
+if ($bestEntry === null) {
+    $bestFuzzyScore = 0;
+    foreach ($faq as $entry) {
+        $keywordTokens = array_map(fn($k) => (strlen($k) > 3 && substr($k, -1) === 's') ? substr($k, 0, -1) : $k, $entry['keywords']);
+        $fuzzyMatched = 0;
+        foreach ($inputTokens as $tok) {
+            if (strlen($tok) < 3) {
+                continue; // too short for a meaningful edit-distance comparison
+            }
+            foreach ($keywordTokens as $kw) {
+                if (strlen($kw) < 3) {
+                    continue;
+                }
+                $maxDist = strlen($kw) >= 6 ? 2 : 1;
+                if (levenshtein($tok, $kw) <= $maxDist) {
+                    $fuzzyMatched++;
+                    break;
+                }
+            }
+        }
+        if ($fuzzyMatched > $bestFuzzyScore) {
+            $bestFuzzyScore = $fuzzyMatched;
+            $bestEntry = $entry;
+        }
+    }
+}
+
 if ($bestEntry === null) {
     echo json_encode([
         'matched' => false,

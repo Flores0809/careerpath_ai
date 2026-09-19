@@ -16,7 +16,7 @@
 
 return [
     [
-        'keywords' => ['what', 'careerpath', 'system', 'about', 'is'],
+        'keywords' => ['what', 'careerpath', 'system', 'about', 'is', 'work', 'works', 'function', 'purpose', 'use'],
         'question' => 'What is CareerPath AI?',
         'answer' => "CareerPath AI is Meridian Educational Institution's JHS/SHS career guidance system. Students take a RIASEC personality assessment, add their skills and academic average, and get career recommendations from a hybrid matching engine plus AI-generated insights. Counselors and admins review, edit, and approve the careers those recommendations are built from.",
     ],
