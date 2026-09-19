@@ -861,4 +861,27 @@ if __name__ == "__main__":
     # machines (and add real authentication first if so).
     host = os.environ.get("MATCHING_SERVICE_HOST", "127.0.0.1")
     debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
-    app.run(host=host, port=5000, debug=debug_mode)
+
+    if debug_mode:
+        # Flask's own dev server: single-threaded, but gives you the
+        # interactive debugger + auto-reload while actively developing.
+        app.run(host=host, port=5000, debug=True)
+    else:
+        # Production path. Flask's dev server (app.run() above) can only
+        # handle ONE request at a time -- fine for solo development, but a
+        # real problem once real students are using this: /enrich and
+        # /student_commentary call the Gemini API and can take up to ~30
+        # seconds, and while that single request is in flight, EVERY other
+        # request to this service (including plain /match calls, which
+        # don't touch the network at all) queues behind it. A whole class
+        # submitting their assessment around the same time would see later
+        # students hang or time out even though their request is cheap.
+        # waitress is a real multi-threaded WSGI server (unlike gunicorn,
+        # it also runs on Windows, which is where this app is deployed),
+        # so concurrent requests actually run in parallel. threads=8 is
+        # comfortably more than one school's worth of simultaneous
+        # submissions; raise it if load testing shows it's still the
+        # bottleneck.
+        from waitress import serve
+        print(f"Starting matching service on http://{host}:5000 (waitress, threads=8) ...")
+        serve(app, host=host, port=5000, threads=8)

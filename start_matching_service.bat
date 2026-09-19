@@ -16,7 +16,11 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Starting matching service on http://localhost:5000 ...
+REM requirements.txt now includes waitress (a real multi-threaded server,
+REM replacing Flask's single-request-at-a-time dev server). If this venv
+REM was set up before that change, re-run:
+REM   pip install -r requirements.txt --break-system-packages
+REM once so `import waitress` in app.py doesn't fail.
 echo Keep this window open while using CareerPath AI. Close it to stop the service.
 echo.
 python app.py
