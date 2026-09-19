@@ -12,3 +12,4 @@
 <style>
     .cp-footer { margin-top: 40px; padding: 16px 20px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #eee; }
 </style>
+<?php require __DIR__ . '/chatbot_widget.php'; ?>
