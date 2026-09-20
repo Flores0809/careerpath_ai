@@ -139,6 +139,19 @@ $typeLabels = [
     button { background: #6e1423; color: #fff; border: none; padding: 12px 24px; border-radius: 6px; font-size: 17.5px; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
     button:hover { background: #4a0c17; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
+
+    /* Mobile only: the desktop .scale row (18px radio + a bare digit, 40px
+       gaps) is fine with a mouse, but on a phone that's a ~26x36px tap
+       target per option -- well under Apple/Google's ~44px minimum
+       guideline -- for the single interaction every tester repeats 168
+       times (42 questions x 4 options) to complete the assessment. Turns
+       each option into an evenly-sized, full-height tappable block instead,
+       without touching the desktop layout at all. */
+    @media (max-width: 600px) {
+        .scale { gap: 6px; }
+        .scale label { flex: 1; justify-content: center; padding: 10px 4px; min-height: 44px; border: 1px solid #ddd; border-radius: 8px; background: #fff; box-sizing: border-box; }
+        .scale input[type="radio"] { width: 20px; height: 20px; margin: 0; }
+    }
 </style>
 </head>
 <body>
