@@ -126,6 +126,7 @@ $backLink = $isStaff ? 'students_lookup.php' : 'student_history.php';
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CareerPath AI — Assessment Report</title>
 <style>
     body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #222; }

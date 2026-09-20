@@ -17,7 +17,7 @@ if ($existingAdminCount > 0) {
     ?>
     <!DOCTYPE html>
     <html lang="en">
-    <head><meta charset="UTF-8"><title>Setup already complete</title></head>
+    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Setup already complete</title></head>
     <body style="font-family:Arial,sans-serif;max-width:600px;margin:60px auto;color:#222;">
         <h1>Setup already complete</h1>
         <p>An administrator account already exists, so this page is locked.</p>
@@ -76,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CareerPath AI — Create First Administrator</title>
 <style>
     body { font-family: Arial, sans-serif; max-width: 480px; margin: 60px auto; padding: 0 20px; color: #222; }

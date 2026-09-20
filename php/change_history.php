@@ -98,6 +98,7 @@ function render_change_value($val)
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CareerPath AI — Change History</title>
 <style>
     * { box-sizing: border-box; }

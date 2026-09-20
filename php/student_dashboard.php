@@ -121,6 +121,7 @@ $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CareerPath AI — My Dashboard</title>
 <style>
     * { box-sizing: border-box; }

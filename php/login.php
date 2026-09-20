@@ -45,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CareerPath AI — Login</title>
 <style>
     body { font-family: Arial, sans-serif; max-width: 400px; margin: 80px auto; padding: 0 20px; color: #222; }

@@ -49,7 +49,8 @@ function require_role(array $allowedRoles): array
     $user = require_login();
     if (!in_array($user['role'], $allowedRoles, true)) {
         http_response_code(403);
-        echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Access denied</title></head>'
+        echo '<!DOCTYPE html><html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Access denied</title></head>'
             . '<body style="font-family:Arial,sans-serif;max-width:600px;margin:60px auto;color:#222;">'
             . '<h1>403 — Access denied</h1>'
             . '<p>Your account (<strong>' . htmlspecialchars($user['role']) . '</strong>) doesn\'t have permission to view this page.</p>'
