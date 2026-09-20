@@ -1,0 +1,91 @@
+C:\xampp\htdocs\careerpath-ai-mvp\matching-service\..\crawler\kalibrr_client.py:172: DeprecationWarning: The 'reconnect' argument is deprecated. Create a new connection if you want to reconnect.
+  conn.ping(reconnect=True)
+
+=== Searching Kalibrr for: 'nurse' ===
+  Found 4 job listing(s) to check.
+  [=] Already staged/seen: Nurse Navigator
+  [=] Already staged/seen: Occupational Health and Safety Nurse
+  [=] Already staged/seen: Registered Nurse
+  [=] Already staged/seen: Application Specialist | Medical Equipment
+
+=== Searching Kalibrr for: 'teacher' ===
+  Found 5 job listing(s) to check.
+  [=] Already staged/seen: Senior High School Teacher
+  [=] Already staged/seen: School Engagement Partner
+  [+] Staged: WFH Online English Tutor for Adults | Dayshift and Nightshift ()
+  [AI] Auto-enriched: WFH Online English Tutor for Adults | Dayshift and Nightshift
+  [=] Already staged/seen: Sales Account Manager for Philippines Schools
+  [=] Already staged/seen: Part Time Private Tutor [Philippines]
+
+=== Searching Kalibrr for: 'accountant' ===
+  Found 5 job listing(s) to check.
+  [+] Staged: Senior Accountant | Nightshift Onsite ()
+  [AI] Auto-enriched: Senior Accountant | Nightshift Onsite
+  [=] Already staged/seen: Accounting & Finance Head
+  [=] Already staged/seen: Accounts Payable Specialist
+  [=] Already staged/seen: Record to Report Specialist
+  [=] Already staged/seen: Accountant
+
+=== Searching Kalibrr for: 'software developer' ===
+  Found 5 job listing(s) to check.
+  [+] Staged: Brand Experience Art Director ()
+  [AI] Auto-enriched: Brand Experience Art Director
+  [=] Already staged/seen: Enterprise Account Manager
+  [=] Already staged/seen: Software Developer
+  [+] Staged: Senior Software Developer ()
+  [AI] Auto-enriched: Senior Software Developer
+  [=] Already staged/seen: Accounting & Finance Head
+
+=== Searching Kalibrr for: 'electrician' ===
+  Found 5 job listing(s) to check.
+  [=] Already staged/seen: Electrician
+  [=] Already staged/seen: Electrical Engineer
+  [=] Already staged/seen: Electrical Engineer
+  [=] Already staged/seen: Electrical Power Supply Design Engineer
+  [=] Already staged/seen: Power Trading Analyst
+
+=== Searching Kalibrr for: 'welder' ===
+  Found 5 job listing(s) to check.
+  [=] Already staged/seen: Senior Accountant | Nightshift Onsite
+  [=] Already staged/seen: Brand Experience Art Director
+  [=] Already staged/seen: Enterprise Account Manager
+  [=] Already staged/seen: Accounts Payable Specialist
+  [=] Already staged/seen: Production Merchandiser
+
+=== Searching Kalibrr for: 'civil engineer' ===
+  Found 5 job listing(s) to check.
+  [=] Already staged/seen: Industrial Engineer
+  [=] Already staged/seen: Cloud Engineer
+  [=] Already staged/seen: Solutions Engineer
+  [=] Already staged/seen: Electrical Engineer
+  [+] Staged: Cloud Engineer ()
+  [AI] Auto-enriched: Cloud Engineer
+
+=== Searching Kalibrr for: 'graphic designer' ===
+  Found 5 job listing(s) to check.
+  [=] Already staged/seen: Brand Experience Art Director
+  [=] Already staged/seen: Production Merchandiser
+  [=] Already staged/seen: Graphic Designer
+  [=] Already staged/seen: Graphic Designer
+  [=] Already staged/seen: Packaging Graphic Designer
+
+=== Searching Kalibrr for: 'sales' ===
+  Found 5 job listing(s) to check.
+  [=] Already staged/seen: Retail Sales & Promotions Supervisor
+  [=] Already staged/seen: Sales and Operations Planning Analyst
+  [=] Already staged/seen: Enterprise Account Manager
+  [+] Staged: Ecommerce Associate ()
+  [AI] Auto-enriched: Ecommerce Associate
+  [+] Staged: Sales Support ()
+  [AI] Auto-enriched: Sales Support
+
+=== Searching Kalibrr for: 'chef' ===
+  Found 5 job listing(s) to check.
+  [=] Already staged/seen: Senior Accountant | Nightshift Onsite
+  [=] Already staged/seen: Brand Experience Art Director
+  [=] Already staged/seen: Enterprise Account Manager
+  [=] Already staged/seen: Accounts Payable Specialist
+  [=] Already staged/seen: Production Merchandiser
+
+Done. Checked 49 postings, staged 7 new entries into pending_careers.
+Open php/careers.php to review and approve them into the live career database.

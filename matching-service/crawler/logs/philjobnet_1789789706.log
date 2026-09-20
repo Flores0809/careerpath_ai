@@ -1,0 +1,81 @@
+C:\xampp\htdocs\careerpath-ai-mvp\matching-service\..\crawler\crawler.py:211: DeprecationWarning: The 'reconnect' argument is deprecated. Create a new connection if you want to reconnect.
+  conn.ping(reconnect=True)
+
+=== Searching PhilJobNet for: 'nurse' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: NURSE I (GOV)
+  [=] Already staged/seen: STAFF NURSE
+  [=] Already staged/seen: STAFF NURSE
+  [=] Already staged/seen: SPECIALIZED NURSE
+  [=] Already staged/seen: STAFF NURSE
+
+=== Searching PhilJobNet for: 'teacher' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: MATHEMATICS TEACHER (SECONDARY EDUCATION)
+  [=] Already staged/seen: LANGUAGE TEACHER (SECONDARY EDUCATION)
+  [=] Already staged/seen: TEACHER (ELEMENTARY SCIENCE)
+  [=] Already staged/seen: PREPARATORY SCHOOL TEACHER
+  [=] Already staged/seen: TEACHER (ELEMENTARY MATHEMATICS)
+
+=== Searching PhilJobNet for: 'accountant' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: SENIOR ACCOUNTANT
+  [=] Already staged/seen: ACCOUNTANT (GENERAL)
+  [=] Already staged/seen: ACCOUNTANT (GENERAL)
+  [=] Already staged/seen: ACCOUNTANT (GENERAL)
+  [=] Already staged/seen: ASSOCIATE ACCOUNTANT
+
+=== Searching PhilJobNet for: 'software developer' ===
+  Found 0 job link(s) to check.
+
+=== Searching PhilJobNet for: 'electrician' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: ELECTRICIAN (GENERAL)
+  [+] Staged: BUILDING ELECTRICIAN (YHMD INTERNATIONAL MANPOWER SERVICES, INC.)
+  [AI] Auto-enriched: BUILDING ELECTRICIAN
+  [=] Already staged/seen: ELECTRICIAN (GENERAL)
+  [=] Already staged/seen: ELECTRICIAN (GENERAL)
+  [=] Already staged/seen: AUTOMOTIVE ELECTRICIAN
+
+=== Searching PhilJobNet for: 'welder' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: WELDER
+  [=] Already staged/seen: METAL ARC WELDER
+  [=] Already staged/seen: WELDER
+  [=] Already staged/seen: WELDER
+  [=] Already staged/seen: WELDER
+
+=== Searching PhilJobNet for: 'civil engineer' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: STRUCTURAL DRAFTSMAN
+  [=] Already staged/seen: SITE ENGINEER
+  [=] Already staged/seen: CIVIL ENGINEER (GENERAL)
+  [=] Already staged/seen: CIVIL ENGINEER (GENERAL)
+  [=] Already staged/seen: CIVIL ENGINEER (GENERAL)
+
+=== Searching PhilJobNet for: 'graphic designer' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: GRAPHIC DESIGNER
+  [=] Already staged/seen: GRAPHIC DESIGNER
+  [=] Already staged/seen: GRAPHIC DESIGNER
+  [=] Already staged/seen: GRAPHIC DESIGNER
+  [=] Already staged/seen: GRAPHIC DESIGNER
+
+=== Searching PhilJobNet for: 'sales' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: STORE SALESPERSON
+  [=] Already staged/seen: SALESMAN
+  [=] Already staged/seen: STORE SALESPERSON
+  [=] Already staged/seen: SALES ASSOCIATE PROFESSIONAL
+  [=] Already staged/seen: SALES ASSOCIATE PROFESSIONAL
+
+=== Searching PhilJobNet for: 'chef' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: PASTRY CHEF
+  [=] Already staged/seen: COMMIS CHEF
+  [=] Already staged/seen: LEAD CHEF
+  [=] Already staged/seen: PASTRY CHEF
+  [=] Already staged/seen: COMMIS CHEF
+
+Done. Checked 45 postings, staged 1 new entries into pending_careers.
+Open php/careers.php to review and approve them into the live career database.

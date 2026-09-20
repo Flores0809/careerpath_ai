@@ -1,0 +1,93 @@
+C:\xampp\htdocs\careerpath-ai-mvp\matching-service\..\crawler\crawler.py:211: DeprecationWarning: The 'reconnect' argument is deprecated. Create a new connection if you want to reconnect.
+  conn.ping(reconnect=True)
+
+=== Searching PhilJobNet for: 'nurse' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: SPECIALIZED NURSE
+  [=] Already staged/seen: STAFF NURSE
+  [=] Already staged/seen: OCCUPATIONAL HEALTH NURSE
+  [=] Already staged/seen: NURSE I (GOV)
+  [=] Already staged/seen: DENTAL NURSE
+
+=== Searching PhilJobNet for: 'teacher' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: ACCOUNTING CLERK
+  [=] Already staged/seen: TEACHER ASSISTANT
+  [=] Already staged/seen: NON-FORMAL EDUCATION TEACHER
+  [=] Already staged/seen: TEACHER (ELEMENTARY MATHEMATICS)
+  [=] Already staged/seen: LANGUAGE TEACHER (SECONDARY EDUCATION)
+
+=== Searching PhilJobNet for: 'accountant' ===
+  Found 5 job link(s) to check.
+  [+] Staged: ACCOUNTANT (GENERAL) (INTERNATIONAL SKILL DEVELOPMENT, INC.)
+  [AI] Auto-enriched: ACCOUNTANT (GENERAL)
+  [=] Already staged/seen: ACCOUNTANT (GENERAL)
+  [=] Already staged/seen: SENIOR ACCOUNTANT
+  [=] Already staged/seen: CORPORATE ACCOUNTANT
+  [+] Staged: ASSOCIATE ACCOUNTANT (PETRON CORPORATION)
+  [AI] Auto-enriched: ASSOCIATE ACCOUNTANT
+
+=== Searching PhilJobNet for: 'software developer' ===
+  Found 0 job link(s) to check.
+
+=== Searching PhilJobNet for: 'electrician' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: BUILDING ELECTRICIAN
+  [=] Already staged/seen: ELECTRICIAN (GENERAL)
+  [+] Staged: INDUSTRIAL ELECTRICIAN (N.B. VINTA CONSTRUCTION CORPORATION)
+  [AI] Auto-enriched: INDUSTRIAL ELECTRICIAN
+  [+] Staged: AUTOMOTIVE ELECTRICIAN (STAR BREEZE MANPOWER RECRUITMENT AGENCY)
+  [AI] Auto-enriched: AUTOMOTIVE ELECTRICIAN
+  [=] Already staged/seen: ELECTRICIAN (GENERAL)
+
+=== Searching PhilJobNet for: 'welder' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: WELDER
+  [=] Already staged/seen: WELDER
+  [=] Already staged/seen: METAL ARC WELDER
+  [+] Staged: WELDER (DIAR'S ASSISTANCE INCORPORATED)
+  [AI] Auto-enriched: WELDER
+  [=] Already staged/seen: WELDER
+
+=== Searching PhilJobNet for: 'civil engineer' ===
+  Found 5 job link(s) to check.
+  [+] Staged: CIVIL ENGINEER (GENERAL) (ROWIE'S CONSTRUCTION)
+  [AI] Auto-enriched: CIVIL ENGINEER (GENERAL)
+  [=] Already staged/seen: CIVIL ENGINEER (GENERAL)
+  [+] Staged: SITE ENGINEER (N.B. VINTA CONSTRUCTION CORPORATION)
+  [AI] Auto-enriched: SITE ENGINEER
+  [=] Already staged/seen: CIVIL ENGINEER (GENERAL)
+  [=] Already staged/seen: BUSINESS DEVELOPMENT/MARKETING SPECIALIST
+
+=== Searching PhilJobNet for: 'graphic designer' ===
+  Found 5 job link(s) to check.
+  [+] Staged: GRAPHIC DESIGNER (CONCEIT INC.)
+  [AI] Auto-enriched: GRAPHIC DESIGNER
+  [=] Already staged/seen: GRAPHIC DESIGNER
+  [=] Already staged/seen: GRAPHIC DESIGNER
+  [=] Already staged/seen: GRAPHIC DESIGNER
+  [=] Already staged/seen: GRAPHIC DESIGNER
+
+=== Searching PhilJobNet for: 'sales' ===
+  Found 5 job link(s) to check.
+  [+] Staged: SALES ASSOCIATE PROFESSIONAL (HC CONSUMER FINANCE PHILS., INC.)
+  [AI] Auto-enriched: SALES ASSOCIATE PROFESSIONAL
+  [=] Already staged/seen: SALESMAN
+  [+] Staged: STORE SALESPERSON (YEARNINGS OUTSOURCING COOPERATIVE)
+  [AI] Auto-enriched: STORE SALESPERSON
+  [=] Already staged/seen: SALES EXECUTIVE
+  [+] Staged: STORE SALESPERSON (YEARNINGS OUTSOURCING COOPERATIVE)
+  [AI] Auto-enriched: STORE SALESPERSON
+
+=== Searching PhilJobNet for: 'chef' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: COMMIS CHEF
+  [+] Staged: LEAD CHEF (INTERNATIONAL SKILL DEVELOPMENT, INC.)
+  [AI] Auto-enriched: LEAD CHEF
+  [=] Already staged/seen: COMMIS CHEF
+  [=] Already staged/seen: PASTRY CHEF
+  [+] Staged: CHEF (MANDELA 27 FOODS CORPORATION)
+  [AI] Auto-enriched: CHEF
+
+Done. Checked 45 postings, staged 13 new entries into pending_careers.
+Open php/careers.php to review and approve them into the live career database.

@@ -9,7 +9,7 @@ loop described in Chapter III of the capstone paper.
 - `database/schema.sql` — MySQL schema + 18 seed careers with RIASEC vectors, plus `pending_careers` (crawler staging), `users` (administrators + counselors), and `students`/`student_profiles`/`recommendations` (student accounts + assessment history)
 - `matching-service/` — Python/Flask microservice running the Hybrid Recommendation Engine (Scikit-learn cosine similarity)
 - `php/` — PHP front end: a front landing page (`index.php`) that routes to either path; student sign up/login (`student_register.php`/`student_login.php`), a student dashboard (`student_dashboard.php`), the intake form (`assessment.php`), results page (`submit.php`), assessment history (`student_history.php`), and a standing career profile page (`career_profile.php`) linked from any recommended career title; staff login (`login.php`), a staff dashboard (`dashboard.php`), career review queue (`careers.php`), live career editing (`careers_manage.php`), student search (`students_lookup.php`), and administrator-only account management (`users.php`)
-- `crawler/` — five data-collection scripts staging entries into the same review queue: `crawler.py` scrapes real PH job postings from **PhilJobNet** (philjobnet.gov.ph), `kalibrr_client.py` adds a second PH source (**Kalibrr**); `onet_client.py`, `adzuna_client.py`, and `remoteok_client.py` add **international** coverage (official occupation standards + live postings across several countries) — added after panel feedback that the system needed non-PH requirements too. See section 4 below.
+- `matching-service/crawler/` — five data-collection scripts staging entries into the same review queue: `crawler.py` scrapes real PH job postings from **PhilJobNet** (philjobnet.gov.ph), `kalibrr_client.py` adds a second PH source (**Kalibrr**); `onet_client.py`, `adzuna_client.py`, and `remoteok_client.py` add **international** coverage (official occupation standards + live postings across several countries) — added after panel feedback that the system needed non-PH requirements too. See section 4 below.
 - **AI enrichment** — the matching-service's `/enrich` endpoint calls the Gemini API (Gemini 3.5 Flash-Lite) to turn a raw scraped posting into a polished description, daily-task list, educational pathway, and a suggested RIASEC vector, wired into `careers.php`'s "✨ Enrich with AI" button
 - **Staff accounts + roles** — two roles, **administrator** (creates/manages counselor and administrator accounts, and can view/moderate student accounts, via `users.php`) and **counselor** (reviews, edits, approves, or rejects careers via `careers.php`). See section 5 below.
 - **Student accounts + history** — students self-register (`student_register.php`) and log in (`student_login.php`) to take the RIASEC assessment; every submission and its ranked recommendations are saved and viewable later on `student_history.php`. This matches the STUDENT / STUDENT_PROFILE / RECOMMENDATION entities in the paper's ERD (Chapter III, Figure 11). See section 6 below.
@@ -140,7 +140,7 @@ stages whatever it finds in `pending_careers` — nothing reaches students
 until a counselor or administrator approves it.
 
 ```bash
-cd C:\xampp\htdocs\careerpath-ai-mvp\crawler
+cd C:\xampp\htdocs\careerpath-ai-mvp\matching-service\crawler
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
@@ -218,7 +218,7 @@ developer account:
 # 1. Sign up: https://services.onetcenter.org/developer/signup
 # 2. You'll get a username/password (HTTP Basic Auth, not an API key)
 
-cd C:\xampp\htdocs\careerpath-ai-mvp\crawler
+cd C:\xampp\htdocs\careerpath-ai-mvp\matching-service\crawler
 venv\Scripts\activate
 
 set ONET_USERNAME=your_username
@@ -608,7 +608,7 @@ added later or goes down.
   connection, or PhilJobNet may be temporarily down; just re-run later.
 - **Crawler finds 0 job links for a keyword** — the site's markup may have
   changed slightly; let me know which keyword and I'll adjust the selectors
-  in `crawler/crawler.py`.
+  in `matching-service/crawler/crawler.py`.
 - **`onet_client.py` raises "Set ONET_USERNAME and ONET_PASSWORD"** — sign
   up free at https://services.onetcenter.org/developer/signup and set both
   env vars before running it.

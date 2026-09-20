@@ -1,0 +1,117 @@
+C:\xampp\htdocs\careerpath-ai-mvp\matching-service\..\crawler\kalibrr_client.py:172: DeprecationWarning: The 'reconnect' argument is deprecated. Create a new connection if you want to reconnect.
+  conn.ping(reconnect=True)
+
+=== Searching Kalibrr for: 'nurse' ===
+  Found 4 job listing(s) to check.
+  [+] Staged: Nurse Navigator ()
+  [AI] Auto-enriched: Nurse Navigator
+  [+] Staged: Occupational Health and Safety Nurse ()
+  [AI] Auto-enriched: Occupational Health and Safety Nurse
+  [+] Staged: Registered Nurse ()
+  [AI] Auto-enriched: Registered Nurse
+  [+] Staged: Application Specialist | Medical Equipment ()
+  [AI] Auto-enriched: Application Specialist | Medical Equipment
+
+=== Searching Kalibrr for: 'teacher' ===
+  Found 5 job listing(s) to check.
+  [+] Staged: Senior High School Teacher ()
+  [AI] Auto-enriched: Senior High School Teacher
+  [+] Staged: School Engagement Partner ()
+  [AI] Auto-enriched: School Engagement Partner
+  [+] Staged: Sales Account Manager for Philippines Schools ()
+  [AI] Auto-enriched: Sales Account Manager for Philippines Schools
+  [+] Staged: Part Time Private Tutor [Philippines] ()
+  [AI] Auto-enriched: Part Time Private Tutor [Philippines]
+  [+] Staged: Senior Psychologist | Makati ()
+  [AI] Auto-enriched: Senior Psychologist | Makati
+
+=== Searching Kalibrr for: 'accountant' ===
+  Found 5 job listing(s) to check.
+  [+] Staged: Accounting & Finance Head ()
+  [AI] Auto-enriched: Accounting & Finance Head
+  [+] Staged: Record to Report Specialist ()
+  [!] Auto-enrich skipped for 'Record to Report Specialist': 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.5-flash-lite\nPlease retry in 46.764435061s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.5-flash-lite'}, 'quotaValue': '15'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '46s'}]}}
+  [+] Staged: Accounts Payable Specialist ()
+  [!] Auto-enrich skipped for 'Accounts Payable Specialist': 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.5-flash-lite\nPlease retry in 44.424740504s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-3.5-flash-lite', 'location': 'global'}, 'quotaValue': '15'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '44s'}]}}
+  [+] Staged: Accountant ()
+  [!] Auto-enrich skipped for 'Accountant': 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.5-flash-lite\nPlease retry in 42.09769838s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.5-flash-lite'}, 'quotaValue': '15'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '42s'}]}}
+  [+] Staged: Accountant ()
+  [!] Auto-enrich skipped for 'Accountant': 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.5-flash-lite\nPlease retry in 39.742512927s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.5-flash-lite'}, 'quotaValue': '15'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '39s'}]}}
+
+=== Searching Kalibrr for: 'software developer' ===
+  Found 5 job listing(s) to check.
+  [+] Staged: Software Developer ()
+  [AI] Auto-enriched: Software Developer
+  [+] Staged: Enterprise Account Manager ()
+  [AI] Auto-enriched: Enterprise Account Manager
+  [+] Staged: Associate Brand Manager for Mesoestetic ()
+  [AI] Auto-enriched: Associate Brand Manager for Mesoestetic
+  [+] Staged: Sales and Operations Planning Analyst ()
+  [AI] Auto-enriched: Sales and Operations Planning Analyst
+  [=] Already staged/seen: Accounting & Finance Head
+
+=== Searching Kalibrr for: 'electrician' ===
+  Found 5 job listing(s) to check.
+  [+] Staged: Electrician ()
+  [AI] Auto-enriched: Electrician
+  [+] Staged: Electrical Engineer ()
+  [AI] Auto-enriched: Electrical Engineer
+  [+] Staged: Electrical Engineer ()
+  [AI] Auto-enriched: Electrical Engineer
+  [+] Staged: Electrical Power Supply Design Engineer ()
+  [AI] Auto-enriched: Electrical Power Supply Design Engineer
+  [+] Staged: Power Trading Analyst ()
+  [AI] Auto-enriched: Power Trading Analyst
+
+=== Searching Kalibrr for: 'welder' ===
+  Found 5 job listing(s) to check.
+  [=] Already staged/seen: Associate Brand Manager for Mesoestetic
+  [=] Already staged/seen: Record to Report Specialist
+  [=] Already staged/seen: Sales and Operations Planning Analyst
+  [=] Already staged/seen: Enterprise Account Manager
+  [+] Staged: DevOps Engineer ()
+  [AI] Auto-enriched: DevOps Engineer
+
+=== Searching Kalibrr for: 'civil engineer' ===
+  Found 5 job listing(s) to check.
+  [=] Already staged/seen: DevOps Engineer
+  [+] Staged: Industrial Engineer ()
+  [AI] Auto-enriched: Industrial Engineer
+  [+] Staged: Cloud Engineer ()
+  [AI] Auto-enriched: Cloud Engineer
+  [+] Staged: Solutions Engineer ()
+  [AI] Auto-enriched: Solutions Engineer
+  [=] Already staged/seen: Electrical Engineer
+
+=== Searching Kalibrr for: 'graphic designer' ===
+  Found 5 job listing(s) to check.
+  [+] Staged: Production Merchandiser ()
+  [AI] Auto-enriched: Production Merchandiser
+  [=] Already staged/seen: Software Developer
+  [+] Staged: Graphic Designer ()
+  [AI] Auto-enriched: Graphic Designer
+  [+] Staged: Graphic Designer ()
+  [AI] Auto-enriched: Graphic Designer
+  [+] Staged: Packaging Graphic Designer ()
+  [AI] Auto-enriched: Packaging Graphic Designer
+
+=== Searching Kalibrr for: 'sales' ===
+  Found 5 job listing(s) to check.
+  [+] Staged: Sales Executive ()
+  [AI] Auto-enriched: Sales Executive
+  [=] Already staged/seen: Sales and Operations Planning Analyst
+  [+] Staged: Retail Sales & Promotions Supervisor ()
+  [AI] Auto-enriched: Retail Sales & Promotions Supervisor
+  [=] Already staged/seen: Enterprise Account Manager
+  [=] Already staged/seen: Associate Brand Manager for Mesoestetic
+
+=== Searching Kalibrr for: 'chef' ===
+  Found 5 job listing(s) to check.
+  [=] Already staged/seen: Associate Brand Manager for Mesoestetic
+  [=] Already staged/seen: Record to Report Specialist
+  [=] Already staged/seen: Sales and Operations Planning Analyst
+  [=] Already staged/seen: Enterprise Account Manager
+  [=] Already staged/seen: DevOps Engineer
+
+Done. Checked 49 postings, staged 33 new entries into pending_careers.
+Open php/careers.php to review and approve them into the live career database.

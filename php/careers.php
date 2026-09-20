@@ -1,7 +1,7 @@
 <?php
 // CareerPath AI - Career Review Queue (Counselor + Administrator)
 //
-// Lists everything the crawler (crawler/crawler.py) staged in pending_careers
+// Lists everything the crawler (matching-service/crawler/crawler.py) staged in pending_careers
 // and lets a counselor (or administrator) edit + approve entries into the
 // live `careers` table, or reject them. This matches the paper's design:
 // crawled data always passes through human review before students ever see it.
@@ -849,9 +849,9 @@ if ($statusFilter === 'pending') {
             No <?= htmlspecialchars($statusFilter) ?> entries<?= $sourceFilter !== '' ? ' from ' . htmlspecialchars($sourceLabels[$sourceFilter]) : '' ?><?= $ageFilter === 'new' ? ' scraped in the last 24 hours' : ($ageFilter === 'older' ? ' older than 24 hours' : '') ?><?= $aiFilter === 'enriched' ? ' that are AI-enriched' : ($aiFilter === 'not_enriched' ? ' that still need AI enrichment' : '') ?>.
             <?php if ($statusFilter === 'pending'): ?>
                 Use "Run Web Crawler" above to fetch more, or run one of the scripts manually:
-                <code>python crawler/crawler.py</code> or <code>python crawler/kalibrr_client.py</code> (Philippines),
-                <code>python crawler/onet_client.py</code>, <code>python crawler/adzuna_client.py</code>, or
-                <code>python crawler/remoteok_client.py</code> (international).
+                <code>python matching-service/crawler/crawler.py</code> or <code>python matching-service/crawler/kalibrr_client.py</code> (Philippines),
+                <code>python matching-service/crawler/onet_client.py</code>, <code>python matching-service/crawler/adzuna_client.py</code>, or
+                <code>python matching-service/crawler/remoteok_client.py</code> (international).
             <?php endif; ?>
         </p>
     <?php endif; ?>

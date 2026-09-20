@@ -1,0 +1,80 @@
+C:\xampp\htdocs\careerpath-ai-mvp\matching-service\..\crawler\crawler.py:209: DeprecationWarning: The 'reconnect' argument is deprecated. Create a new connection if you want to reconnect.
+  conn.ping(reconnect=True)
+
+=== Searching PhilJobNet for: 'nurse' ===
+  Found 5 job link(s) to check.
+  [+] Staged: STAFF NURSE (CAREVIEW CORPORATION)
+  [+] Staged: STAFF NURSE (YHMD INTERNATIONAL MANPOWER SERVICES, INC.)
+  [+] Staged: STAFF NURSE (21ST CENTURY MANPOWER RESOURCES INC)
+  [+] Staged: COMPANY NURSE (ROMAC SERVICES & TRADING CO., INC.)
+  [+] Staged: SPECIALIZED NURSE (OPTUM GLOBAL SOLUTIONS (PHILIPPINES), INC.)
+
+=== Searching PhilJobNet for: 'teacher' ===
+  Found 5 job link(s) to check.
+  [+] Staged: LANGUAGE TEACHER (SECONDARY EDUCATION) (BRIDGECULTURE INC)
+  [+] Staged: TEACHER (ELEMENTARY SCIENCE) (ONLINE HIRING CORP.)
+  [+] Staged: TRUCK DRIVER (ABRA DIOCESAN TEACHERS AND EMPLOYEES MULTI-PURPOSE COOPERATIVE)
+  [+] Staged: MATHEMATICS TEACHER (SECONDARY EDUCATION) (ONLINE HIRING CORP.)
+  [+] Staged: MATHEMATICS TEACHER (SECONDARY EDUCATION) (BORACAY EUROPEAN INTERNATIONAL SCHOOL)
+
+=== Searching PhilJobNet for: 'accountant' ===
+  Found 5 job link(s) to check.
+  [+] Staged: COST ACCOUNTANT (ALLIANCE SELECT FOODS INTERNATIONAL, INC.)
+  [+] Staged: CORPORATE ACCOUNTANT (ACCENTLINE, INC.)
+  [+] Staged: ACCOUNTANT (GENERAL) (KKK TURBO FUEL CORPORATION)
+  [+] Staged: CHIEF ACCOUNTANT (EUROMERICA TRADE PHILIPPINES)
+  [+] Staged: ACCOUNTANT (GENERAL) (WRKPOD INC.)
+
+=== Searching PhilJobNet for: 'software developer' ===
+  Found 0 job link(s) to check.
+
+=== Searching PhilJobNet for: 'electrician' ===
+  Found 5 job link(s) to check.
+  [+] Staged: SHIP ELECTRICIAN (ANGLO-EASTERN CREW MANAGEMENT PHILIPPINES, INC.)
+  [+] Staged: MAINTENANCE ELECTRICIAN (NORTH ASIA CENTRAL MANPOWER SERVICES INC.)
+  [+] Staged: SHIP ELECTRICIAN (NYK-FIL SHIP MANAGEMENT, INC.)
+  [+] Staged: SHIP ELECTRICIAN (GLOBAL GATEWAY CREWING SERVICES INC.)
+  [+] Staged: AUTOMOTIVE ELECTRICIAN (FIL-EM TRANSPORT SERVICES, CO., INC.)
+
+=== Searching PhilJobNet for: 'welder' ===
+  Found 5 job link(s) to check.
+  [+] Staged: WELDER (PHIL-APEX PLACEMENT AGENCY INC.)
+  [+] Staged: WELDER (ENVISION RECRUITMENT INC.)
+  [+] Staged: WELDER (BRANIA-SULIT CORPORATION)
+  [+] Staged: WELDER (CELEBES COCONUT CORPORATION)
+  [+] Staged: WELDER (DIAR'S ASSISTANCE INCORPORATED)
+
+=== Searching PhilJobNet for: 'civil engineer' ===
+  Found 5 job link(s) to check.
+  [+] Staged: CIVIL ENGINEER (GENERAL) (DBC HOMES)
+  [+] Staged: CIVIL ENGINEER (GENERAL) (CHINA WUYI CO.,LTD)
+  [+] Staged: CIVIL ENGINEER (GENERAL) (EVERSTONE DEVELOPMENT AND CONSTRUCTION INC.)
+  [+] Staged: CIVIL ENGINEER (GENERAL) (NOSPHIL CONSULTANCY AND MANPOWER SERVICES INC.)
+  [+] Staged: CIVIL ENGINEER (GENERAL) (CHINA WUYI CO.,LTD)
+
+=== Searching PhilJobNet for: 'graphic designer' ===
+  Found 5 job link(s) to check.
+  [+] Staged: GRAPHIC DESIGNER (TRAVELBEE MANAGEMENT CORP.)
+  [+] Staged: GRAPHIC DESIGNER (SPINNAKER GLOBAL SERVICES OPC)
+  [+] Staged: GRAPHIC DESIGNER (WRKPOD INC.)
+  [+] Staged: GRAPHIC DESIGNER (CAREVIEW CORPORATION)
+  [+] Staged: GRAPHIC DESIGNER (DIONISIO, ERNESTO JR NAPIZA)
+
+=== Searching PhilJobNet for: 'sales' ===
+  Found 5 job link(s) to check.
+  [+] Staged: SALES CLERK (VISMOTOR CORPORATION)
+  [+] Staged: SALESMAN (ZEST-O CORPORATION)
+  [+] Staged: SALES CLERK (HER GRACE JEWELRY SHOP)
+  [+] Staged: SALES OFFICER (JVB TRAINING AND VISA SOLUTIONS OPC.)
+  [+] Staged: SALES CLERK (SERVICE SOLUTIONS MULTI PURPOSE COOPERATIVE)
+
+=== Searching PhilJobNet for: 'chef' ===
+  Found 5 job link(s) to check.
+  [+] Staged: PASTRY CHEF (TOP-ASIA MANAGEMENT SOLUTIONS INC.)
+  [+] Staged: COMMIS CHEF (HOTEL ELIZABETH)
+  [+] Staged: LEAD CHEF (PALAWAN ATALAYA CORP)
+  [+] Staged: CHEF (MANDELA 27 FOODS CORPORATION)
+  [+] Staged: PASTRY CHEF (SUCREE COCO AND LOVE, INC.)
+
+Done. Checked 45 postings, staged 45 new entries into pending_careers.
+Open php/careers.php to review and approve them into the live career database.

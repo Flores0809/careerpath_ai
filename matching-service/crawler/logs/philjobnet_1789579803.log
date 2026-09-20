@@ -1,0 +1,124 @@
+C:\xampp\htdocs\careerpath-ai-mvp\matching-service\..\crawler\crawler.py:211: DeprecationWarning: The 'reconnect' argument is deprecated. Create a new connection if you want to reconnect.
+  conn.ping(reconnect=True)
+
+=== Searching PhilJobNet for: 'nurse' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: STAFF NURSE
+  [+] Staged: COMPANY NURSE (OUROKU CORPORATION)
+  [AI] Auto-enriched: COMPANY NURSE
+  [+] Staged: STAFF NURSE (IKON SOLUTIONS ASIA INC.)
+  [AI] Auto-enriched: STAFF NURSE
+  [+] Staged: SPECIALIZED NURSE (OPTUM GLOBAL SOLUTIONS (PHILIPPINES), INC.)
+  [AI] Auto-enriched: SPECIALIZED NURSE
+  [+] Staged: STAFF NURSE (YHMD INTERNATIONAL MANPOWER SERVICES, INC.)
+  [AI] Auto-enriched: STAFF NURSE
+
+=== Searching PhilJobNet for: 'teacher' ===
+  Found 5 job link(s) to check.
+  [+] Staged: NON-FORMAL EDUCATION TEACHER (IU ENGLISH ACADEMY CORPORATION)
+  [AI] Auto-enriched: NON-FORMAL EDUCATION TEACHER
+  [+] Staged: ACCOUNTING CLERK (ABRA DIOCESAN TEACHERS AND EMPLOYEES MULTI-PURPOSE COOPERATIVE)
+  [AI] Auto-enriched: ACCOUNTING CLERK
+  [+] Staged: MATHEMATICS TEACHER (SECONDARY EDUCATION) (BORACAY EUROPEAN INTERNATIONAL SCHOOL)
+  [AI] Auto-enriched: MATHEMATICS TEACHER (SECONDARY EDUCATION)
+  [+] Staged: TEACHER (ELEMENTARY MATHEMATICS) (ONLINE HIRING CORP.)
+  [AI] Auto-enriched: TEACHER (ELEMENTARY MATHEMATICS)
+  [+] Staged: TEACHER ASSISTANT (UNHOOP PHILIPPINES INC)
+  [AI] Auto-enriched: TEACHER ASSISTANT
+
+=== Searching PhilJobNet for: 'accountant' ===
+  Found 5 job link(s) to check.
+  [+] Staged: ACCOUNTANT (GENERAL) (KKK TURBO FUEL CORPORATION)
+  [AI] Auto-enriched: ACCOUNTANT (GENERAL)
+  [+] Staged: ACCOUNTANT (GENERAL) (WRKPOD INC.)
+  [AI] Auto-enriched: ACCOUNTANT (GENERAL)
+  [+] Staged: SENIOR ACCOUNTANT (WWW.NEXTOFFICE.COM)
+  [AI] Auto-enriched: SENIOR ACCOUNTANT
+  [+] Staged: ACCOUNTANT (GENERAL) (GLOBAL TERMINALS AND DEVELOPMENT INC.)
+  [AI] Auto-enriched: ACCOUNTANT (GENERAL)
+  [+] Staged: COST ACCOUNTANT (ALLIANCE SELECT FOODS INTERNATIONAL, INC.)
+  [AI] Auto-enriched: COST ACCOUNTANT
+
+=== Searching PhilJobNet for: 'software developer' ===
+  Found 0 job link(s) to check.
+
+=== Searching PhilJobNet for: 'electrician' ===
+  Found 5 job link(s) to check.
+  [+] Staged: BUILDING ELECTRICIAN (KENGY MANPOWER ANG GENERAL SERVICES CO.)
+  [AI] Auto-enriched: BUILDING ELECTRICIAN
+  [+] Staged: SHIP ELECTRICIAN (ANGLO-EASTERN CREW MANAGEMENT PHILIPPINES, INC.)
+  [AI] Auto-enriched: SHIP ELECTRICIAN
+  [+] Staged: SHIP ELECTRICIAN (GLOBAL GATEWAY CREWING SERVICES INC.)
+  [AI] Auto-enriched: SHIP ELECTRICIAN
+  [+] Staged: MAINTENANCE ELECTRICIAN (STELLAR 167 MANPOWER RECRUITMENT & SERVICES INC.)
+  [AI] Auto-enriched: MAINTENANCE ELECTRICIAN
+  [+] Staged: MAINTENANCE ELECTRICIAN (NORTH ASIA CENTRAL MANPOWER SERVICES INC.)
+  [AI] Auto-enriched: MAINTENANCE ELECTRICIAN
+
+=== Searching PhilJobNet for: 'welder' ===
+  Found 5 job link(s) to check.
+  [+] Staged: METAL ARC WELDER (NEW PERSONNEL BUILDERS & CONSULTANCY SERVICES, INC.)
+  [AI] Auto-enriched: METAL ARC WELDER
+  [+] Staged: WELDER (ENVISION RECRUITMENT INC.)
+  [AI] Auto-enriched: WELDER
+  [+] Staged: WELDER (PHIL-APEX PLACEMENT AGENCY INC.)
+  [AI] Auto-enriched: WELDER
+  [+] Staged: TIG WELDER (CELEBES COCONUT CORPORATION)
+  [AI] Auto-enriched: TIG WELDER
+  [+] Staged: WELDER (BRANIA-SULIT CORPORATION)
+  [AI] Auto-enriched: WELDER
+
+=== Searching PhilJobNet for: 'civil engineer' ===
+  Found 5 job link(s) to check.
+  [+] Staged: CIVIL ENGINEER (GENERAL) (NOSPHIL CONSULTANCY AND MANPOWER SERVICES INC.)
+  [AI] Auto-enriched: CIVIL ENGINEER (GENERAL)
+  [+] Staged: CIVIL ENGINEER (GENERAL) (EVERSTONE DEVELOPMENT AND CONSTRUCTION INC.)
+  [AI] Auto-enriched: CIVIL ENGINEER (GENERAL)
+  [+] Staged: BUSINESS DEVELOPMENT/MARKETING SPECIALIST (ABOITIZ CONSTRUCTION, INC)
+  [AI] Auto-enriched: BUSINESS DEVELOPMENT/MARKETING SPECIALIST
+  [+] Staged: CIVIL ENGINEER (GENERAL) (CHINA WUYI CO.,LTD)
+  [AI] Auto-enriched: CIVIL ENGINEER (GENERAL)
+  [+] Staged: CIVIL ENGINEER (GENERAL) (CHINA WUYI CO.,LTD)
+  [AI] Auto-enriched: CIVIL ENGINEER (GENERAL)
+
+=== Searching PhilJobNet for: 'graphic designer' ===
+  Found 5 job link(s) to check.
+  [+] Staged: GRAPHIC DESIGNER (DIONISIO, ERNESTO JR NAPIZA)
+  [AI] Auto-enriched: GRAPHIC DESIGNER
+  [+] Staged: GRAPHIC DESIGNER (TRAVELBEE MANAGEMENT CORP.)
+  [AI] Auto-enriched: GRAPHIC DESIGNER
+  [+] Staged: GRAPHIC DESIGNER (CAREVIEW CORPORATION)
+  [AI] Auto-enriched: GRAPHIC DESIGNER
+  [+] Staged: GRAPHIC DESIGNER (WRKPOD INC.)
+  [AI] Auto-enriched: GRAPHIC DESIGNER
+  [+] Staged: GRAPHIC DESIGNER (MANDELA 27 FOODS CORPORATION)
+  [AI] Auto-enriched: GRAPHIC DESIGNER
+
+=== Searching PhilJobNet for: 'sales' ===
+  Found 5 job link(s) to check.
+  [+] Staged: SALES COORDINATOR (CYA INDUSTRIES INC)
+  [AI] Auto-enriched: SALES COORDINATOR
+  [+] Staged: SALESMAN (ZEST-O CORPORATION)
+  [AI] Auto-enriched: SALESMAN
+  [+] Staged: SALESMAN (ZEST-O CORPORATION)
+  [AI] Auto-enriched: SALESMAN
+  [+] Staged: SALES ENGINEER (PCT PURECHEM ENTERPRISE INC.)
+  [AI] Auto-enriched: SALES ENGINEER
+  [+] Staged: SALESMAN (ZEST-O CORPORATION)
+  [AI] Auto-enriched: SALESMAN
+
+=== Searching PhilJobNet for: 'chef' ===
+  Found 5 job link(s) to check.
+  [+] Staged: PASTRY CHEF (GPNC SERVICES CORP.)
+  [AI] Auto-enriched: PASTRY CHEF
+  [+] Staged: PASTRY CHEF (HOME OF CEBUANO CUISINE CORPORATION)
+  [AI] Auto-enriched: PASTRY CHEF
+  [+] Staged: SOUS CHEF (JSAVE REALITY CORPORATION)
+  [AI] Auto-enriched: SOUS CHEF
+  [+] Staged: PASTRY CHEF (TOP-ASIA MANAGEMENT SOLUTIONS INC.)
+  [AI] Auto-enriched: PASTRY CHEF
+  [+] Staged: COMMIS CHEF (HOTEL ELIZABETH)
+  [AI] Auto-enriched: COMMIS CHEF
+
+Done. Checked 45 postings, staged 44 new entries into pending_careers.
+Open php/careers.php to review and approve them into the live career database.

@@ -1,0 +1,108 @@
+C:\xampp\htdocs\careerpath-ai-mvp\matching-service\..\crawler\crawler.py:211: DeprecationWarning: The 'reconnect' argument is deprecated. Create a new connection if you want to reconnect.
+  conn.ping(reconnect=True)
+
+=== Searching PhilJobNet for: 'nurse' ===
+  Found 5 job link(s) to check.
+  [+] Staged: DENTAL NURSE (FLUOR MANPOWER AGENCY INC)
+  [AI] Auto-enriched: DENTAL NURSE
+  [=] Already staged/seen: COMPANY NURSE
+  [+] Staged: STAFF NURSE (CAREVIEW CORPORATION)
+  [AI] Auto-enriched: STAFF NURSE
+  [+] Staged: STAFF NURSE (21ST CENTURY MANPOWER RESOURCES INC)
+  [AI] Auto-enriched: STAFF NURSE
+  [+] Staged: DENTAL NURSE (21ST CENTURY MANPOWER RESOURCES INC)
+  [AI] Auto-enriched: DENTAL NURSE
+
+=== Searching PhilJobNet for: 'teacher' ===
+  Found 5 job link(s) to check.
+  [+] Staged: MATHEMATICS TEACHER (SECONDARY EDUCATION) (ONLINE HIRING CORP.)
+  [AI] Auto-enriched: MATHEMATICS TEACHER (SECONDARY EDUCATION)
+  [=] Already staged/seen: MATHEMATICS TEACHER (SECONDARY EDUCATION)
+  [+] Staged: TRUCK DRIVER (ABRA DIOCESAN TEACHERS AND EMPLOYEES MULTI-PURPOSE COOPERATIVE)
+  [AI] Auto-enriched: TRUCK DRIVER
+  [=] Already staged/seen: TEACHER (ELEMENTARY MATHEMATICS)
+  [=] Already staged/seen: TEACHER ASSISTANT
+
+=== Searching PhilJobNet for: 'accountant' ===
+  Found 5 job link(s) to check.
+  [+] Staged: CHIEF ACCOUNTANT (EUROMERICA TRADE PHILIPPINES)
+  [AI] Auto-enriched: CHIEF ACCOUNTANT
+  [=] Already staged/seen: ACCOUNTANT (GENERAL)
+  [+] Staged: CORPORATE ACCOUNTANT (ACCENTLINE, INC.)
+  [AI] Auto-enriched: CORPORATE ACCOUNTANT
+  [+] Staged: ACCOUNTANT (GENERAL) (ANGELINA'S BAKESHOP)
+  [AI] Auto-enriched: ACCOUNTANT (GENERAL)
+  [=] Already staged/seen: SENIOR ACCOUNTANT
+
+=== Searching PhilJobNet for: 'software developer' ===
+  Found 0 job link(s) to check.
+
+=== Searching PhilJobNet for: 'electrician' ===
+  Found 5 job link(s) to check.
+  [+] Staged: ELECTRICIAN (GENERAL) (SYMANPRO MANPOWER SERVICE CONTRACTOR CORPORATION)
+  [AI] Auto-enriched: ELECTRICIAN (GENERAL)
+  [+] Staged: ELECTRICIAN (GENERAL) (KEMPAL CONSTRUCTION AND SUPPLY CORP.)
+  [AI] Auto-enriched: ELECTRICIAN (GENERAL)
+  [+] Staged: AUTOMOTIVE ELECTRICIAN (FLUOR MANPOWER AGENCY INC)
+  [AI] Auto-enriched: AUTOMOTIVE ELECTRICIAN
+  [+] Staged: BUILDING ELECTRICIAN (TRANSNATIONAL SERVICES INCORPORATED)
+  [AI] Auto-enriched: BUILDING ELECTRICIAN
+  [=] Already staged/seen: MAINTENANCE ELECTRICIAN
+
+=== Searching PhilJobNet for: 'welder' ===
+  Found 5 job link(s) to check.
+  [+] Staged: WELDER (CELEBES COCONUT CORPORATION)
+  [AI] Auto-enriched: WELDER
+  [+] Staged: WELDER (CEBU LABORLINK MANPOWER CORPORATION)
+  [AI] Auto-enriched: WELDER
+  [+] Staged: WELDER (1ST DYNAMIC PERSONNEL RESOURCES INC)
+  [AI] Auto-enriched: WELDER
+  [=] Already staged/seen: WELDER
+  [=] Already staged/seen: WELDER
+
+=== Searching PhilJobNet for: 'civil engineer' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: BUSINESS DEVELOPMENT/MARKETING SPECIALIST
+  [+] Staged: CIVIL ENGINEER (GENERAL) (CHINA WUYI CO.,LTD)
+  [AI] Auto-enriched: CIVIL ENGINEER (GENERAL)
+  [+] Staged: CIVIL ENGINEER (GENERAL) (DBC HOMES)
+  [AI] Auto-enriched: CIVIL ENGINEER (GENERAL)
+  [+] Staged: CIVIL ENGINEER (GENERAL) (STAR BREEZE MANPOWER RECRUITMENT AGENCY)
+  [AI] Auto-enriched: CIVIL ENGINEER (GENERAL)
+  [=] Already staged/seen: CIVIL ENGINEER (GENERAL)
+
+=== Searching PhilJobNet for: 'graphic designer' ===
+  Found 5 job link(s) to check.
+  [=] Already staged/seen: GRAPHIC DESIGNER
+  [=] Already staged/seen: GRAPHIC DESIGNER
+  [+] Staged: GRAPHIC DESIGNER (EFLEXERVICES PHILS. INC.)
+  [AI] Auto-enriched: GRAPHIC DESIGNER
+  [+] Staged: GRAPHIC DESIGNER (HI PRECISION DIAGNOSTIC CENTER INC)
+  [AI] Auto-enriched: GRAPHIC DESIGNER
+  [=] Already staged/seen: GRAPHIC DESIGNER
+
+=== Searching PhilJobNet for: 'sales' ===
+  Found 5 job link(s) to check.
+  [+] Staged: ADMINISTRATIVE SECRETARY (VIRMAR MANPOWER SERVICES CORPORATION)
+  [AI] Auto-enriched: ADMINISTRATIVE SECRETARY
+  [+] Staged: SALES OFFICER (STAR BREEZE MANPOWER RECRUITMENT AGENCY)
+  [AI] Auto-enriched: SALES OFFICER
+  [+] Staged: SALES CLERK (BSB JUNROSE CORPORATION)
+  [AI] Auto-enriched: SALES CLERK
+  [+] Staged: SALES ASSOCIATE PROFESSIONAL (WALK EZ RETAIL CORP / CROCS FOOTWEAR)
+  [AI] Auto-enriched: SALES ASSOCIATE PROFESSIONAL
+  [+] Staged: TECHNICAL AND COMMERCIAL SALES REPRESENTATIVE (BLUE AGE TRADING/ROBERT M. GALON)
+  [AI] Auto-enriched: TECHNICAL AND COMMERCIAL SALES REPRESENTATIVE
+
+=== Searching PhilJobNet for: 'chef' ===
+  Found 5 job link(s) to check.
+  [+] Staged: PASTRY CHEF (SUCREE COCO AND LOVE, INC.)
+  [AI] Auto-enriched: PASTRY CHEF
+  [=] Already staged/seen: SOUS CHEF
+  [=] Already staged/seen: PASTRY CHEF
+  [=] Already staged/seen: PASTRY CHEF
+  [+] Staged: COMMIS CHEF (IKON SOLUTIONS ASIA INC.)
+  [AI] Auto-enriched: COMMIS CHEF
+
+Done. Checked 45 postings, staged 28 new entries into pending_careers.
+Open php/careers.php to review and approve them into the live career database.

@@ -1,0 +1,12 @@
+C:\xampp\htdocs\careerpath-ai-mvp\matching-service\..\crawler\remoteok_client.py:122: DeprecationWarning: The 'reconnect' argument is deprecated. Create a new connection if you want to reconnect.
+  conn.ping(reconnect=True)
+=== Fetching RemoteOK public feed ===
+Fetched 99 total postings from RemoteOK.
+  [=] Already staged/seen: Principal Product Manager
+  [=] Already staged/seen: Sr Solutions Architect
+  [=] Already staged/seen: Regional Sales Manager
+  [=] Already staged/seen: Graphic Designer
+  [=] Already staged/seen: Graphic Designer
+
+Done. Checked 5 matching postings, staged 0 new entries into pending_careers.
+Open php/careers.php to review and approve them into the live career database.

@@ -13,7 +13,8 @@ Dedicated Python microservice with three independent jobs:
                 into a polished description, daily-task list, educational
                 pathway, suggested RIASEC vector, and suggested required
                 skills. Called automatically by the crawler scripts right
-                after a new posting is staged (see crawler/*.py), so a
+                after a new posting is staged (see crawler/*.py in this
+                folder), so a
                 counselor opening Career Review usually finds entries
                 already enriched instead of having to trigger it by hand.
                 This is the
@@ -806,7 +807,7 @@ class DuplicateCheckResource(Resource):
 # talks to MySQL directly — this endpoint just starts it as a background
 # subprocess (fire-and-forget, non-blocking) so the button click returns
 # instantly instead of the browser hanging for however long the crawl takes.
-CRAWLER_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "crawler")
+CRAWLER_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "crawler")
 CRAWLER_SCRIPTS = {
     "philjobnet": "crawler.py",
     "kalibrr": "kalibrr_client.py",
