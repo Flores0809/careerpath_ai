@@ -23,18 +23,18 @@ return [
     // and no API call needed either way.
     [
         'keywords' => ['hello', 'hi', 'hey', 'greetings', 'morning', 'afternoon', 'evening', 'yo', 'sup'],
-        'question' => 'Hello!',
-        'answer' => "Hi there! I'm the CareerPath AI assistant. Ask me anything about the system — RIASEC, the assessment, how recommendations are generated, consultations, and more.",
+        'question' => 'Hey!',
+        'answer' => "Hey! 👋 I'm the CareerPath AI assistant. Got questions about RIASEC, the assessment, how your matches are picked, consultations, whatever — just ask away.",
     ],
     [
         'keywords' => ['thanks', 'thank', 'thankyou', 'appreciate', 'ty'],
-        'question' => "You're welcome!",
-        'answer' => "You're welcome! Let me know if you have any other questions about CareerPath AI.",
+        'question' => 'No prob!',
+        'answer' => "No problem at all! Hit me up if anything else comes to mind.",
     ],
     [
         'keywords' => ['bye', 'goodbye', 'later', 'cya'],
-        'question' => 'Goodbye!',
-        'answer' => "Goodbye! Feel free to open this chat again anytime you have a question.",
+        'question' => 'See ya!',
+        'answer' => "See ya! I'll be right here if you need anything else.",
     ],
     [
         'keywords' => ['what', 'careerpath', 'system', 'about', 'is', 'work', 'works', 'function', 'purpose', 'use'],
