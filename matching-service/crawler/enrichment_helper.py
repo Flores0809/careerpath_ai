@@ -37,7 +37,15 @@ for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
         _stream.reconfigure(encoding="utf-8", errors="replace")
 
-ENRICH_URL = os.environ.get("ENRICH_SERVICE_URL", "http://localhost:5000/enrich")
+# This script always runs as a subprocess launched by app.py itself (see
+# CRAWLER_DIR / subprocess.Popen in matching-service/app.py), so it's always
+# on the same machine/container as the Flask app it's calling -- "localhost"
+# is correct in both local dev and on Railway. Only the port can differ: it
+# follows the same PORT env var app.py itself binds to (defaults to 5000
+# locally; Railway sets this to a fixed value, e.g. 8080). Explicitly setting
+# ENRICH_SERVICE_URL still overrides this entirely, if ever needed.
+_enrich_port = os.environ.get("PORT", "5000")
+ENRICH_URL = os.environ.get("ENRICH_SERVICE_URL", f"http://localhost:{_enrich_port}/enrich")
 # Gemini calls can take a few seconds; generous but bounded so one slow
 # entry can't hang an entire crawl run indefinitely.
 ENRICH_TIMEOUT_SECONDS = 40
