@@ -24,7 +24,7 @@ return [
     [
         'keywords' => ['hello', 'hi', 'hey', 'greetings', 'morning', 'afternoon', 'evening', 'yo', 'sup'],
         'question' => 'Hey!',
-        'answer' => "Hey! 👋 I'm the CareerPath AI assistant. Got questions about RIASEC, the assessment, how your matches are picked, consultations, whatever — just ask away.",
+        'answer' => "Hey! I'm the CareerPath AI assistant. Got questions about RIASEC, the assessment, how your matches are picked, consultations, whatever — just ask away.",
     ],
     [
         'keywords' => ['thanks', 'thank', 'thankyou', 'appreciate', 'ty'],
