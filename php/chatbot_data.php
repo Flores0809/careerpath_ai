@@ -22,77 +22,87 @@ return [
     // which reads as unfriendly for something this simple. Free, instant,
     // and no API call needed either way.
     [
-        'keywords' => ['hello', 'hi', 'hey', 'greetings', 'morning', 'afternoon', 'evening', 'yo', 'sup'],
+        'keywords' => ['hello', 'hi', 'hey', 'greetings', 'morning', 'afternoon', 'evening', 'yo', 'sup',
+            'kumusta', 'kamusta', 'musta', 'kums'],
         'question' => 'Hey!',
         'answer' => "Hey! I'm the CareerPath AI assistant. Got questions about RIASEC, the assessment, how your matches are picked, consultations, whatever — just ask away.",
     ],
     [
-        'keywords' => ['thanks', 'thank', 'thankyou', 'appreciate', 'ty'],
+        'keywords' => ['thanks', 'thank', 'thankyou', 'appreciate', 'ty', 'salamat'],
         'question' => 'No prob!',
         'answer' => "No problem at all! Hit me up if anything else comes to mind.",
     ],
     [
-        'keywords' => ['bye', 'goodbye', 'later', 'cya'],
+        'keywords' => ['bye', 'goodbye', 'later', 'cya', 'paalam', 'sige', 'ingat'],
         'question' => 'See ya!',
         'answer' => "See ya! I'll be right here if you need anything else.",
     ],
     [
-        'keywords' => ['what', 'careerpath', 'system', 'about', 'is', 'work', 'works', 'function', 'purpose', 'use'],
+        'keywords' => ['what', 'careerpath', 'system', 'about', 'is', 'work', 'works', 'function', 'purpose', 'use',
+            'gumagana', 'ginagawa'],
         'question' => 'What is CareerPath AI?',
         'answer' => "CareerPath AI is Meridian Educational Institution's JHS/SHS career guidance system. Students take a RIASEC personality assessment, add their skills and academic average, and get career recommendations from a hybrid matching engine plus AI-generated insights. Counselors and admins review, edit, and approve the careers those recommendations are built from.",
     ],
     [
-        'keywords' => ['riasec', 'mean', 'stand', 'letters', 'holland'],
+        'keywords' => ['riasec', 'mean', 'stand', 'letters', 'holland', 'kahulugan', 'ibig'],
         'question' => 'What is RIASEC?',
         'answer' => "RIASEC is a career-personality model (also called the Holland Code) with six types: Realistic, Investigative, Artistic, Social, Enterprising, and Conventional. The assessment scores you 0–100 on each type, and your results are matched against the RIASEC profile of every career in the system.",
     ],
     [
-        'keywords' => ['take', 'assessment', 'start', 'quiz', 'test'],
+        'keywords' => ['take', 'assessment', 'start', 'quiz', 'test', 'sagutan', 'simulan', 'pagsusulit'],
         'question' => 'How do I take the assessment?',
         'answer' => "Log in as a student, then go to Dashboard → Take the Assessment. You'll answer RIASEC personality questions, list your skills, enter your academic average, and optionally pick a dream career — then submit to see your matches.",
     ],
     [
-        'keywords' => ['recommend', 'recommendation', 'match', 'matching', 'computed', 'calculate', 'algorithm'],
+        'keywords' => ['recommend', 'recommendation', 'match', 'matching', 'computed', 'calculate', 'algorithm',
+            'kinukwenta', 'kinukuha', 'pinipili'],
         'question' => 'How are career recommendations generated?',
         'answer' => "Your RIASEC scores are compared to each career's RIASEC profile using mean-centered cosine similarity (the same math as a Pearson correlation) — this finds which careers' \"shape\" of interests best fits yours, not just which type you scored highest in. The top matches are ranked and shown with an explanation of which traits contributed most.",
     ],
     [
-        'keywords' => ['ai', 'gemini', 'insight', 'generated', 'commentary'],
+        'keywords' => ['ai', 'gemini', 'insight', 'generated', 'commentary', 'paliwanag'],
         'question' => 'What do the AI-generated insights do?',
         'answer' => "Once your matches are computed by the RIASEC matching engine, an AI (Gemini) writes a short, personalized explanation of why a career fits you and what it's like day-to-day. The matching itself is regular math — the AI only writes the explanation on top of it.",
     ],
     [
-        'keywords' => ['dream', 'career', 'goal', 'choose', 'pick'],
+        // Only 'pangarap' (dream) added for Tagalog -- NOT generic words like
+        // 'gustong'/'trabaho', which would combine with the existing 'career'
+        // keyword to falsely hijack any Taglish career-specific question
+        // (e.g. "may career ba dito para sa gustong maging guro") before it
+        // ever reaches the AI/catalog tier, the same false-positive class
+        // fixed earlier for the English-only version of this bug.
+        'keywords' => ['dream', 'career', 'goal', 'choose', 'pick', 'pangarap'],
         'question' => 'What is a "dream career"?',
         'answer' => "It's a career you personally aspire to, which you can pick during the assessment. CareerPath AI shows how well it currently fits your RIASEC profile and highlights the gap between your traits and what that career typically needs.",
     ],
     [
-        'keywords' => ['local', 'international', 'scope', 'difference', 'abroad'],
+        'keywords' => ['local', 'international', 'scope', 'difference', 'abroad', 'lokal', 'ibang', 'bansa'],
         'question' => "What's the difference between local and international careers?",
         'answer' => "Careers are tagged by scope: \"local\" (Philippines-based, e.g. sourced from PhilJobNet or Kalibrr) or \"international\" (e.g. RemoteOK). This just tells you where that kind of job posting was found — the RIASEC matching works the same way for both.",
     ],
     [
-        'keywords' => ['consultation', 'counselor', 'talk', 'meet', 'appointment', 'schedule'],
+        'keywords' => ['consultation', 'counselor', 'talk', 'meet', 'appointment', 'schedule',
+            'kausapin', 'usapan', 'guidance'],
         'question' => 'How do I request a consultation?',
         'answer' => "Go to Consultations in your student nav and submit a request — a counselor will review it and follow up. You can check the status of your request on the same page.",
     ],
     [
-        'keywords' => ['register', 'signup', 'create', 'account', 'code'],
+        'keywords' => ['register', 'signup', 'create', 'account', 'code', 'gumawa', 'magparehistro', 'pagpaparehistro'],
         'question' => 'How do I create a student account?',
         'answer' => "From the home page, choose Student → Create an Account. You'll need your LRN (12 digits), grade level, and the access code your school provided — this keeps registration limited to actual MEII students.",
     ],
     [
-        'keywords' => ['password', 'forgot', 'reset', 'login', 'locked'],
+        'keywords' => ['password', 'forgot', 'reset', 'login', 'locked', 'nakalimutan', 'makapasok'],
         'question' => 'I forgot my password — what do I do?',
         'answer' => "There's no self-service reset yet — ask your counselor or system administrator to reset it for you from Manage Accounts (staff) or your student profile (students can change their own password once logged in, under My Profile).",
     ],
     [
-        'keywords' => ['profile', 'edit', 'update', 'information', 'details'],
+        'keywords' => ['profile', 'edit', 'update', 'information', 'details', 'baguhin', 'palitan'],
         'question' => 'How do I update my profile?',
         'answer' => "Students: go to My Profile to update your details or password. Staff: go to your name in the top-right of the nav bar to reach Staff Profile.",
     ],
     [
-        'keywords' => ['history', 'past', 'previous', 'results', 'again'],
+        'keywords' => ['history', 'past', 'previous', 'results', 'again', 'nakaraan', 'dati'],
         'question' => 'Where can I see my past assessment results?',
         'answer' => "Go to Assessment → My History as a student. Every past submission is listed there with its recommendations and AI commentary.",
     ],
@@ -112,17 +122,17 @@ return [
         'answer' => "It means a pending entry's title closely matches a career already approved in the catalog. Compare the two side by side before deciding — a lower match percentage often just means a similar-sounding but distinct specialization, not a true duplicate.",
     ],
     [
-        'keywords' => ['skills', 'required', 'needed'],
+        'keywords' => ['skills', 'required', 'needed', 'kasanayan', 'kailangan'],
         'question' => 'Where do required skills for a career come from?',
         'answer' => "They're suggested by AI during enrichment, but a counselor can edit, remove, or add skills before approving a career, and mark which ones are required.",
     ],
     [
-        'keywords' => ['notification', 'notify', 'alert', 'badge'],
+        'keywords' => ['notification', 'notify', 'alert', 'badge', 'abiso', 'paalala'],
         'question' => 'What are notifications for?',
         'answer' => "You'll get a notification for things like counselor notes on your profile (students) or new pending careers and consultation requests (staff). The number badge in the nav shows how many are unread.",
     ],
     [
-        'keywords' => ['help', 'contact', 'support', 'human', 'staff', 'stuck'],
+        'keywords' => ['help', 'contact', 'support', 'human', 'staff', 'stuck', 'tulong', 'kausap'],
         'question' => 'This chatbot can\'t answer my question — who do I ask?',
         'answer' => "For anything account- or school-specific, reach out to your school counselor directly, or use Request Consultation if you're a student. This chatbot only knows how to explain the CareerPath AI system itself.",
     ],

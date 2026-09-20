@@ -110,6 +110,7 @@ def get_gemini_client():
 
 DB_CONFIG = {
     "host": os.environ.get("DB_HOST", "localhost"),
+    "port": int(os.environ.get("DB_PORT", "3306")),
     "user": os.environ.get("DB_USER", "root"),
     "password": os.environ.get("DB_PASSWORD", ""),
     "database": os.environ.get("DB_NAME", "careerpath_ai"),
@@ -603,6 +604,13 @@ contacting their school counselor, or using Request Consultation if they're a st
 Otherwise set in_scope to true and write a concise (2-4 sentences), friendly, second-person answer grounded in \
 the reference sections below.
 
+Language: the visitor may ask in English, Tagalog, or Taglish (a natural mix of both, common among Filipino \
+students). Understand the question regardless of which one they used, and reply in that SAME language/mix -- if \
+they asked in Tagalog or Taglish, your answer must actually be written in Tagalog or Taglish too (not a stiff \
+literal translation, and not just quoting the English reference text as-is) -- translate/rephrase the relevant \
+reference content into natural Tagalog/Taglish yourself. If they asked in English, answer in English. Keep \
+technical terms that don't have a natural Tagalog equivalent (RIASEC, CareerPath AI, career titles, etc.) as-is.
+
 Reference FAQ knowledge -- how the system itself works (question / answer pairs):
 {faq_text}
 
@@ -994,13 +1002,21 @@ if __name__ == "__main__":
     # legitimate reason for it to be reachable from anywhere else. Override
     # with MATCHING_SERVICE_HOST if this ever needs to run split across
     # machines (and add real authentication first if so).
-    host = os.environ.get("MATCHING_SERVICE_HOST", "127.0.0.1")
+    # Railway (and most container hosts) inject a PORT env var and require
+    # the app to bind 0.0.0.0 so their router can reach it -- hardcoding
+    # 127.0.0.1/5000 like before would make the container unreachable from
+    # outside itself. Locally, PORT is never set, so this still defaults to
+    # the original localhost-only, port-5000 behavior -- same security
+    # posture as described above, unchanged for local dev.
+    port = int(os.environ.get("PORT", 5000))
+    default_host = "0.0.0.0" if "PORT" in os.environ else "127.0.0.1"
+    host = os.environ.get("MATCHING_SERVICE_HOST", default_host)
     debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
 
     if debug_mode:
         # Flask's own dev server: single-threaded, but gives you the
         # interactive debugger + auto-reload while actively developing.
-        app.run(host=host, port=5000, debug=True)
+        app.run(host=host, port=port, debug=True)
     else:
         # Production path. Flask's dev server (app.run() above) can only
         # handle ONE request at a time -- fine for solo development, but a
@@ -1018,5 +1034,5 @@ if __name__ == "__main__":
         # submissions; raise it if load testing shows it's still the
         # bottleneck.
         from waitress import serve
-        print(f"Starting matching service on http://{host}:5000 (waitress, threads=8) ...")
-        serve(app, host=host, port=5000, threads=8)
+        print(f"Starting matching service on http://{host}:{port} (waitress, threads=8) ...")
+        serve(app, host=host, port=port, threads=8)

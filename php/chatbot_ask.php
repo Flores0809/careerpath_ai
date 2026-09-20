@@ -35,7 +35,17 @@ $stopwords = ['a', 'an', 'the', 'is', 'are', 'was', 'were', 'do', 'does', 'did',
     'how', 'what', 'when', 'where', 'why', 'who', 'which', 'can', 'could',
     'would', 'should', 'i', 'my', 'me', 'you', 'your', 'to', 'of', 'in', 'on',
     'for', 'it', 'this', 'that', 'am', 'be', 'and', 'or', 'about', 'please',
-    'ill', "i'll", 'im', "i'm", 'so', 'if', 'will', 'get'];
+    'ill', "i'll", 'im', "i'm", 'so', 'if', 'will', 'get',
+    // Tagalog/Taglish function words -- filtered out the same way as their
+    // English equivalents above, so a Taglish sentence like "paano po ba
+    // gumawa ng account" still matches on its actual content word
+    // ("gumawa"/"account") instead of being diluted by filler.
+    'ano', 'paano', 'bakit', 'saan', 'kailan', 'sino', 'alin', 'ba', 'po',
+    'opo', 'ng', 'nang', 'mga', 'ang', 'sa', 'na', 'ay', 'at', 'o', 'kung',
+    'ko', 'mo', 'niya', 'namin', 'natin', 'nila', 'akin', 'iyo', 'kanya',
+    'ito', 'iyan', 'iyon', 'yun', 'yan', 'dito', 'diyan', 'doon', 'may',
+    'meron', 'mayroon', 'wala', 'din', 'rin', 'lang', 'lamang', 'pa',
+    'para', 'dahil', 'kasi', 'pero', 'gusto', 'pwede', 'puede'];
 
 function cp_tokenize(string $text, array $stopwords): array {
     $text = strtolower($text);
@@ -129,7 +139,7 @@ $canned = $bestEntry !== null
     ? ['matched' => true, 'question' => $bestEntry['question'], 'answer' => $bestEntry['answer']]
     : [
         'matched' => false,
-        'answer' => "I don't have a canned answer for that yet — I can only explain how CareerPath AI itself works (the assessment, RIASEC, recommendations, consultations, career review, etc.). Try rephrasing, or ask your counselor directly for anything account-specific.",
+        'answer' => "Hmm, not sure about that one. I can help with how CareerPath AI works — the assessment, RIASEC, recommendations, consultations, and more. Try rephrasing, or ask your counselor directly for anything account-specific.",
         'suggestions' => ['What is RIASEC?', 'How do I take the assessment?', 'How are career recommendations generated?', 'How do I request a consultation?'],
     ];
 
