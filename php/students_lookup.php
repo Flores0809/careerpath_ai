@@ -311,7 +311,13 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                 // Accounts (users.php). Without this, staff had no way back
                 // except the top nav, even though they came from a list.
                 if (($_GET['from'] ?? '') === 'users') {
-                    $backHref = 'users.php';
+                    // users.php reads the URL's #hash on load to decide which
+                    // tab to show (see its activateTab() script), defaulting
+                    // to Administrators when there isn't one -- so a plain
+                    // "users.php" link always landed back on Administrators
+                    // regardless of which tab the student was actually
+                    // opened from. #students pins it back to the right tab.
+                    $backHref = 'users.php#students';
                     $backLabel = '&larr; Back to Manage Accounts';
                 } else {
                     $backHref = 'students_lookup.php';
