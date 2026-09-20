@@ -118,6 +118,16 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
     /* Status tabs — same pattern as careers.php / users.php */
     .tabs { max-width: 1100px; margin: 24px auto 18px; display: flex; gap: 4px; border-bottom: 2px solid #eee; flex-wrap: wrap; }
     .tab-btn { background: none; border: none; padding: 10px 18px; font-size: 15.5px; font-weight: bold; color: #888; cursor: pointer; text-decoration: none; display: inline-block; border-bottom: 3px solid transparent; margin-bottom: -2px; font-family: inherit; }
+    /* On mobile, 5 tabs (Pending/Scheduled/Completed/Cancelled/All) don't fit
+       one row, so flex-wrap used to break them into a ragged 2-then-2-then-1
+       grid with no consistent column alignment between rows -- reported as
+       looking "goloh" (messed up). A single horizontally-scrollable row
+       (same idea as the .cp-table-scroll wrapper used for data tables)
+       keeps every tab the same height in one clean line instead. */
+    @media (max-width: 700px) {
+        .tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .tab-btn { flex: 0 0 auto; white-space: nowrap; }
+    }
     .tab-btn:hover { color: #6e1423; }
     .tab-btn.active { color: #6e1423; border-bottom-color: #6e1423; }
     .tab-count { display: inline-block; background: #eee; color: #555; border-radius: 10px; padding: 1px 8px; font-size: 12.5px; margin-left: 5px; }

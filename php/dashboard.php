@@ -203,7 +203,7 @@ $welcome = isset($_GET['welcome']);
                         <?php foreach ($topCareers as $tc): ?>
                             <div class="activity-item">
                                 <span class="title"><?= htmlspecialchars($tc['career_title']) ?></span>
-                                <span class="meta"><?= $tc['times_recommended'] ?>x · avg <?= number_format($tc['avg_match'], 0) ?>% match</span>
+                                <span class="meta">Recommended <?= $tc['times_recommended'] ?> <?= $tc['times_recommended'] == 1 ? 'time' : 'times' ?> · <?= number_format($tc['avg_match'], 0) ?>% avg match</span>
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>

@@ -513,6 +513,13 @@ try {
     h1 { color: #6e1423; }
     .profile { background: #faf0f1; border-radius: 8px; padding: 14px 20px; margin-bottom: 26px; white-space: nowrap; overflow-x: auto; }
     .profile span { display: inline-block; margin-right: 14px; font-size: 15px; }
+    /* Same wrap-instead-of-clip fix as student_history.php's .profile --
+       a long "Your skills" list otherwise got cut off at the screen edge
+       on mobile with no hint it was scrollable. */
+    @media (max-width: 600px) {
+        .profile { white-space: normal; overflow-x: visible; }
+        .profile span { margin-bottom: 6px; }
+    }
     /* RIASEC results card — labeled, animated bars in MEII's own maroon
        gradient (same #6e1423 -> #b3465c treatment already used for the
        trait bars on student_dashboard.php/career_profile.php), replacing
@@ -529,6 +536,18 @@ try {
     @keyframes riasec-fill-in { to { width: var(--pct); } }
     .riasec-row-pct { flex: 0 0 48px; text-align: right; font-size: 14.5px; font-weight: bold; color: #6e1423; }
     .riasec-academic-row { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px solid #e3c9cd; font-size: 14.5px; color: #555; }
+    /* At narrow widths the fixed 190px label + 48px pct + 2x14px gap (266px)
+       left literally 0px for the middle bar in a ~266px-wide mobile card --
+       the colored fill collapsed to nothing, leaving a label ... blank gap
+       ... percentage layout that read as "the bar disappeared" / broken
+       alignment. Shrinking the label/pct columns and the gap on mobile
+       reclaims enough room for the bar to render at a visible width again. */
+    @media (max-width: 480px) {
+        .how-it-works, .riasec-card { padding: 16px; }
+        .riasec-row { gap: 8px; }
+        .riasec-row-label { flex-basis: 96px; font-size: 12.5px; }
+        .riasec-row-pct { flex-basis: 36px; font-size: 12.5px; }
+    }
     .riasec-academic-row strong { color: #6e1423; font-size: 15.5px; }
     .career { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
     .career h3 { margin: 0 0 6px 0; color: #6e1423; }
@@ -552,7 +571,18 @@ try {
        screens/mobile rather than squeezing both into half-width. */
     .results-top-row { display: flex; gap: 20px; align-items: flex-start; margin-bottom: 26px; }
     .results-top-row > div { flex: 1 1 0; min-width: 0; }
-    @media (max-width: 880px) { .results-top-row { flex-direction: column; } }
+    /* align-items: flex-start (above) is meant for the desktop side-by-side
+       layout, so a shorter card doesn't stretch to match a taller one. But
+       once flex-direction flips to column here, that same align-items now
+       controls the CROSS axis, which is horizontal in column mode -- so
+       flex-start made each stacked card shrink-wrap to its own minimum
+       content width instead of using the phone's full width. With the
+       RIASEC card's fixed-width label+percentage columns, that minimum
+       content width left ~0px for the colored bar itself. align-items:
+       stretch here restores full-width stacked cards, which is what
+       actually fixes the vanishing bar (the column-width tweaks below are
+       just a secondary safety margin on very narrow phones). */
+    @media (max-width: 880px) { .results-top-row { flex-direction: column; align-items: stretch; } }
     .how-it-works, .riasec-card { background: #faf0f1; border-radius: 10px; padding: 20px 24px; box-shadow: 0 2px 6px rgba(110,20,35,0.06); transition: transform 0.15s ease, box-shadow 0.15s ease; }
     .how-it-works:hover, .riasec-card:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(110,20,35,0.14); }
     .how-it-works .heading { font-weight: bold; color: #6e1423; padding: 0 0 14px; font-size: 16px; }

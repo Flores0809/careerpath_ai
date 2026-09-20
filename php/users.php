@@ -274,6 +274,12 @@ $welcome = isset($_GET['welcome']);
     /* Tabs for Administrators / Counselors / Students */
     .tabs { display: flex; gap: 4px; margin-top: 30px; border-bottom: 2px solid #eee; flex-wrap: wrap; }
     .tab-btn { background: none; border: none; padding: 10px 18px; font-size: 15.5px; font-weight: bold; color: #888; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color 0.15s ease, border-color 0.15s ease; font-family: inherit; }
+    /* Same horizontally-scrollable single row as consultations.php/careers.php's
+       tabs, so multiple tabs never wrap into a ragged multi-row grid on mobile. */
+    @media (max-width: 700px) {
+        .tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .tab-btn { flex: 0 0 auto; white-space: nowrap; }
+    }
     .tab-btn:hover { color: #6e1423; }
     .tab-btn.active { color: #6e1423; border-bottom-color: #6e1423; }
     .tab-count { display: inline-block; background: #eee; color: #555; border-radius: 10px; padding: 1px 8px; font-size: 12.5px; margin-left: 5px; }
