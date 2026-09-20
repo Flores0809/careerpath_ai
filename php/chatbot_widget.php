@@ -66,6 +66,20 @@
         #cp-chatbot-panel { right: 16px; left: 16px; width: auto; }
     }
 
+    /* On mobile, page content runs edge-to-edge, so whatever ends up at the
+       very bottom of a page (a form's last field, a card's trailing note
+       box, etc.) can land directly underneath this always-on-top fixed
+       button with no more room to scroll it clear -- e.g. a consultation
+       request's Note field getting stuck under the launcher. The .yield
+       fade above only helps once that field is already focused; this
+       reserves enough space below EVERY page's content, sitewide (this
+       file loads on every page via footer.php), so the last bit of any
+       page can always be scrolled up clear of the button's footprint
+       before you reach the true end of the page. */
+    @media (max-width: 600px) {
+        body { padding-bottom: 90px; }
+    }
+
     /* On narrow (mobile) screens, forms run nearly full-width, so a field's
        own right-aligned controls (e.g. the password show/hide icon) sit at
        almost the same spot as this fixed bottom-right button -- easy for
