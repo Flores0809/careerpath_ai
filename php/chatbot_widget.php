@@ -1,7 +1,12 @@
 <?php
 // CareerPath AI - Built-in FAQ chatbot widget (floating button + panel)
 // Included from footer.php so it appears on every page. Talks only to
-// chatbot_ask.php (same-origin, no API key, no external service).
+// chatbot_ask.php (same-origin). That endpoint's primary path is still the
+// built-in FAQ lookup, no API key involved — it only calls out to Gemini
+// (via the matching-service) as a fallback when nothing in the FAQ list
+// matches, and only ever grounded in that same FAQ content (see
+// chatbot_ask.php / matching-service's /chatbot_ask for the actual
+// "stay inside CareerPath AI" enforcement).
 ?>
 <div id="cp-chatbot">
     <button type="button" id="cp-chatbot-toggle" aria-label="Open CareerPath AI assistant">
@@ -14,7 +19,7 @@
         </div>
         <div class="cp-chatbot-messages" id="cp-chatbot-messages">
             <div class="cp-chatbot-msg cp-chatbot-msg-bot">
-                Hi! I can answer questions about how CareerPath AI works — RIASEC, the assessment, recommendations, consultations, and more. This runs on a built-in FAQ lookup, not an external AI service, so it only knows about the system itself.
+                Hi! I can answer questions about how CareerPath AI works — RIASEC, the assessment, recommendations, consultations, and more. Most answers come from a built-in FAQ lookup; if that doesn't cover your question, I'll try asking AI — but only using what this system actually does, never anything outside it or about your personal account.
             </div>
             <div class="cp-chatbot-suggestions" id="cp-chatbot-suggestions">
                 <button type="button" class="cp-chatbot-chip">What is RIASEC?</button>
@@ -51,6 +56,11 @@
     .cp-chatbot-msg-bot { background: #f0dde1; color: #4a0c17; align-self: flex-start; border-bottom-left-radius: 2px; }
     .cp-chatbot-msg-user { background: #6e1423; color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
     .cp-chatbot-msg-question { font-size: 12px; color: #a44553; font-weight: bold; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+    /* Same purple used for the "AI Insights" labels on submit.php /
+       student_history.php -- reused here so an AI-generated chatbot answer
+       reads as visibly, consistently different from a canned FAQ answer
+       (labeled in maroon above) everywhere in the app, not just here. */
+    .cp-chatbot-msg-ai-label { font-size: 12px; color: #6f42c1; font-weight: bold; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
 
     .cp-chatbot-suggestions { display: flex; flex-direction: column; gap: 6px; align-self: stretch; }
     .cp-chatbot-chip { background: #fff; border: 1px solid #e2c9ce; color: #6e1423; border-radius: 8px; padding: 8px 10px; font-size: 13px; text-align: left; cursor: pointer; }
@@ -119,13 +129,16 @@
     toggle.addEventListener('click', function () { panel.hidden ? open() : close(); });
     closeBtn.addEventListener('click', close);
 
-    function addMessage(text, who, questionLabel) {
+    // labelInfo is either null, or { text, isAi } -- isAi picks which of the
+    // two label styles above to use, so an AI-generated answer never looks
+    // visually identical to (and so can't be mistaken for) a canned FAQ one.
+    function addMessage(text, who, labelInfo) {
         var div = document.createElement('div');
         div.className = 'cp-chatbot-msg cp-chatbot-msg-' + who;
-        if (questionLabel) {
+        if (labelInfo) {
             var label = document.createElement('div');
-            label.className = 'cp-chatbot-msg-question';
-            label.textContent = questionLabel;
+            label.className = labelInfo.isAi ? 'cp-chatbot-msg-ai-label' : 'cp-chatbot-msg-question';
+            label.textContent = labelInfo.text;
             div.appendChild(label);
         }
         var body = document.createElement('div');
@@ -153,7 +166,13 @@
         .then(function (r) { return r.json(); })
         .then(function (data) {
             thinking.remove();
-            addMessage(data.answer, 'bot', data.matched ? data.question : null);
+            var labelInfo = null;
+            if (data.matched) {
+                labelInfo = { text: data.question, isAi: false };
+            } else if (data.ai_answered) {
+                labelInfo = { text: '✨ AI-generated', isAi: true };
+            }
+            addMessage(data.answer, 'bot', labelInfo);
             if (!data.matched && data.suggestions) {
                 var chips = document.createElement('div');
                 chips.className = 'cp-chatbot-suggestions';

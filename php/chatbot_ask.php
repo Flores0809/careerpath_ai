@@ -1,13 +1,23 @@
 <?php
 // CareerPath AI - Built-in FAQ chatbot endpoint
 // --------------------------------------------------------------------
-// No API key, no external HTTP call, no internet dependency: this just
-// scores the visitor's typed message against a fixed list of keyword
-// sets (chatbot_data.php) and returns the best-matching canned answer.
-// Safe to leave public (no login required) since it never touches
+// Primary path: no API key, no external HTTP call, no internet dependency
+// — this just scores the visitor's typed message against a fixed list of
+// keyword sets (chatbot_data.php) and returns the best-matching canned
+// answer. Safe to leave public (no login required) since it never touches
 // student/staff data — it only explains how the system itself works.
+//
+// Fallback path (added to try real AI on this widget): if nothing in the
+// FAQ list matches at all, this asks the matching-service's /chatbot_ask
+// endpoint (Gemini), grounded in the same FAQ content sent along with the
+// request, for a live answer instead of just the canned "try rephrasing"
+// message. If that call is unavailable or fails for any reason — no
+// GEMINI_API_KEY set, matching-service not running, rate limit, etc. —
+// this falls straight back to the original canned message, so the AI
+// experiment can't actually break the chatbot.
 
 header('Content-Type: application/json');
+require __DIR__ . '/config.php';
 
 $faq = require __DIR__ . '/chatbot_data.php';
 
@@ -88,11 +98,42 @@ if ($bestEntry === null) {
 }
 
 if ($bestEntry === null) {
-    echo json_encode([
+    $canned = [
         'matched' => false,
         'answer' => "I don't have a canned answer for that yet — I can only explain how CareerPath AI itself works (the assessment, RIASEC, recommendations, consultations, career review, etc.). Try rephrasing, or ask your counselor directly for anything account-specific.",
         'suggestions' => ['What is RIASEC?', 'How do I take the assessment?', 'How are career recommendations generated?', 'How do I request a consultation?'],
+    ];
+
+    // Second-tier fallback: ask Gemini (via the matching-service), grounded
+    // in this same $faq list, before giving up with the canned message.
+    // Any failure here — key not set, matching-service down, timeout, rate
+    // limit — just falls straight through to $canned below, so trying this
+    // out can't actually break the chatbot for anyone.
+    $ch = curl_init(CHATBOT_AI_SERVICE_URL);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode(['question' => $message, 'faq' => $faq]),
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT => 20, // a visitor is actively waiting on this, shorter budget than submit.php's 35s
     ]);
+    $aiResponse = curl_exec($ch);
+    $aiHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $aiCurlError = curl_error($ch);
+    curl_close($ch);
+
+    $aiResult = $aiCurlError ? null : json_decode($aiResponse, true);
+
+    if (!$aiCurlError && $aiHttpCode === 200 && !empty($aiResult['ai_answered']) && !empty($aiResult['in_scope']) && !empty($aiResult['answer'])) {
+        echo json_encode([
+            'matched' => false,
+            'ai_answered' => true,
+            'answer' => $aiResult['answer'],
+        ]);
+        exit;
+    }
+
+    echo json_encode($canned);
     exit;
 }
 

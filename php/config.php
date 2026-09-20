@@ -19,6 +19,14 @@ define('ENRICH_SERVICE_URL', 'http://localhost:5000/enrich');
 // submit.php just leaves the ai_* columns on that submission NULL.
 define('STUDENT_COMMENTARY_SERVICE_URL', 'http://localhost:5000/student_commentary');
 
+// AI chatbot fallback endpoint — used by chatbot_ask.php only when its own
+// built-in FAQ keyword/fuzzy lookup (chatbot_data.php) finds no match at
+// all. Same graceful-fallback rule as the others above: if GEMINI_API_KEY
+// isn't set or the call fails, chatbot_ask.php just shows its existing
+// canned "no match" message, so this is safe to try without risking the
+// chatbot breaking.
+define('CHATBOT_AI_SERVICE_URL', 'http://localhost:5000/chatbot_ask');
+
 // AI-assisted duplicate resolution endpoint — used by careers.php's approve
 // handler when a pending posting still matches an already-approved career
 // at approval time, to decide whether that approval should overwrite the
