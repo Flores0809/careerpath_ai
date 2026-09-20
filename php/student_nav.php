@@ -23,7 +23,10 @@ $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-a
         · <a href="student_logout.php">Logout</a>
     </div>
     </div>
-    <div class="cp-nav-links">
+    <button type="button" class="cp-nav-hamburger" id="cp-nav-hamburger" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="cp-nav-links">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    </button>
+    <div class="cp-nav-links" id="cp-nav-links">
         <a class="cp-nav-item <?= $cpIsActive(['student_dashboard.php']) ?>" href="student_dashboard.php">Dashboard</a>
 
         <div class="cp-dropdown">
@@ -66,9 +69,21 @@ $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-a
     a.cp-nav-user-name:hover { background: rgba(255,255,255,0.12); text-decoration: none; }
     .cp-badge { background: #e63946; color: #fff; border-radius: 10px; padding: 1px 6px; font-size: 11.5px; font-weight: bold; margin-left: 2px; }
 
+    /* Hamburger toggle: hidden entirely on desktop (the full link row
+       already fits and reads fine there). On mobile it replaces the
+       always-expanded, fully-stacked link list -- which used to push the
+       actual page content (dashboard stats, results, etc.) down below the
+       fold before a visitor saw any of it -- with a compact button that
+       reveals the same links on tap. */
+    .cp-nav-hamburger { display: none; position: absolute; top: 12px; right: 16px; width: 34px; height: 34px; padding: 0; background: none; border: none; color: #fff; cursor: pointer; border-radius: 6px; align-items: center; justify-content: center; }
+    .cp-nav-hamburger:hover { background: rgba(255,255,255,0.12); }
+    .cp-nav-hamburger svg { width: 22px; height: 22px; }
+
     @media (max-width: 760px) {
-        .cp-nav-top { flex-direction: column; align-items: flex-start; }
-        .cp-nav-links { flex-direction: column; align-items: stretch; }
+        .cp-nav-top { flex-direction: column; align-items: flex-start; padding-right: 40px; }
+        .cp-nav-hamburger { display: flex; }
+        .cp-nav-links { flex-direction: column; align-items: stretch; display: none; }
+        .cp-nav-links.cp-nav-open { display: flex; }
         .cp-dropdown-menu { position: static; box-shadow: none; padding-left: 12px; }
         .cp-nav-user { text-align: left; }
     }
@@ -86,6 +101,14 @@ $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-a
     });
     document.addEventListener('click', function () {
         document.querySelectorAll('.cp-dropdown.cp-open').forEach(function (d) { d.classList.remove('cp-open'); });
+    });
+
+    var hamburger = document.getElementById('cp-nav-hamburger');
+    var navLinks = document.getElementById('cp-nav-links');
+    hamburger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var isOpen = navLinks.classList.toggle('cp-nav-open');
+        hamburger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     });
 })();
 </script>
