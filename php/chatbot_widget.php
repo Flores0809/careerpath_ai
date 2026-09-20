@@ -65,6 +65,15 @@
     @media (max-width: 480px) {
         #cp-chatbot-panel { right: 16px; left: 16px; width: auto; }
     }
+
+    /* On narrow (mobile) screens, forms run nearly full-width, so a field's
+       own right-aligned controls (e.g. the password show/hide icon) sit at
+       almost the same spot as this fixed bottom-right button -- easy for
+       the two to visually and physically overlap. Fading the launcher out
+       of the way while the visitor is actually typing into something else
+       keeps it from blocking a tap on whatever's underneath it, without
+       permanently hiding it (it returns the moment they tap out). */
+    #cp-chatbot-toggle.cp-chatbot-yield { opacity: 0.25; pointer-events: none; transition: opacity 0.15s ease; }
 </style>
 <script>
 (function () {
@@ -78,6 +87,20 @@
 
     function open() { panel.hidden = false; input.focus(); }
     function close() { panel.hidden = true; }
+
+    // Step the launcher out of the way while the visitor is filling in some
+    // OTHER field on the page (anything outside this widget) -- see the
+    // .cp-chatbot-yield CSS rule above for why.
+    document.addEventListener('focusin', function (e) {
+        if (!document.getElementById('cp-chatbot').contains(e.target)) {
+            toggle.classList.add('cp-chatbot-yield');
+        }
+    });
+    document.addEventListener('focusout', function (e) {
+        if (!document.getElementById('cp-chatbot').contains(e.target)) {
+            toggle.classList.remove('cp-chatbot-yield');
+        }
+    });
 
     toggle.addEventListener('click', function () { panel.hidden ? open() : close(); });
     closeBtn.addEventListener('click', close);
