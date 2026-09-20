@@ -15,6 +15,27 @@
 // or synonyms), 'question' (shown as the canned label), and 'answer'.
 
 return [
+    // Basic small talk gets its own canned entries rather than being left to
+    // the AI fallback tier -- greetings/thanks/goodbyes aren't "covered by
+    // the reference knowledge" in any topical sense, so the AI tier's
+    // in_scope rule would (correctly, per its instructions) refuse them,
+    // which reads as unfriendly for something this simple. Free, instant,
+    // and no API call needed either way.
+    [
+        'keywords' => ['hello', 'hi', 'hey', 'greetings', 'morning', 'afternoon', 'evening', 'yo', 'sup'],
+        'question' => 'Hello!',
+        'answer' => "Hi there! I'm the CareerPath AI assistant. Ask me anything about the system — RIASEC, the assessment, how recommendations are generated, consultations, and more.",
+    ],
+    [
+        'keywords' => ['thanks', 'thank', 'thankyou', 'appreciate', 'ty'],
+        'question' => "You're welcome!",
+        'answer' => "You're welcome! Let me know if you have any other questions about CareerPath AI.",
+    ],
+    [
+        'keywords' => ['bye', 'goodbye', 'later', 'cya'],
+        'question' => 'Goodbye!',
+        'answer' => "Goodbye! Feel free to open this chat again anytime you have a question.",
+    ],
     [
         'keywords' => ['what', 'careerpath', 'system', 'about', 'is', 'work', 'works', 'function', 'purpose', 'use'],
         'question' => 'What is CareerPath AI?',

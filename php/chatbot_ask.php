@@ -18,6 +18,7 @@
 
 header('Content-Type: application/json');
 require __DIR__ . '/config.php';
+require __DIR__ . '/db.php';
 
 $faq = require __DIR__ . '/chatbot_data.php';
 
@@ -66,11 +67,23 @@ foreach ($faq as $entry) {
     }
 }
 
-// Second pass: nothing matched exactly, so tolerate small typos (a
-// missing space, a dropped/extra letter) by allowing a keyword to match
-// an input token that's only 1-2 edits away from it, via levenshtein().
-// Weighted lower than an exact match so a clean match always wins ties.
-if ($bestEntry === null) {
+// A single overlapping keyword isn't a reliable signal by itself -- e.g. a
+// question like "is there a career for someone who likes fixing cars" only
+// shares the one word "career" with the unrelated "What is a dream career?"
+// entry, which used to win outright and hijack the question before it ever
+// reached the AI/career-catalog tier below. Two or more overlapping
+// keywords is a confident, instant, zero-API-call match exactly like
+// before; a single keyword is treated as a weak guess -- kept as a
+// fallback, but the AI tier (grounded in the same FAQ plus the live career
+// catalog) gets first shot at giving a more specific answer.
+$isConfidentMatch = $bestEntry !== null && $bestScore >= 2;
+
+// Second pass: nothing matched exactly (or only a weak 1-keyword guess),
+// so tolerate small typos (a missing space, a dropped/extra letter) by
+// allowing a keyword to match an input token that's only 1-2 edits away
+// from it, via levenshtein(). This can only IMPROVE on a weak guess, never
+// downgrade a confident one, so it's skipped entirely once confident.
+if (!$isConfidentMatch) {
     $bestFuzzyScore = 0;
     foreach ($faq as $entry) {
         $keywordTokens = array_map(fn($k) => (strlen($k) > 3 && substr($k, -1) === 's') ? substr($k, 0, -1) : $k, $entry['keywords']);
@@ -97,48 +110,76 @@ if ($bestEntry === null) {
     }
 }
 
-if ($bestEntry === null) {
-    $canned = [
+if ($isConfidentMatch) {
+    echo json_encode([
+        'matched' => true,
+        'question' => $bestEntry['question'],
+        'answer' => $bestEntry['answer'],
+    ]);
+    exit;
+}
+
+// From here, $bestEntry is either null, or a WEAK guess (a single keyword
+// overlap, or a fuzzy/typo-tolerance hit) -- not confident enough to return
+// outright. $canned is what gets shown if the AI tier below doesn't return
+// anything better: the weak guess if there is one (still better than
+// nothing), or the generic "no canned answer" message if there's truly
+// nothing to go on.
+$canned = $bestEntry !== null
+    ? ['matched' => true, 'question' => $bestEntry['question'], 'answer' => $bestEntry['answer']]
+    : [
         'matched' => false,
         'answer' => "I don't have a canned answer for that yet — I can only explain how CareerPath AI itself works (the assessment, RIASEC, recommendations, consultations, career review, etc.). Try rephrasing, or ask your counselor directly for anything account-specific.",
         'suggestions' => ['What is RIASEC?', 'How do I take the assessment?', 'How are career recommendations generated?', 'How do I request a consultation?'],
     ];
 
-    // Second-tier fallback: ask Gemini (via the matching-service), grounded
-    // in this same $faq list, before giving up with the canned message.
-    // Any failure here — key not set, matching-service down, timeout, rate
-    // limit — just falls straight through to $canned below, so trying this
-    // out can't actually break the chatbot for anyone.
-    $ch = curl_init(CHATBOT_AI_SERVICE_URL);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode(['question' => $message, 'faq' => $faq]),
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_TIMEOUT => 20, // a visitor is actively waiting on this, shorter budget than submit.php's 35s
+// Also ground it in the live, counselor-approved career catalog (title,
+// category, scope, description, key subjects) — not just the FAQ about how
+// the system itself works — so it can answer things like "is there a
+// career for X" or "what does a Civil Engineer do here" from real data
+// instead of refusing every career-specific question as out of scope.
+// Public info already visible to any logged-in student on
+// careers_manage.php/career_profile.php, so safe to expose here too.
+// Wrapped in try/catch: if this read fails for any reason, the chatbot
+// should still work with just the FAQ, not break entirely.
+$careerCatalog = [];
+try {
+    $stmt = get_db()->query(
+        "SELECT career_title, career_category, career_scope, description, key_subjects
+         FROM careers WHERE status = 'active' ORDER BY career_title"
+    );
+    $careerCatalog = $stmt->fetchAll();
+} catch (Exception $e) {
+    $careerCatalog = [];
+}
+
+// Second-tier fallback: ask Gemini (via the matching-service), grounded in
+// this same $faq list and the career catalog above, before settling for
+// $canned. Any failure here — key not set, matching-service down, timeout,
+// rate limit — just falls straight through to $canned, so trying this out
+// can't actually break the chatbot for anyone.
+$ch = curl_init(CHATBOT_AI_SERVICE_URL);
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => json_encode(['question' => $message, 'faq' => $faq, 'career_catalog' => $careerCatalog]),
+    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+    CURLOPT_TIMEOUT => 20, // a visitor is actively waiting on this, shorter budget than submit.php's 35s
+]);
+$aiResponse = curl_exec($ch);
+$aiHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$aiCurlError = curl_error($ch);
+curl_close($ch);
+
+$aiResult = $aiCurlError ? null : json_decode($aiResponse, true);
+
+if (!$aiCurlError && $aiHttpCode === 200 && !empty($aiResult['ai_answered']) && !empty($aiResult['in_scope']) && !empty($aiResult['answer'])) {
+    echo json_encode([
+        'matched' => false,
+        'ai_answered' => true,
+        'answer' => $aiResult['answer'],
     ]);
-    $aiResponse = curl_exec($ch);
-    $aiHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $aiCurlError = curl_error($ch);
-    curl_close($ch);
-
-    $aiResult = $aiCurlError ? null : json_decode($aiResponse, true);
-
-    if (!$aiCurlError && $aiHttpCode === 200 && !empty($aiResult['ai_answered']) && !empty($aiResult['in_scope']) && !empty($aiResult['answer'])) {
-        echo json_encode([
-            'matched' => false,
-            'ai_answered' => true,
-            'answer' => $aiResult['answer'],
-        ]);
-        exit;
-    }
-
-    echo json_encode($canned);
     exit;
 }
 
-echo json_encode([
-    'matched' => true,
-    'question' => $bestEntry['question'],
-    'answer' => $bestEntry['answer'],
-]);
+echo json_encode($canned);
