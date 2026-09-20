@@ -27,11 +27,22 @@
     password" forms -- without needing to hand-edit each form's markup.
 -->
 <style>
-    .cp-pw-wrap { position: relative; }
+    /* line-height: 0 kills the few extra pixels of "descender" space browsers
+       reserve under an inline-block <input> -- without it, this div ends up
+       slightly taller than the input's visible box, so a button centered on
+       the DIV (top: 50%) lands a few px below center on the INPUT, making it
+       look like it's sagging out of the bottom-right corner instead of
+       sitting flush inside it. */
+    .cp-pw-wrap { position: relative; line-height: 0; }
     .cp-pw-wrap input[type="password"],
     .cp-pw-wrap input[type="text"] { padding-right: 38px !important; }
     .cp-pw-toggle {
-        position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+        /* top:0; bottom:0; margin:auto 0 auto auto centers a fixed-height
+           absolute element vertically no matter what -- unlike top:50% +
+           translateY(-50%), it doesn't depend on the browser resolving a
+           percentage against the wrapper's (auto, content-derived) height,
+           which is what was pushing the icon ~20px too low before. */
+        position: absolute; top: 0; bottom: 0; right: 4px; margin: auto 0;
         width: 28px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center;
         background: none; border: none; cursor: pointer; color: #777; border-radius: 4px;
     }
@@ -47,6 +58,22 @@
 
     document.querySelectorAll('input[type="password"]').forEach(function (input) {
         if (input.closest('.cp-pw-wrap')) return; // already wrapped (safety against double-run)
+
+        // Some pages style password fields with a selector like
+        // `input[type=password]` that doesn't also match `input[type=text]`
+        // (login.php does this). Toggling .type to "text" to reveal the
+        // password then drops the field out of that rule entirely, so it
+        // falls back to the browser's bare default input look -- smaller
+        // box, no border-radius, a different font. Snapshotting the page's
+        // OWN intended styling now (while it's still type=password, so the
+        // real CSS rule is guaranteed to be in effect) and locking it in as
+        // inline styles means the field looks identical in both states, no
+        // matter how that page's CSS selectors happen to be written.
+        var cs = getComputedStyle(input);
+        ['width', 'height', 'padding', 'border', 'borderRadius', 'boxSizing',
+         'fontFamily', 'fontSize', 'color', 'backgroundColor', 'boxShadow'].forEach(function (prop) {
+            input.style[prop] = cs[prop];
+        });
 
         var wrap = document.createElement('div');
         wrap.className = 'cp-pw-wrap';
