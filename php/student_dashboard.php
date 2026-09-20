@@ -154,10 +154,19 @@ $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score
     .riasec-bar-fill { background: linear-gradient(90deg, #6e1423, #b3465c); height: 100%; border-radius: 6px; }
     .riasec-bar-pct { width: 38px; text-align: right; font-size: 13.5px; color: #888; }
 
-    .activity-item { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-top: 1px solid #eee; font-size: 15.5px; }
+    /* Was justify-content: space-between with both columns auto-width --
+       that pins the date flush-left and the title flush-right, but with no
+       fixed width on either, the title's LEFT edge (where the eye actually
+       starts reading each row) landed at a different X on every row
+       depending on how long that title was, and the date itself was free
+       to shrink/wrap onto 2 lines when a long title squeezed it -- reported
+       as the rows looking uneven ("hindi pantay"). Giving the date a fixed
+       non-wrapping column and letting the title start right after it fixes
+       both: every title now starts at the same X, and the date never wraps. */
+    .activity-item { display: flex; align-items: flex-start; padding: 10px 0; border-top: 1px solid #eee; font-size: 15.5px; gap: 14px; }
     .activity-item:first-of-type { border-top: none; }
-    .activity-item .date { color: #666; }
-    .activity-item .top-career { color: #6e1423; font-weight: bold; }
+    .activity-item .date { color: #666; flex: 0 0 108px; white-space: nowrap; }
+    .activity-item .top-career { color: #6e1423; font-weight: bold; flex: 1 1 auto; min-width: 0; }
     .activity-item .top-career a, .stat-card .value.small a { color: #6e1423; text-decoration: none; }
     .activity-item .top-career a:hover, .stat-card .value.small a:hover { text-decoration: underline; }
 
