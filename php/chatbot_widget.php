@@ -5,7 +5,7 @@
 ?>
 <div id="cp-chatbot">
     <button type="button" id="cp-chatbot-toggle" aria-label="Open CareerPath AI assistant">
-        💬
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
     </button>
     <div id="cp-chatbot-panel" hidden>
         <div class="cp-chatbot-header">
@@ -31,7 +31,14 @@
 </div>
 <style>
     #cp-chatbot { position: fixed; bottom: 24px; right: 24px; z-index: 1000; font-family: Arial, sans-serif; }
-    #cp-chatbot-toggle { width: 56px; height: 56px; border-radius: 50%; border: none; background: linear-gradient(135deg, #6e1423 0%, #4a0c17 100%); color: #fff; font-size: 24px; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+    /* The old emoji icon (💬) had no reliable center point -- different OSes
+       and browsers ship different emoji glyphs with different internal
+       bounding boxes, so it never actually sat in the middle of the circle
+       (same class of problem as the emoji-based password toggle fixed
+       earlier). An inline SVG plus explicit flex centering has one exact,
+       predictable center everywhere. */
+    #cp-chatbot-toggle { width: 56px; height: 56px; border-radius: 50%; border: none; background: linear-gradient(135deg, #6e1423 0%, #4a0c17 100%); color: #fff; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; padding: 0; }
+    #cp-chatbot-toggle svg { width: 26px; height: 26px; }
     #cp-chatbot-toggle:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.3); }
 
     #cp-chatbot-panel { position: fixed; bottom: 92px; right: 24px; width: 340px; max-width: calc(100vw - 32px); height: 460px; max-height: calc(100vh - 120px); background: #fff; border-radius: 14px; box-shadow: 0 12px 36px rgba(0,0,0,0.25); flex-direction: column; overflow: hidden; display: flex; }
