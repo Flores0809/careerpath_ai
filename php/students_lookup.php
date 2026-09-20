@@ -501,7 +501,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                     <p class="empty" style="margin-top:16px;">No student accounts yet.</p>
                 <?php else: ?>
                     <p class="empty" id="student-count" style="margin-top:16px;margin-bottom:0;"><?= count($students) ?> student account<?= count($students) === 1 ? '' : 's' ?></p>
-                    <table>
+                    <div class="cp-table-scroll"><table>
                         <tr>
                             <th>ID</th>
                             <th>LRN</th>
@@ -529,7 +529,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                         <tr id="student-no-results" style="display:none;">
                             <td colspan="9" class="empty" style="text-align:center;">No students match your search.</td>
                         </tr>
-                    </table>
+                    </table></div>
                 <?php endif; ?>
             </div>
         <?php endif; ?>

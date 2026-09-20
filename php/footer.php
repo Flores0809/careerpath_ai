@@ -11,6 +11,16 @@
 </footer>
 <style>
     .cp-footer { margin-top: 40px; padding: 16px 20px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #eee; }
+    /* Wrap any <table> in <div class="cp-table-scroll"> (see users.php,
+       students_lookup.php, audit_log.php, change_history.php, backup.php).
+       None of these data tables have their own responsive handling, so on
+       a narrow phone screen the columns either squash illegibly or force
+       the table wider than the viewport -- which, without this wrapper,
+       drags the ENTIRE page (nav bar included) into horizontal scroll along
+       with it. Scoping the scroll to just the table keeps the rest of the
+       page's layout intact; staff can still swipe sideways to see every
+       column. */
+    .cp-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 </style>
 
 <!--

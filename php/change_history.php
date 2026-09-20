@@ -194,7 +194,7 @@ function render_change_value($val)
                 </summary>
 
                 <?php if ($allFields): ?>
-                    <table class="diff-table">
+                    <div class="cp-table-scroll"><table class="diff-table">
                         <tr><th>Field</th><th>Before</th><th>After</th></tr>
                         <?php foreach ($allFields as $field): ?>
                             <?php
@@ -209,7 +209,7 @@ function render_change_value($val)
                                 <td class="<?= $changed ? 'diff-new' : 'diff-same' ?>"><?= $isMasked ? '<em style="color:#aaa;">(hidden)</em>' : render_change_value($newVal) ?></td>
                             </tr>
                         <?php endforeach; ?>
-                    </table>
+                    </table></div>
                 <?php else: ?>
                     <p class="empty" style="margin-top:10px;">No field-level detail recorded for this entry.</p>
                 <?php endif; ?>

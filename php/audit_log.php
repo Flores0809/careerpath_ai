@@ -217,7 +217,7 @@ $totalCount = (int) $pdo->query("SELECT COUNT(*) FROM counselor_log")->fetchColu
         <p class="empty">No matching log entries.</p>
     <?php else: ?>
         <div class="table-card">
-            <table>
+            <div class="cp-table-scroll"><table>
                 <thead>
                 <tr><th>Date</th><th>Staff</th><th>Student</th><th>Action</th><th>Career</th><th>Notes</th></tr>
                 </thead>
@@ -233,7 +233,7 @@ $totalCount = (int) $pdo->query("SELECT COUNT(*) FROM counselor_log")->fetchColu
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
-            </table>
+            </table></div>
         </div>
     <?php endif; ?>
 <?php require __DIR__ . '/footer.php'; ?>

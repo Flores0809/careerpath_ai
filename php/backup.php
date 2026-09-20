@@ -91,7 +91,7 @@ foreach ($tables as $table) {
 
     <div class="panel">
         <p>Exports every application table as SQL <code>INSERT</code> statements — restore it by running the file against a fresh <code>careerpath_ai</code> database (after importing <code>database/schema.sql</code> for the table structure).</p>
-        <table>
+        <div class="cp-table-scroll"><table>
             <tr><th>Table</th><th>Rows</th></tr>
             <?php foreach ($tableCounts as $table => $count): ?>
                 <tr>
@@ -99,7 +99,7 @@ foreach ($tables as $table) {
                     <td><?= $count === null ? '<span class="missing">not on this install</span>' : $count ?></td>
                 </tr>
             <?php endforeach; ?>
-        </table>
+        </table></div>
         <a class="btn" href="backup.php?download=1">Download backup (.sql)</a>
         <p class="note">This exports data only, not the table structure — keep <code>database/schema.sql</code> alongside any backup you archive.</p>
     </div>

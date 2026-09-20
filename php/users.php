@@ -416,7 +416,7 @@ $welcome = isset($_GET['welcome']);
 
     <div class="tab-panel active" data-tab="admins">
         <div class="table-card">
-            <table>
+            <div class="cp-table-scroll"><table>
                 <thead>
                 <tr>
                     <th>Name</th>
@@ -432,13 +432,13 @@ $welcome = isset($_GET['welcome']);
                 <?php endif; ?>
                 <?php foreach ($administrators as $u): render_staff_row($u, $currentUser, 'admins'); endforeach; ?>
                 </tbody>
-            </table>
+            </table></div>
         </div>
     </div>
 
     <div class="tab-panel" data-tab="counselors">
         <div class="table-card">
-            <table>
+            <div class="cp-table-scroll"><table>
                 <thead>
                 <tr>
                     <th>Name</th>
@@ -454,14 +454,14 @@ $welcome = isset($_GET['welcome']);
                 <?php endif; ?>
                 <?php foreach ($counselors as $u): render_staff_row($u, $currentUser, 'counselors'); endforeach; ?>
                 </tbody>
-            </table>
+            </table></div>
         </div>
     </div>
 
     <div class="tab-panel" data-tab="students">
         <p style="font-size:14.5px;color:#666;margin-top:0;">Students create their own accounts at <code>student_register.php</code> — administrators can view accounts, disable/re-enable them here (e.g. for misuse), and reset a student's password if they're locked out. Name/email/grade level still can't be edited here.</p>
         <div class="table-card">
-            <table>
+            <div class="cp-table-scroll"><table>
                 <thead>
                 <tr>
                     <th>Name</th>
@@ -508,7 +508,7 @@ $welcome = isset($_GET['welcome']);
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
-            </table>
+            </table></div>
         </div>
     </div>
 
