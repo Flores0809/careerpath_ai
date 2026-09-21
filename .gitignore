@@ -20,3 +20,4 @@ Thumbs.db
 *.sql.bak
 /database/backups/
 crawler/logs/
+matching-service/crawler/logs/
