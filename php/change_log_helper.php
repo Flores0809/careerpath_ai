@@ -54,6 +54,23 @@ function log_change(PDO $pdo, string $table, int $recordId, ?string $label, stri
 // not a data-retention limit.
 const ACCOUNT_DELETE_UNDO_WINDOW_SECONDS = 24 * 60 * 60;
 
+// FK-safe order to re-INSERT a deleted student's related rows in during a
+// revert (see revert_change()'s 'delete_account' branch) — student_profiles
+// must exist before recommendations (profile_id FK), which is the only
+// real ordering dependency among these; the rest just have to come after
+// student_profiles/recommendations for consistency. Not used for a deleted
+// staff (users) account's related rows (just counselor_log + notifications,
+// neither depends on the other), but harmless to list here since anything
+// not present in a given snapshot is simply skipped.
+const DELETE_ACCOUNT_RELATED_RESTORE_ORDER = [
+    'student_profiles',
+    'recommendations',
+    'student_career_insights',
+    'counselor_log',
+    'consultations',
+    'notifications',
+];
+
 /**
  * Delete a staff (users) or student (students) account, first snapshotting
  * it AND every row in other tables that ON DELETE CASCADE would wipe out
@@ -236,12 +253,28 @@ function revert_change(PDO $pdo, int $logId, int $revertedBy): array
             $placeholderSql = implode(', ', array_map(fn($c) => ":$c", $cols));
             $pdo->prepare("INSERT INTO $table ($colSql) VALUES ($placeholderSql)")->execute($accountRow);
 
-            // Related rows back in, in the same order they were captured
-            // (student_profiles before recommendations, which references
-            // profile_id) — each row carries its own original PK, so
-            // anything else still pointing at these IDs stays intact.
-            foreach (($oldValues['related'] ?? []) as $relTable => $rows) {
-                foreach ($rows as $row) {
+            // Related rows back in, in a fixed FK-safe order (student_profiles
+            // before recommendations, which references profile_id) — each row
+            // carries its own original PK, so anything else still pointing at
+            // these IDs stays intact.
+            //
+            // Deliberately NOT just `foreach ($oldValues['related'] as $relTable
+            // => $rows)` in whatever order the JSON happens to decode to: this
+            // broke in production (recommendations attempted before its own
+            // student_profiles row existed, throwing FK error 1452) because
+            // old_values is stored in a MySQL JSON column, and MySQL's JSON
+            // storage does not reliably preserve object key order through a
+            // round-trip the way json_encode()/json_decode() alone would in
+            // plain PHP — so DELETE_ACCOUNT_RELATED_RESTORE_ORDER below is used
+            // as the authoritative sequence instead of trusting the JSON's own
+            // key order.
+            $relatedData = $oldValues['related'] ?? [];
+            $orderedTables = array_unique(array_merge(DELETE_ACCOUNT_RELATED_RESTORE_ORDER, array_keys($relatedData)));
+            foreach ($orderedTables as $relTable) {
+                if (empty($relatedData[$relTable])) {
+                    continue;
+                }
+                foreach ($relatedData[$relTable] as $row) {
                     $relCols = array_keys($row);
                     $relColSql = implode(', ', $relCols);
                     $relPlaceholderSql = implode(', ', array_map(fn($c) => ":$c", $relCols));
