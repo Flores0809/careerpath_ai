@@ -93,6 +93,29 @@ function render_change_value($val)
     }
     return htmlspecialchars($str);
 }
+
+// Human count of assessment/history rows a delete_account entry's snapshot
+// carried along (student_profiles, recommendations, etc.) — e.g. "3
+// assessment(s), 5 recommendation(s)" — so an admin can see at a glance how
+// much would come back with it, without unpacking the raw JSON.
+$relatedLabels = [
+    'student_profiles' => 'assessment submission',
+    'recommendations' => 'saved recommendation',
+    'student_career_insights' => 'AI career insight',
+    'counselor_log' => 'counselor log entry',
+    'consultations' => 'consultation request',
+    'notifications' => 'notification',
+];
+function summarize_related(array $related, array $labels): string
+{
+    $parts = [];
+    foreach ($related as $key => $rows) {
+        $count = count($rows);
+        $label = $labels[$key] ?? $key;
+        $parts[] = $count . ' ' . $label . ($count === 1 ? '' : 's');
+    }
+    return $parts ? implode(', ', $parts) : 'no related records';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -122,9 +145,13 @@ function render_change_value($val)
     .action-tag { font-size: 12.5px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
     .action-insert { background: #d1e7dd; color: #0f5132; }
     .action-update { background: #fff3cd; color: #856404; }
-    .action-delete { background: #fdecea; color: #611a15; }
+    .action-delete, .action-delete_account { background: #fdecea; color: #611a15; }
     .table-tag { font-size: 12.5px; padding: 2px 8px; border-radius: 10px; background: #f0dde1; color: #6e1423; }
     .reverted-tag { font-size: 12.5px; padding: 2px 8px; border-radius: 10px; background: #eee; color: #666; }
+    .undo-window-tag { font-size: 12.5px; padding: 2px 8px; border-radius: 10px; }
+    .undo-window-active { background: #d1e7dd; color: #0f5132; }
+    .undo-window-expired { background: #eee; color: #888; }
+    .related-summary { font-size: 14px; color: #555; margin-top: 10px; }
 
     .diff-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14.5px; }
     .diff-table th, .diff-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #f2f2f2; }
@@ -175,16 +202,43 @@ function render_change_value($val)
             <?php
                 $oldValues = $e['old_values'] ? json_decode($e['old_values'], true) : null;
                 $newValues = $e['new_values'] ? json_decode($e['new_values'], true) : null;
-                $allFields = array_unique(array_merge(array_keys($oldValues ?? []), array_keys($newValues ?? [])));
+                $isAccountDelete = $e['action'] === 'delete_account';
+
+                if ($isAccountDelete) {
+                    // Nested snapshot (['account' => [...], 'related' => [...]])
+                    // rather than a flat column map -- render it separately
+                    // below instead of through the generic diff table, which
+                    // expects every value to be a scalar.
+                    $accountSnapshot = $oldValues['account'] ?? [];
+                    $relatedSnapshot = $oldValues['related'] ?? [];
+                    $allFields = [];
+                } else {
+                    $allFields = array_unique(array_merge(array_keys($oldValues ?? []), array_keys($newValues ?? [])));
+                }
+
+                $undoDeadline = $isAccountDelete ? strtotime($e['changed_at']) + ACCOUNT_DELETE_UNDO_WINDOW_SECONDS : null;
+                $undoExpired = $isAccountDelete && !$e['reverted_at'] && time() > $undoDeadline;
             ?>
             <details class="entry">
                 <summary>
                     <span class="entry-main">
                         <span class="table-tag"><?= htmlspecialchars($tableLabels[$e['table_name']] ?? $e['table_name']) ?></span>
-                        <span class="action-tag action-<?= $e['action'] ?>"><?= htmlspecialchars($e['action']) ?></span>
+                        <span class="action-tag action-<?= htmlspecialchars($e['action']) ?>"><?= $isAccountDelete ? 'delete account' : htmlspecialchars($e['action']) ?></span>
                         <span class="entry-label"><?= htmlspecialchars($e['record_label'] ?? ('#' . $e['record_id'])) ?></span>
                         <?php if ($e['reverted_at']): ?>
                             <span class="reverted-tag">↩ reverted by <?= htmlspecialchars($e['reverted_by_name'] ?? '—') ?></span>
+                        <?php elseif ($isAccountDelete): ?>
+                            <?php if ($undoExpired): ?>
+                                <span class="undo-window-tag undo-window-expired">Undo window expired</span>
+                            <?php else: ?>
+                                <?php
+                                    $minutesLeft = max(0, (int) ceil(($undoDeadline - time()) / 60));
+                                    $hoursLeft = intdiv($minutesLeft, 60);
+                                    $remMinutes = $minutesLeft % 60;
+                                    $timeLeftText = $hoursLeft > 0 ? "{$hoursLeft}h {$remMinutes}m left" : "{$remMinutes}m left";
+                                ?>
+                                <span class="undo-window-tag undo-window-active">Undoable — <?= htmlspecialchars($timeLeftText) ?></span>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </span>
                     <span class="entry-meta">
@@ -193,7 +247,19 @@ function render_change_value($val)
                     </span>
                 </summary>
 
-                <?php if ($allFields): ?>
+                <?php if ($isAccountDelete): ?>
+                    <div class="cp-table-scroll"><table class="diff-table">
+                        <tr><th>Field</th><th>Value at time of deletion</th></tr>
+                        <?php foreach ($accountSnapshot as $field => $val): ?>
+                            <?php $isMasked = in_array($field, $maskedFields, true); ?>
+                            <tr>
+                                <td><?= htmlspecialchars($field) ?></td>
+                                <td class="diff-same"><?= $isMasked ? '<em style="color:#aaa;">(hidden)</em>' : render_change_value($val) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </table></div>
+                    <p class="related-summary">Also deleted alongside this account: <?= htmlspecialchars(summarize_related($relatedSnapshot, $relatedLabels)) ?> — all restored together if this is undone.</p>
+                <?php elseif ($allFields): ?>
                     <div class="cp-table-scroll"><table class="diff-table">
                         <tr><th>Field</th><th>Before</th><th>After</th></tr>
                         <?php foreach ($allFields as $field): ?>
@@ -214,12 +280,14 @@ function render_change_value($val)
                     <p class="empty" style="margin-top:10px;">No field-level detail recorded for this entry.</p>
                 <?php endif; ?>
 
-                <?php if (!$e['reverted_at']): ?>
-                    <form method="POST" class="revert-form" onsubmit="return confirm('Revert this change? The values shown in \'Before\' above will be restored.');">
+                <?php if (!$e['reverted_at'] && !$undoExpired): ?>
+                    <form method="POST" class="revert-form" onsubmit="return confirm('<?= $isAccountDelete ? 'Restore this account, along with its assessment history? It will reappear in Manage Accounts.' : 'Revert this change? The values shown in \'Before\' above will be restored.' ?>');">
                         <input type="hidden" name="action" value="revert">
                         <input type="hidden" name="log_id" value="<?= (int) $e['log_id'] ?>">
-                        <button type="submit" class="btn btn-primary">↩ Revert this change</button>
+                        <button type="submit" class="btn btn-primary"><?= $isAccountDelete ? '↩ Restore this account' : '↩ Revert this change' ?></button>
                     </form>
+                <?php elseif ($undoExpired): ?>
+                    <p class="empty" style="margin-top:10px;">This deletion is now permanent — the 24-hour undo window has passed.</p>
                 <?php endif; ?>
             </details>
         <?php endforeach; ?>

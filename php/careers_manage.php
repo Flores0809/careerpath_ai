@@ -70,6 +70,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'text' => 'AI-suggested RIASEC scores are shown below — review and click "Save Changes" to apply them, or edit further first.',
             ];
         }
+    } elseif ($action === 'bulk_apply_riasec' && $careerId) {
+        // Bulk counterpart to 'refresh_riasec' above, only reachable via the
+        // "Refresh RIASEC with AI for All Careers" button below — not exposed
+        // as a per-career option. The single-career button deliberately stops
+        // at a preview so a counselor reviews AI-suggested scores before
+        // saving (see refresh_riasec above, and the paper's "for
+        // administrator review and confirmation"). Reviewing dozens of
+        // previews one at a time isn't practical for a bulk run, so this path
+        // applies each result immediately instead -- but every change is
+        // still logged to change_log exactly like a normal manual edit, so
+        // any single career's AI-refreshed scores can be reviewed and, if
+        // they look wrong, reverted individually from Change History without
+        // undoing the whole batch.
+        $careerStmt = $pdo->prepare("SELECT * FROM careers WHERE career_id = :id");
+        $careerStmt->execute(['id' => $careerId]);
+        $careerRow = $careerStmt->fetch();
+
+        if (!$careerRow) {
+            $message = ['type' => 'error', 'text' => 'Could not find that career.'];
+        } else {
+            $payload = json_encode([
+                'career_title' => $careerRow['career_title'],
+                'raw_description' => $careerRow['description'],
+                'raw_qualifications' => $careerRow['daily_task'],
+            ]);
+
+            $ch = curl_init(ENRICH_SERVICE_URL);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $payload,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                CURLOPT_TIMEOUT => 35,
+            ]);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+
+            $result = $curlError ? null : json_decode($response, true);
+
+            if ($curlError || $httpCode !== 200 || !$result || empty($result['ai_enriched'])) {
+                $reason = $curlError ?: ($result['error'] ?? "HTTP $httpCode");
+                $message = ['type' => 'error', 'text' => "AI RIASEC refresh unavailable for \"{$careerRow['career_title']}\" ($reason)."];
+            } else {
+                $riasec = $result['riasec'];
+                $stmt = $pdo->prepare(
+                    "UPDATE careers SET r_score=:r, i_score=:i, a_score=:a, s_score=:s, e_score=:e, c_score=:c WHERE career_id=:id"
+                );
+                $stmt->execute([
+                    'r' => $riasec['R'], 'i' => $riasec['I'], 'a' => $riasec['A'],
+                    's' => $riasec['S'], 'e' => $riasec['E'], 'c' => $riasec['C'],
+                    'id' => $careerId,
+                ]);
+                $newCareerStmt = $pdo->prepare("SELECT * FROM careers WHERE career_id = :id");
+                $newCareerStmt->execute(['id' => $careerId]);
+                log_change($pdo, 'careers', $careerId, $careerRow['career_title'], 'update', $careerRow, $newCareerStmt->fetch(), $currentUser['user_id']);
+                $message = ['type' => 'success', 'text' => "Updated RIASEC scores for \"{$careerRow['career_title']}\"."];
+            }
+        }
     } elseif ($action === 'ai_suggest_skills' && $careerId) {
         // Backfills required skills for an ALREADY-APPROVED career that has
         // none yet — the original seed catalog and any career approved
@@ -292,6 +352,30 @@ if ($careers) {
 // free-text field + suggestion list, so every career is tagged with a real,
 // managed category. Add/rename/remove categories on career_categories.php.
 $categoryOptions = $pdo->query("SELECT name, description FROM career_categories ORDER BY name")->fetchAll();
+
+// Count of currently-listed careers with zero skill_requirements rows — most
+// of these are original seed-catalog entries approved before the AI-skill-
+// suggestion feature (migration_20) existed, so they never got backfilled.
+// Drives the "Backfill Missing Skills for All Careers" button below: only
+// shown when there's actually something to do, and only counts careers on
+// THIS page (respects the search filter, same as everything else here).
+$missingSkillsCareerIds = [];
+foreach ($careers as $c) {
+    if (empty($skillsByCareer[$c['career_id']])) {
+        $missingSkillsCareerIds[] = (int) $c['career_id'];
+    }
+}
+
+// Every career already has RIASEC scores (never null/missing — they're
+// seeded or AI-enriched at approval time), so there's no "missing" subset
+// to target the way skills has one. This is every career_id on the current
+// page (respects the search filter, same as the skills list above) — the
+// "Refresh RIASEC with AI for All Careers" button below OVERWRITES existing
+// scores for all of these, which is why it's kept as a separate, deliberate
+// button rather than folded into the skills backfill (see also: keeping
+// these as two buttons means a counselor who only wants one kind of AI call
+// isn't paying for the other).
+$allCareerIds = array_map('intval', array_column($careers, 'career_id'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -361,6 +445,48 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
             </form>
         </div>
 
+        <?php if ($missingSkillsCareerIds || $allCareerIds): ?>
+            <div class="panel">
+                <p style="margin:0 0 14px;font-size:13.5px;color:#888;">Bulk AI actions for the careers listed below — kept as two separate buttons on purpose, so running one doesn't also spend API calls on the other.</p>
+
+                <?php if ($missingSkillsCareerIds): ?>
+                    <div id="bulk-skill-fill-panel" style="padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid #eee;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+                            <div>
+                                <strong style="color:#6e1423;"><?= count($missingSkillsCareerIds) ?> career(s) below have no required skills listed yet</strong>
+                                <p style="margin:4px 0 0;font-size:13.5px;color:#888;">Mostly the original seed catalog, approved before AI skill suggestion existed. Runs "✨ Suggest Skills with AI" for each one in turn — same result as clicking it individually <?= count($missingSkillsCareerIds) ?> times, just automated. Only touches careers with no skills yet, so it never re-spends tokens on ones already filled in.</p>
+                            </div>
+                            <button type="button" id="bulk-skill-fill-btn" class="btn btn-primary" style="white-space:nowrap;">✨ Backfill Missing Skills for All (<?= count($missingSkillsCareerIds) ?>)</button>
+                        </div>
+                        <div id="bulk-skill-fill-status" style="margin-top:10px;font-size:14.5px;display:none;">
+                            <div style="background:#eee;border-radius:6px;height:8px;overflow:hidden;">
+                                <div id="bulk-skill-fill-bar" style="background:#6e1423;height:100%;width:0%;transition:width 0.2s ease;"></div>
+                            </div>
+                            <p id="bulk-skill-fill-text" style="margin:8px 0 0;color:#555;"></p>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($allCareerIds): ?>
+                    <div id="bulk-riasec-refresh-panel">
+                        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+                            <div>
+                                <strong style="color:#6e1423;">Refresh RIASEC scores with AI for all <?= count($allCareerIds) ?> career(s) below</strong>
+                                <p style="margin:4px 0 0;font-size:13.5px;color:#888;">Unlike the single-career "Refresh RIASEC with AI" button (which only previews a suggestion for you to review before saving), this applies each result right away — but every change is logged to Change History same as a manual edit, so any one career's new scores can be reviewed and reverted individually if they look off. This OVERWRITES existing scores for every career listed, so use the search box above to narrow this to specific careers if you don't want a full re-run.</p>
+                            </div>
+                            <button type="button" id="bulk-riasec-refresh-btn" class="btn btn-primary" style="white-space:nowrap;">🔄 Refresh RIASEC with AI for All (<?= count($allCareerIds) ?>)</button>
+                        </div>
+                        <div id="bulk-riasec-refresh-status" style="margin-top:10px;font-size:14.5px;display:none;">
+                            <div style="background:#eee;border-radius:6px;height:8px;overflow:hidden;">
+                                <div id="bulk-riasec-refresh-bar" style="background:#6e1423;height:100%;width:0%;transition:width 0.2s ease;"></div>
+                            </div>
+                            <p id="bulk-riasec-refresh-text" style="margin:8px 0 0;color:#555;"></p>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
         <?php if (!$careers): ?>
             <p class="empty"><?= $search !== '' ? 'No careers matched "' . htmlspecialchars($search) . '".' : 'No careers in the database yet.' ?></p>
         <?php endif; ?>
@@ -376,7 +502,7 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
                     's' => $c['s_score'], 'e' => $c['e_score'], 'c' => $c['c_score'],
                 ];
             ?>
-            <details class="career-row" <?= $wasRefreshed ? 'open' : '' ?>>
+            <details class="career-row" data-career-id="<?= (int) $c['career_id'] ?>" data-title="<?= htmlspecialchars($c['career_title']) ?>" <?= $wasRefreshed ? 'open' : '' ?>>
                 <summary>
                     <span>
                         <span class="title"><?= htmlspecialchars($c['career_title']) ?></span>
@@ -492,6 +618,117 @@ $categoryOptions = $pdo->query("SELECT name, description FROM career_categories 
             </details>
         <?php endforeach; ?>
     </div>
+
+    <?php if ($missingSkillsCareerIds || $allCareerIds): ?>
+    <script>
+    (function () {
+        // Drives both bulk-AI buttons above (skills backfill, RIASEC
+        // refresh). Deliberately client-side rather than one big
+        // server-side loop: dozens of careers x up to ~35s each for the
+        // Gemini call (see ENRICH_SERVICE_URL timeout in the PHP handlers)
+        // would very likely blow past PHP's max_execution_time and/or
+        // Railway's proxy request timeout if done as a single POST.
+        // Instead each button fires its existing single-career POST action
+        // once per career, sequentially (not in parallel -- the
+        // matching-service is a single Flask process, see migration notes
+        // on concurrency) via fetch() so the page never navigates away and
+        // can show progress.
+        var titleById = {};
+        document.querySelectorAll('.career-row[data-career-id]').forEach(function (row) {
+            titleById[row.dataset.careerId] = row.dataset.title;
+        });
+
+        // Both buttons hit the same matching-service process, so running
+        // them at the same time would just make each other slower (and
+        // muddy the progress text) rather than anything actually going
+        // wrong -- this just disables whichever button isn't running so
+        // it's not confusing to click both at once.
+        var allBulkButtons = [];
+
+        function runBulkAction(opts) {
+            var btn = document.getElementById(opts.btnId);
+            if (!btn) return;
+            allBulkButtons.push(btn);
+            var statusBox = document.getElementById(opts.statusId);
+            var bar = document.getElementById(opts.barId);
+            var text = document.getElementById(opts.textId);
+
+            btn.addEventListener('click', function () {
+                if (!confirm(opts.confirmText)) {
+                    return;
+                }
+                allBulkButtons.forEach(function (b) { b.disabled = true; });
+                btn.textContent = 'Running…';
+                statusBox.style.display = 'block';
+
+                var i = 0;
+                var succeeded = 0;
+                var failed = 0;
+
+                function next() {
+                    if (i >= opts.ids.length) {
+                        text.textContent = 'Done — ' + succeeded + ' career(s) updated' + (failed ? ', ' + failed + ' failed (try those individually above)' : '') + '. Reloading…';
+                        setTimeout(function () { location.reload(); }, 1200);
+                        return;
+                    }
+                    var id = opts.ids[i];
+                    var pct = Math.round((i / opts.ids.length) * 100);
+                    bar.style.width = pct + '%';
+                    text.textContent = opts.progressVerb + ' ' + (i + 1) + ' of ' + opts.ids.length + ': ' + (titleById[id] || ('career #' + id)) + '…';
+
+                    fetch(window.location.pathname + window.location.search, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'action=' + opts.action + '&career_id=' + encodeURIComponent(id),
+                    }).then(function (resp) {
+                        // The PHP handler always responds 200 (it renders the
+                        // full page either way, success or "AI unavailable") --
+                        // resp.ok alone can't tell success from failure, so check
+                        // which flash-message class the response actually
+                        // contains instead of trusting the HTTP status.
+                        return resp.text();
+                    }).then(function (html) {
+                        if (html.indexOf('flash-success') !== -1) { succeeded++; } else { failed++; }
+                    }).catch(function () {
+                        failed++;
+                    }).finally(function () {
+                        i++;
+                        next();
+                    });
+                }
+                next();
+            });
+        }
+
+        <?php if ($missingSkillsCareerIds): ?>
+        runBulkAction({
+            ids: <?= json_encode($missingSkillsCareerIds) ?>,
+            action: 'ai_suggest_skills',
+            btnId: 'bulk-skill-fill-btn',
+            statusId: 'bulk-skill-fill-status',
+            barId: 'bulk-skill-fill-bar',
+            textId: 'bulk-skill-fill-text',
+            progressVerb: 'Suggesting skills',
+            confirmText: 'Run AI skill suggestion for <?= count($missingSkillsCareerIds) ?> career(s)? This calls Gemini once per career and can take a few minutes total -- keep this tab open until it finishes.',
+        });
+        <?php endif; ?>
+
+        <?php if ($allCareerIds): ?>
+        runBulkAction({
+            ids: <?= json_encode($allCareerIds) ?>,
+            action: 'bulk_apply_riasec',
+            btnId: 'bulk-riasec-refresh-btn',
+            statusId: 'bulk-riasec-refresh-status',
+            barId: 'bulk-riasec-refresh-bar',
+            textId: 'bulk-riasec-refresh-text',
+            progressVerb: 'Refreshing RIASEC',
+            confirmText: 'Refresh AI-suggested RIASEC scores for ALL <?= count($allCareerIds) ?> career(s) listed? This OVERWRITES existing scores immediately for each one (logged to Change History, individually revertible) and calls Gemini once per career -- keep this tab open until it finishes.',
+        });
+        <?php endif; ?>
+    })();
+    </script>
+    <?php endif; ?>
 <?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

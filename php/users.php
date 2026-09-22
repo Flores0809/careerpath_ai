@@ -167,6 +167,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $message = ['type' => 'success', 'text' => 'Password reset.'];
         }
+    } elseif ($action === 'delete_account' && !empty($_POST['user_id'])) {
+        // Deletes a staff account (admin or counselor). Not permanent right
+        // away — delete_account_with_log() snapshots the full row (plus
+        // anything ON DELETE CASCADE would take with it, e.g. this
+        // counselor's counselor_log entries) into change_log, and an
+        // administrator can restore it from Change History within 24 hours
+        // (see change_log_helper.php's ACCOUNT_DELETE_UNDO_WINDOW_SECONDS).
+        // Past that window it's the same as any other permanent delete.
+        $targetId = (int) $_POST['user_id'];
+
+        if ($targetId === $currentUser['user_id']) {
+            $message = ['type' => 'error', 'text' => "You can't delete your own account while logged in as it."];
+        } else {
+            $stmt = $pdo->prepare("SELECT name, role, status FROM users WHERE user_id = :id");
+            $stmt->execute(['id' => $targetId]);
+            $target = $stmt->fetch();
+
+            if (!$target) {
+                $message = ['type' => 'error', 'text' => 'Account not found.'];
+            } elseif ($target['role'] === 'administrator' && $target['status'] === 'active' && count_active_admins($pdo) <= 1) {
+                $message = ['type' => 'error', 'text' => 'Cannot delete the last active administrator account.'];
+            } else {
+                try {
+                    delete_account_with_log($pdo, 'users', $targetId, $target['name'], $currentUser['user_id']);
+                    $message = ['type' => 'success', 'text' => "Deleted \"{$target['name']}\"'s account. This can be undone from Change History within 24 hours."];
+                } catch (Exception $e) {
+                    $message = ['type' => 'error', 'text' => 'Could not delete that account — ' . $e->getMessage()];
+                }
+            }
+        }
+    } elseif ($action === 'delete_student_account' && !empty($_POST['student_id'])) {
+        // Same 24-hour-undoable delete as above, for a student account —
+        // this one also snapshots (and, on revert, restores) their full
+        // assessment history: student_profiles, recommendations,
+        // student_career_insights, and counselor_log entries about them.
+        $targetId = (int) $_POST['student_id'];
+        $stmt = $pdo->prepare("SELECT name FROM students WHERE student_id = :id");
+        $stmt->execute(['id' => $targetId]);
+        $target = $stmt->fetch();
+
+        if (!$target) {
+            $message = ['type' => 'error', 'text' => 'Student account not found.'];
+        } else {
+            try {
+                delete_account_with_log($pdo, 'students', $targetId, $target['name'], $currentUser['user_id']);
+                $message = ['type' => 'success', 'text' => "Deleted \"{$target['name']}\"'s student account. This can be undone from Change History within 24 hours."];
+            } catch (Exception $e) {
+                $message = ['type' => 'error', 'text' => 'Could not delete that account — ' . $e->getMessage()];
+            }
+        }
     } elseif ($action === 'toggle_student_status' && !empty($_POST['student_id'])) {
         // Students self-register (see php/student_register.php) — administrators
         // don't create or edit their accounts, only moderate (disable/re-enable).
@@ -258,6 +308,11 @@ $welcome = isset($_GET['welcome']);
     .btn-primary { background: #6e1423; color: #fff; }
     .btn-danger { background: #b02a37; color: #fff; }
     .btn-secondary { background: #6c757d; color: #fff; }
+    /* Deliberately a darker/starker red than .btn-danger (used for Disable,
+       which is reversible with one click) -- Delete is a heavier action, so
+       it reads as more serious even though it's also undoable for 24h. */
+    .btn-delete { background: #4a0c17; color: #fff; }
+    .btn-delete:hover { background: #300712; }
     .actions-cell button { margin: 2px 2px 2px 0; transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease; }
     details summary { cursor: pointer; color: #6e1423; font-size: 14.5px; }
     .empty { color: #666; font-style: italic; }
@@ -403,6 +458,13 @@ $welcome = isset($_GET['welcome']);
                             <?= $u['status'] === 'active' ? 'Disable' : 'Re-enable' ?>
                         </button>
                     </form>
+                    <?php if ($u['user_id'] != $currentUser['user_id']): ?>
+                        <form method="POST" action="<?= $tabAction ?>" class="inline" onsubmit="return confirm('Delete this account? This can be undone from Change History within 24 hours — after that it\'s permanent.');">
+                            <input type="hidden" name="action" value="delete_account">
+                            <input type="hidden" name="user_id" value="<?= (int) $u['user_id'] ?>">
+                            <button type="submit" class="btn-delete">Delete</button>
+                        </form>
+                    <?php endif; ?>
                 </td>
             </tr>
     <?php
@@ -509,6 +571,11 @@ $welcome = isset($_GET['welcome']);
                                 <button type="submit" class="<?= $s['status'] === 'active' ? 'btn-danger' : 'btn-secondary' ?>">
                                     <?= $s['status'] === 'active' ? 'Disable' : 'Re-enable' ?>
                                 </button>
+                            </form>
+                            <form method="POST" action="users.php#students" class="inline" onsubmit="return confirm('Delete this student account, including their assessment history? This can be undone from Change History within 24 hours — after that it\'s permanent.');">
+                                <input type="hidden" name="action" value="delete_student_account">
+                                <input type="hidden" name="student_id" value="<?= (int) $s['student_id'] ?>">
+                                <button type="submit" class="btn-delete">Delete</button>
                             </form>
                         </td>
                     </tr>

@@ -26,7 +26,11 @@ CREATE TABLE IF NOT EXISTS change_log (
     table_name    VARCHAR(50) NOT NULL,   -- e.g. 'users', 'students', 'careers', 'career_categories', 'skill_requirements'
     record_id     INT NOT NULL,           -- primary key value of the affected row in table_name
     record_label  VARCHAR(255) NULL,      -- human-readable snapshot (name/title) so history stays readable after the row changes again or is gone
-    action        ENUM('insert','update','delete') NOT NULL,
+    -- 'delete_account' added by migration_27_delete_account_action.sql — kept
+    -- here too so a fresh install from this file doesn't need that migration
+    -- run separately afterward. If this DB was created before migration_27
+    -- existed, run that file to add the value to the live table.
+    action        ENUM('insert','update','delete','delete_account') NOT NULL,
     old_values    JSON NULL,              -- full row snapshot before the change (NULL for insert)
     new_values    JSON NULL,              -- full row snapshot after the change (NULL for delete)
     changed_by    INT NULL,               -- FK to users.user_id; who made the change
