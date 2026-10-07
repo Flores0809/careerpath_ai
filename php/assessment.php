@@ -206,7 +206,7 @@ $typeLabels = [
         </fieldset>
 
         <fieldset>
-            <legend>Academic Background</legend>
+            <legend>Academic Average</legend>
             <p style="font-size:14.5px;color:#555;margin-top:0;">Your general/overall academic average (0–100). This is required so your recommendations can factor in your academic standing.</p>
             <input type="number" name="academic_average" min="0" max="100" step="0.01" required style="width:140px;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;" placeholder="e.g. 88.5">
         </fieldset>

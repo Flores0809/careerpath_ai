@@ -21,3 +21,6 @@ Thumbs.db
 /database/backups/
 crawler/logs/
 matching-service/crawler/logs/
+
+# Bulk student account files: real student names + password hashes (PII) -- never commit
+database/bulk_students/

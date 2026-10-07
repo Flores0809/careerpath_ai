@@ -4,7 +4,7 @@
 // Not a named entity/use case in the capstone paper's ERD or Use Case
 // Diagram (see README for the alignment note) — built anyway since it's on
 // the group's Gantt chart under Software Development. A student submits a
-// request with an optional reason + preferred date/time; a counselor or
+// request with a required reason + preferred date/time; a counselor or
 // administrator picks it up on consultations.php and schedules it.
 
 require __DIR__ . '/student_auth.php';
@@ -19,20 +19,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reque
     $preferredDate = trim($_POST['preferred_date'] ?? '') ?: null;
     $preferredTime = trim($_POST['preferred_time'] ?? '') ?: null;
 
-    $insert = $pdo->prepare(
-        "INSERT INTO consultations (student_id, reason, preferred_date, preferred_time)
-         VALUES (:student_id, :reason, :preferred_date, :preferred_time)"
-    );
-    $insert->execute([
-        'student_id' => $currentStudent['student_id'],
-        'reason' => $reason !== '' ? $reason : null,
-        'preferred_date' => $preferredDate,
-        'preferred_time' => $preferredTime,
-    ]);
+    // Reason, preferred date, and preferred time are all required so the
+    // counselor knows what the consultation is about and when the student
+    // is available before reaching out.
+    if ($reason === '' || $preferredDate === null || $preferredTime === null) {
+        $message = ['type' => 'error', 'text' => 'Please fill in what you would like to talk about, your preferred date, and your preferred time.'];
+    } elseif (strtotime($preferredDate) === false || $preferredDate < date('Y-m-d')) {
+        $message = ['type' => 'error', 'text' => 'Please choose a preferred date that is today or later.'];
+    } else {
+        $insert = $pdo->prepare(
+            "INSERT INTO consultations (student_id, reason, preferred_date, preferred_time)
+             VALUES (:student_id, :reason, :preferred_date, :preferred_time)"
+        );
+        $insert->execute([
+            'student_id' => $currentStudent['student_id'],
+            'reason' => $reason,
+            'preferred_date' => $preferredDate,
+            'preferred_time' => $preferredTime,
+        ]);
 
-    notify_staff($pdo, null, htmlspecialchars($currentStudent['name']) . ' requested a consultation.', 'consultations.php');
+        notify_staff($pdo, null, htmlspecialchars($currentStudent['name']) . ' requested a consultation.', 'consultations.php');
 
-    $message = ['type' => 'success', 'text' => 'Your consultation request has been sent. A counselor will reach out to confirm a schedule.'];
+        $message = ['type' => 'success', 'text' => 'Your consultation request has been sent. A counselor will reach out to confirm a schedule.'];
+    }
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel') {
     $id = (int) ($_POST['consultation_id'] ?? 0);
@@ -102,12 +111,12 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
         <h2>Request a Consultation</h2>
         <form method="POST">
             <input type="hidden" name="action" value="request">
-            <label>What would you like to talk about? (optional)</label>
-            <textarea name="reason" placeholder="e.g. I'd like to discuss my top career recommendation."></textarea>
-            <label>Preferred date (optional)</label>
-            <input type="date" name="preferred_date">
-            <label>Preferred time (optional)</label>
-            <input type="time" name="preferred_time">
+            <label>What would you like to talk about?</label>
+            <textarea name="reason" required placeholder="e.g. I'd like to discuss my top career recommendation."></textarea>
+            <label>Preferred date</label>
+            <input type="date" name="preferred_date" required min="<?= date('Y-m-d') ?>">
+            <label>Preferred time</label>
+            <input type="time" name="preferred_time" required>
             <button type="submit">Send request</button>
         </form>
     </div>
