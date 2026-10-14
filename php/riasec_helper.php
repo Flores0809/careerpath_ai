@@ -25,6 +25,7 @@ function career_source_label(?string $source): string
         'adzuna'     => 'Adzuna job listings',
         'remoteok'   => 'RemoteOK job listings',
         'kalibrr'    => 'Kalibrr job listings',
+        'crawler'    => 'Web crawler (PhilJobNet / O*NET job data), reviewed by staff',
         'seed'       => 'Curated by the system administrators',
         'manual'     => 'Entered by a counselor/administrator',
     ];
