@@ -136,7 +136,7 @@ if ($cachedCommentaryRow) {
 <title>CareerPath AI — <?= htmlspecialchars($career['career_title']) ?></title>
 <style>
     body { font-family: Arial, sans-serif; max-width: 1280px; margin: 40px auto; padding: 0 20px; color: #222; }
-    body > h1, body > .source-note, body > .panel, body > a.back { max-width: 800px; margin-left: auto; margin-right: auto; }
+    body > h1, body > .source-note, body > .badge-row, body > .panel, body > a.back { max-width: 800px; margin-left: auto; margin-right: auto; }
     h1 { color: #6e1423; margin-bottom: 4px; }
     .source-note { font-size: 13.5px; color: #888; margin-bottom: 22px; }
     .panel { background: #f5f5f5; border: 1px solid #ddd; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
@@ -170,7 +170,9 @@ if ($cachedCommentaryRow) {
 
     a.back { display: inline-block; margin-top: 6px; color: #6e1423; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
-.src-badge, .upd-badge { display: inline-block; border-radius: 12px; padding: 3px 10px; font-size: 12.5px; font-weight: bold; margin: 2px 6px 2px 0; }
+.badge-row { margin-top: 0; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .badge-row .src-badge, .badge-row .upd-badge { margin: 0; }
+    .src-badge, .upd-badge { display: inline-block; border-radius: 12px; padding: 3px 10px; font-size: 12.5px; font-weight: bold; margin: 2px 6px 2px 0; }
     .src-badge { background: #f0dde1; color: #6e1423; }
     .upd-badge { background: #e7f1ff; color: #0a4a9e; border: 1px solid #b6d4fe; }
 .employment-panel { background: #eef7f0; border-color: #cfe6d5; }
@@ -186,7 +188,7 @@ if ($cachedCommentaryRow) {
 
     <h1><?= htmlspecialchars($career['career_title']) ?></h1>
     <p class="source-note">Career profile — reviewed by a counselor/administrator before publishing.</p>
-    <p><?= career_source_badges($career) ?></p>
+    <p class="badge-row"><?= career_source_badges($career) ?></p>
 
     <?php if ($aiCareerCommentary): ?>
         <div class="panel ai-insights-panel">
