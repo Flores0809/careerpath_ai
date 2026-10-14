@@ -54,7 +54,7 @@ $latestSkillsRaw = $latestSkillsStmt->fetchColumn();
 $skillMatch = compute_skill_match($pdo, $careerId, $latestSkillsRaw ?: null);
 
 // Employment opportunities: the real job postings the crawler collected for this
-// career (linked at approval time via pending_careers.approved_career_id). Shown
+// career (linked at approval time via pending_careers.approved_career_id, or — for careers approved before that link existed — matched by identical title). Shown
 // so students can see actual hiring examples — employers, locations, pay — and
 // how recent they are. Wrapped in try/catch so older databases without the link
 // column simply show no panel.
@@ -63,10 +63,11 @@ try {
     $postStmt = $pdo->prepare(
         "SELECT employer, location, employment_type, salary, education_level, source_url, data_source, scraped_at
          FROM pending_careers
-         WHERE approved_career_id = :id AND status = 'approved'
+         WHERE status = 'approved'
+           AND (approved_career_id = :id OR (approved_career_id IS NULL AND LOWER(TRIM(source_title)) = LOWER(TRIM(:title))))
          ORDER BY scraped_at DESC LIMIT 50"
     );
-    $postStmt->execute(['id' => $careerId]);
+    $postStmt->execute(['id' => $careerId, 'title' => $career['career_title']]);
     $postings = $postStmt->fetchAll();
 } catch (Exception $e) {
     $postings = [];
