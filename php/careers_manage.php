@@ -19,6 +19,20 @@ require_once __DIR__ . '/riasec_helper.php';
 $currentUser = require_role(['administrator', 'counselor']);
 
 $pdo = get_db();
+
+// Self-heal: the "last updated" timestamp needs careers.updated_at (migration_28).
+// If that migration hasn't been run yet, add just this one column now so the
+// timestamp works immediately. Existing rows get the current time as their
+// starting value; every later Save Changes refreshes it.
+try {
+    $pdo->query("SELECT updated_at FROM careers LIMIT 0");
+} catch (Exception $e) {
+    try {
+        $pdo->exec("ALTER TABLE careers ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+    } catch (Exception $e2) {
+        // no ALTER permission — page still works, just without timestamps
+    }
+}
 $message = null;
 $refreshedCareerId = null;
 $refreshedScores = null;
@@ -308,7 +322,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $newCareerStmt->execute(['id' => $careerId]);
                 log_change($pdo, 'careers', $careerId, $title, 'update', $oldCareer, $newCareerStmt->fetch(), $currentUser['user_id']);
             }
-            $message = ['type' => 'success', 'text' => "Updated \"$title\"."];
+            $message = ['type' => 'success', 'text' => "Updated \"$title\" — saved on " . date('M j, Y \\a\\t g:i A') . "."];
         }
     } elseif ($action === 'toggle_status' && $careerId) {
         $stmt = $pdo->prepare("SELECT career_title, status FROM careers WHERE career_id = :id");
@@ -526,7 +540,7 @@ $allCareerIds = array_map('intval', array_column($careers, 'career_id'));
                         <?php $updLabel = career_updated_label($c['updated_at'] ?? null); ?>
                         <?php if ($updLabel): ?>
                             <?php $isStale = strtotime($c['updated_at']) < strtotime('-1 year'); ?>
-                            <span class="updated-badge<?= $isStale ? ' stale' : '' ?>" title="Last time this career was saved, edited, or re-checked"><?= $isStale ? '⚠️' : '🕒' ?> Updated <?= htmlspecialchars($updLabel) ?></span>
+                            <span class="updated-badge<?= $isStale ? ' stale' : '' ?>" title="Last time this career was saved, edited, or re-checked"><?= $isStale ? '⚠️' : '🕒' ?> Updated <?= htmlspecialchars(date('M j, Y g:i A', strtotime($c['updated_at']))) ?></span>
                         <?php endif; ?>
                     </span>
                 </summary>
