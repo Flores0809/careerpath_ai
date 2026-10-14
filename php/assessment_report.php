@@ -146,6 +146,7 @@ $backLink = $isStaff ? 'students_lookup.php' : 'student_history.php';
     .skill-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0; font-size: 11px; }
     .skill-have { background: #d1e7dd; color: #0f5132; }
     .skill-need { background: #fff3cd; color: #856404; }
+    .skill-needed { background: #f0dde1; color: #6e1423; }
     footer.report-footer { margin-top: 40px; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 10px; }
     @media print {
         .no-print { display: none; }
@@ -224,14 +225,16 @@ $backLink = $isStaff ? 'students_lookup.php' : 'student_history.php';
                 <h3>#<?= $rec['rank_position'] ?> — <?= htmlspecialchars($rec['career_title']) ?></h3>
                 <p><?= htmlspecialchars($rec['description']) ?></p>
                 <p><strong>Typical tasks:</strong> <?= htmlspecialchars($rec['daily_task']) ?></p>
-                <p><strong>Educational pathway:</strong> <?= htmlspecialchars($rec['educational_pathway']) ?></p>
-                <?php if ($skillMatch['match_percent'] !== null): ?>
-                    <p><strong><?= $skillMatch['match_percent'] ?>% skills match</strong> —
+                <p><strong>Programs you can enroll in:</strong> <?= htmlspecialchars($rec['educational_pathway']) ?></p>
+                <?php if ($skillMatch['required_count'] > 0): ?>
+                    <?php $skillMsg = skill_match_message($skillMatch); ?>
+                    <?php if ($skillMsg['text'] !== ''): ?><p><strong><?= htmlspecialchars($skillMsg['text']) ?></strong></p><?php endif; ?>
+                    <p><strong><?= htmlspecialchars($skillMsg['label']) ?></strong>
                         <?php foreach ($skillMatch['matched'] as $s): ?>
                             <span class="skill-tag skill-have">✓ <?= htmlspecialchars($s['skill_name']) ?></span>
                         <?php endforeach; ?>
                         <?php foreach ($skillMatch['missing'] as $s): ?>
-                            <span class="skill-tag skill-need">to develop: <?= htmlspecialchars($s['skill_name']) ?></span>
+                            <span class="skill-tag skill-needed"><?= htmlspecialchars($s['skill_name']) ?></span>
                         <?php endforeach; ?>
                     </p>
                 <?php endif; ?>

@@ -102,6 +102,16 @@ function cosine_similarity_riasec_history(array $a, array $b): float
         .profile { white-space: normal; overflow-x: visible; }
         .profile span { margin-bottom: 6px; }
     }
+    .scoring-card { background: #faf0f1; border-radius: 8px; padding: 14px 18px; margin-bottom: 14px; }
+    .scoring-title { font-weight: bold; color: #6e1423; font-size: 15.5px; margin-bottom: 6px; }
+    .scoring-explain { font-size: 13.5px; color: #555; line-height: 1.5; margin: 0 0 12px; }
+    .scoring-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+    .scoring-label { flex: 0 0 150px; font-size: 13.5px; color: #333; }
+    .scoring-track { flex: 1; background: #eddadd; border-radius: 6px; height: 12px; overflow: hidden; }
+    .scoring-fill { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #6e1423, #b3465c); }
+    .scoring-pts { flex: 0 0 90px; text-align: right; font-size: 13px; color: #6e1423; white-space: nowrap; }
+    .scoring-academic { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e3c9cd; font-size: 13.5px; color: #555; }
+    @media (max-width: 480px) { .scoring-label { flex-basis: 96px; font-size: 12px; } .scoring-pts { flex-basis: 74px; font-size: 12px; } }
     .career-row { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-top: 1px solid #eee; }
     .career-row:first-of-type { border-top: none; }
     .career-row .title { font-weight: bold; }
@@ -112,7 +122,9 @@ function cosine_similarity_riasec_history(array $a, array $b): float
     .skill-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0; font-size: 12.5px; }
     .skill-have { background: #d1e7dd; color: #0f5132; }
     .skill-need { background: #fff3cd; color: #856404; }
+    .skill-needed { background: #f0dde1; color: #6e1423; }
     .skill-pct { font-size: 13.5px; color: #666; margin-top: 4px; }
+    .skill-pct .skills-good { display: block; background: #e8f5ec; border: 1px solid #b9dfc6; color: #0f5132; border-radius: 8px; padding: 8px 12px; font-weight: bold; line-height: 1.5; }
     .notes-panel { background: #faf0f1; border: 1px solid #f0dde1; border-radius: 8px; padding: 16px 20px; margin-bottom: 26px; }
     .notes-panel h2 { margin: 0 0 12px; color: #6e1423; font-size: 18.5px; }
     .note-item { border-top: 1px solid #f0dde1; padding: 10px 0; font-size: 15.5px; }
@@ -218,15 +230,19 @@ function cosine_similarity_riasec_history(array $a, array $b): float
                 · <a href="assessment_report.php?profile_id=<?= (int) $profile['profile_id'] ?>" target="_blank">Print / Save as PDF</a>
             </div>
 
-            <div class="profile">
-                <span><strong>Realistic (R):</strong> <?= number_format($profile['r_score'] * 100, 0) ?>%</span>
-                <span><strong>Investigative (I):</strong> <?= number_format($profile['i_score'] * 100, 0) ?>%</span>
-                <span><strong>Artistic (A):</strong> <?= number_format($profile['a_score'] * 100, 0) ?>%</span>
-                <span><strong>Social (S):</strong> <?= number_format($profile['s_score'] * 100, 0) ?>%</span>
-                <span><strong>Enterprising (E):</strong> <?= number_format($profile['e_score'] * 100, 0) ?>%</span>
-                <span><strong>Conventional (C):</strong> <?= number_format($profile['c_score'] * 100, 0) ?>%</span>
+            <div class="scoring-card">
+                <div class="scoring-title">How your RIASEC profile was scored</div>
+                <p class="scoring-explain">Each of the six RIASEC types has 7 statements, and you rated each from 1 (Strongly Disagree) to 4 (Strongly Agree). Your score for a type is the total of your 7 ratings divided by the highest possible total (28), shown as a percentage. These scores are then compared with every career's own RIASEC profile to produce the match percentages below.</p>
+                <?php foreach (['R' => ['Realistic', 'r_score'], 'I' => ['Investigative', 'i_score'], 'A' => ['Artistic', 'a_score'], 'S' => ['Social', 's_score'], 'E' => ['Enterprising', 'e_score'], 'C' => ['Conventional', 'c_score']] as $letter => [$typeName, $col]): ?>
+                    <?php $typePct = (int) round($profile[$col] * 100); $typePoints = (int) round($profile[$col] * 28); ?>
+                    <div class="scoring-row">
+                        <span class="scoring-label"><?= $typeName ?> (<?= $letter ?>)</span>
+                        <div class="scoring-track"><span class="scoring-fill" style="width: <?= $typePct ?>%;"></span></div>
+                        <span class="scoring-pts"><?= $typePoints ?>/28 · <strong><?= $typePct ?>%</strong></span>
+                    </div>
+                <?php endforeach; ?>
                 <?php if (!empty($profile['academic_average'])): ?>
-                    <span><strong>Academic average:</strong> <?= number_format($profile['academic_average'], 2) ?></span>
+                    <div class="scoring-academic">Academic average you entered: <strong><?= number_format($profile['academic_average'], 2) ?></strong></div>
                 <?php endif; ?>
             </div>
 
@@ -290,7 +306,8 @@ function cosine_similarity_riasec_history(array $a, array $b): float
                 <?php endif; ?>
             <?php else: ?>
                 <?php
-                    $othersMarkup = function () use ($otherRecommendations, $pdo, $profile) {
+                    $othersMarkup = function () use ($otherRecommendations, $pdo, $profile, $dreamCareer) {
+                        $isFirstRow = true;
                         foreach ($otherRecommendations as $rec) {
                             $skillMatch = compute_skill_match($pdo, (int) $rec['career_id'], $profile['skills'] ?? null);
                             ?>
@@ -299,19 +316,35 @@ function cosine_similarity_riasec_history(array $a, array $b): float
                                     <span class="title"><a href="career_profile.php?id=<?= (int) $rec['career_id'] ?>"><?= htmlspecialchars($rec['career_title']) ?></a></span>
                                     <span class="match"><?= number_format($rec['match_score'], 0) ?>% match</span>
                                 </div>
-                                <?php if ($skillMatch['match_percent'] !== null): ?>
+                                <?php if ($isFirstRow && !$dreamCareer && !empty($profile['ai_career_commentary'])): ?>
+                                    <div class="ai-insights-box ai-insights-box-inline">
+                                        <div class="ai-insights-label">
+                                            ✨ AI Insights — your best match
+                                            <?php if (!empty($profile['ai_skills_are_suggested'])): ?>
+                                                <span class="ai-suggestion-tag" title="This career doesn't have a counselor-verified skills list yet, so any skills mentioned here are general AI suggestions, not a verified requirement.">AI-suggested skills</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <p><?= htmlspecialchars($profile['ai_career_commentary']) ?></p>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if ($skillMatch['required_count'] > 0): ?>
+                                    <?php $skillMsg = skill_match_message($skillMatch); ?>
                                     <div class="skill-pct">
-                                        <?= $skillMatch['match_percent'] ?>% skills match —
+                                        <?php if ($skillMsg['text'] !== ''): ?><span class="skills-good"><?= htmlspecialchars($skillMsg['text']) ?></span><?php endif; ?>
+                                        <div style="margin-top:8px;"><strong><?= htmlspecialchars($skillMsg['label']) ?></strong></div>
+                                        <div style="margin-top:6px;">
                                         <?php foreach ($skillMatch['matched'] as $s): ?>
                                             <span class="skill-tag skill-have">✓ <?= htmlspecialchars($s['skill_name']) ?></span>
                                         <?php endforeach; ?>
                                         <?php foreach ($skillMatch['missing'] as $s): ?>
-                                            <span class="skill-tag skill-need"><?= htmlspecialchars($s['skill_name']) ?></span>
+                                            <span class="skill-tag skill-needed"><?= htmlspecialchars($s['skill_name']) ?></span>
                                         <?php endforeach; ?>
+                                        </div>
                                     </div>
                                 <?php endif; ?>
                             </div>
                             <?php
+                            $isFirstRow = false;
                         }
                     };
                 ?>

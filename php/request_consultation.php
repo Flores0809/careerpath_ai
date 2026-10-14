@@ -14,6 +14,29 @@ $currentStudent = require_student_login();
 $pdo = get_db();
 $message = null;
 
+// consultations.rescheduled_at comes from migration_28. If that migration
+// hasn't been run yet on this database, quietly fall back to the old
+// behavior instead of breaking the page.
+try {
+    $pdo->query("SELECT rescheduled_at FROM consultations LIMIT 0");
+    $hasRescheduleCol = true;
+} catch (Exception $e) {
+    $hasRescheduleCol = false;
+}
+
+/** Append a dated, attributed line to a consultation's notes. */
+function append_consultation_note(?string $existing, string $label, string $text, string $who): string
+{
+    $line = '[' . date('M j, Y') . ' · ' . $label . ' by ' . $who . ']' . ($text !== '' ? ' ' . $text : '');
+    return ($existing !== null && $existing !== '') ? $existing . "\n" . $line : $line;
+}
+
+/** Notification text must fit notifications.message VARCHAR(255). */
+function notification_text(string $text): string
+{
+    return mb_strlen($text) > 255 ? mb_substr($text, 0, 252) . '...' : $text;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'request') {
     $reason = trim($_POST['reason'] ?? '');
     $preferredDate = trim($_POST['preferred_date'] ?? '') ?: null;
@@ -45,11 +68,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reque
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel') {
     $id = (int) ($_POST['consultation_id'] ?? 0);
-    $update = $pdo->prepare(
-        "UPDATE consultations SET status = 'cancelled' WHERE consultation_id = :id AND student_id = :sid AND status IN ('pending','scheduled')"
-    );
-    $update->execute(['id' => $id, 'sid' => $currentStudent['student_id']]);
-    $message = ['type' => 'success', 'text' => 'Request cancelled.'];
+    $cancelReason = trim($_POST['reason'] ?? '');
+    if ($cancelReason === '') {
+        $message = ['type' => 'error', 'text' => 'Please tell us why you are cancelling, so your counselor knows.'];
+    } else {
+        $rowStmt = $pdo->prepare("SELECT counselor_id, counselor_notes, status FROM consultations WHERE consultation_id = :id AND student_id = :sid AND status IN ('pending','scheduled')");
+        $rowStmt->execute(['id' => $id, 'sid' => $currentStudent['student_id']]);
+        $row = $rowStmt->fetch();
+        if ($row) {
+            $update = $pdo->prepare("UPDATE consultations SET status = 'cancelled', counselor_notes = :notes WHERE consultation_id = :id AND student_id = :sid");
+            $update->execute([
+                'notes' => append_consultation_note($row['counselor_notes'], 'Cancelled', $cancelReason, $currentStudent['name'] . ' (student)'),
+                'id' => $id,
+                'sid' => $currentStudent['student_id'],
+            ]);
+            notify_staff(
+                $pdo,
+                $row['counselor_id'] ? (int) $row['counselor_id'] : null,
+                notification_text(htmlspecialchars($currentStudent['name']) . ' cancelled a consultation. Reason: ' . $cancelReason),
+                'consultations.php?status=cancelled'
+            );
+            $message = ['type' => 'success', 'text' => 'Request cancelled. Your counselor has been told why.'];
+        } else {
+            $message = ['type' => 'error', 'text' => 'That request can no longer be cancelled.'];
+        }
+    }
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reschedule') {
+    $id = (int) ($_POST['consultation_id'] ?? 0);
+    $newDate = trim($_POST['new_date'] ?? '');
+    $newTime = trim($_POST['new_time'] ?? '');
+    $rescheduleReason = trim($_POST['reason'] ?? '');
+    if ($newDate === '' || $newTime === '') {
+        $message = ['type' => 'error', 'text' => 'Please choose a new date and time.'];
+    } elseif (strtotime($newDate) === false || $newDate < date('Y-m-d')) {
+        $message = ['type' => 'error', 'text' => 'Please choose a new date that is today or later.'];
+    } else {
+        $rowStmt = $pdo->prepare("SELECT counselor_id, counselor_notes, status, preferred_date, preferred_time, scheduled_date, scheduled_time FROM consultations WHERE consultation_id = :id AND student_id = :sid AND status IN ('pending','scheduled')");
+        $rowStmt->execute(['id' => $id, 'sid' => $currentStudent['student_id']]);
+        $row = $rowStmt->fetch();
+        if ($row) {
+            $isScheduled = $row['status'] === 'scheduled';
+            $oldDate = $isScheduled ? $row['scheduled_date'] : $row['preferred_date'];
+            $oldTime = $isScheduled ? $row['scheduled_time'] : $row['preferred_time'];
+            $oldWhen = ($oldDate ? date('M j, Y', strtotime($oldDate)) : '—') . ($oldTime ? ' ' . date('g:i A', strtotime($oldTime)) : '');
+            $newWhen = date('M j, Y', strtotime($newDate)) . ' ' . date('g:i A', strtotime($newTime));
+            $notes = append_consultation_note($row['counselor_notes'], "Rescheduled from $oldWhen to $newWhen", $rescheduleReason, $currentStudent['name'] . ' (student)');
+
+            // A pending request only has the student's PREFERRED slot; a
+            // scheduled one has an actual slot, which the student is now moving.
+            $setCols = $isScheduled
+                ? "scheduled_date = :d, scheduled_time = :t" . ($hasRescheduleCol ? ", rescheduled_at = NOW()" : "")
+                : "preferred_date = :d, preferred_time = :t";
+            $update = $pdo->prepare("UPDATE consultations SET $setCols, counselor_notes = :notes WHERE consultation_id = :id AND student_id = :sid");
+            $update->execute(['d' => $newDate, 't' => $newTime, 'notes' => $notes, 'id' => $id, 'sid' => $currentStudent['student_id']]);
+
+            notify_staff(
+                $pdo,
+                $row['counselor_id'] ? (int) $row['counselor_id'] : null,
+                notification_text(htmlspecialchars($currentStudent['name']) . " rescheduled a consultation from $oldWhen to $newWhen." . ($rescheduleReason !== '' ? ' Reason: ' . $rescheduleReason : '')),
+                'consultations.php'
+            );
+            $message = ['type' => 'success', 'text' => "Your consultation was moved to $newWhen. Your counselor has been notified."];
+        } else {
+            $message = ['type' => 'error', 'text' => 'That request can no longer be rescheduled.'];
+        }
+    }
 }
 
 $stmt = $pdo->prepare(
@@ -62,7 +146,8 @@ $stmt = $pdo->prepare(
 $stmt->execute(['sid' => $currentStudent['student_id']]);
 $myConsultations = $stmt->fetchAll();
 
-$statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
+// 'scheduled' is shown to students as 'Confirmed' (a counselor has accepted it).
+$statusLabels = ['pending' => 'Pending', 'scheduled' => 'Confirmed', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -91,6 +176,11 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
     .status-scheduled { background: #d1e7dd; color: #0f5132; }
     .status-completed { background: #f0dde1; color: #6e1423; }
     .status-cancelled { background: #e2e3e5; color: #41464b; }
+    .status-rescheduled { background: #cfe2ff; color: #084298; }
+    details.action-box { margin-top: 8px; background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 6px 12px; }
+    details.action-box summary { cursor: pointer; font-weight: bold; color: #6e1423; font-size: 14px; }
+    details.action-box label { margin-top: 8px; }
+    .row-fields { display: flex; gap: 10px; flex-wrap: wrap; }
     .item .meta { font-size: 14.5px; color: #666; margin-top: 4px; }
     .cancel-btn { background: none; border: none; color: #b02a37; font-size: 13.5px; text-decoration: underline; cursor: pointer; padding: 0; margin-top: 6px; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
@@ -129,7 +219,12 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
             <?php foreach ($myConsultations as $c): ?>
                 <div class="item">
                     <div class="top">
-                        <span class="status-badge status-<?= $c['status'] ?>"><?= $statusLabels[$c['status']] ?></span>
+                        <span>
+                            <span class="status-badge status-<?= $c['status'] ?>"><?= $statusLabels[$c['status']] ?></span>
+                            <?php if ($c['status'] === 'scheduled' && !empty($c['rescheduled_at'])): ?>
+                                <span class="status-badge status-rescheduled">Rescheduled</span>
+                            <?php endif; ?>
+                        </span>
                         <span class="meta">Requested <?= date('M j, Y', strtotime($c['requested_at'])) ?></span>
                     </div>
                     <?php if ($c['reason']): ?><p><?= nl2br(htmlspecialchars($c['reason'])) ?></p><?php endif; ?>
@@ -143,14 +238,33 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Scheduled', 'completed'
                         <div class="meta">Preferred: <?= date('M j, Y', strtotime($c['preferred_date'])) ?> <?= $c['preferred_time'] ? date('g:i A', strtotime($c['preferred_time'])) : '' ?></div>
                     <?php endif; ?>
                     <?php if ($c['counselor_notes']): ?>
-                        <div class="meta"><strong>Counselor note:</strong> <?= nl2br(htmlspecialchars($c['counselor_notes'])) ?></div>
+                        <div class="meta"><strong>Notes:</strong><br> <?= nl2br(htmlspecialchars($c['counselor_notes'])) ?></div>
                     <?php endif; ?>
                     <?php if (in_array($c['status'], ['pending', 'scheduled'], true)): ?>
-                        <form method="POST" onsubmit="return confirm('Cancel this request?');">
-                            <input type="hidden" name="action" value="cancel">
-                            <input type="hidden" name="consultation_id" value="<?= (int) $c['consultation_id'] ?>">
-                            <button class="cancel-btn" type="submit">Cancel</button>
-                        </form>
+                        <details class="action-box">
+                            <summary>Reschedule</summary>
+                            <form method="POST">
+                                <input type="hidden" name="action" value="reschedule">
+                                <input type="hidden" name="consultation_id" value="<?= (int) $c['consultation_id'] ?>">
+                                <div class="row-fields">
+                                    <div><label>New date</label><input type="date" name="new_date" required min="<?= date('Y-m-d') ?>"></div>
+                                    <div><label>New time</label><input type="time" name="new_time" required></div>
+                                </div>
+                                <label>Reason (optional)</label>
+                                <textarea name="reason" placeholder="e.g. I have an exam on the original date."></textarea>
+                                <button type="submit">Move my consultation</button>
+                            </form>
+                        </details>
+                        <details class="action-box">
+                            <summary>Cancel</summary>
+                            <form method="POST" onsubmit="return confirm('Cancel this consultation? Your counselor will be told why.');">
+                                <input type="hidden" name="action" value="cancel">
+                                <input type="hidden" name="consultation_id" value="<?= (int) $c['consultation_id'] ?>">
+                                <label>Why are you cancelling? (required)</label>
+                                <textarea name="reason" required placeholder="Please tell your counselor the reason."></textarea>
+                                <button type="submit">Cancel consultation</button>
+                            </form>
+                        </details>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>

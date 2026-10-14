@@ -76,7 +76,11 @@ CREATE TABLE careers (
     -- status='active') without deleting it, so recommendation history that
     -- references it stays intact. Set/cleared from php/careers_manage.php.
     status               ENUM('active','pending','inactive') DEFAULT 'active',
-    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Last time this career row was changed (edited, AI-enriched, re-approved).
+    -- Shown to students next to the source so they can judge how current the
+    -- information is. (migration_28)
+    updated_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- SKILL_REQUIREMENTS entity — the skills-verification mechanism named in
@@ -340,6 +344,9 @@ CREATE TABLE IF NOT EXISTS consultations (
     status           ENUM('pending','scheduled','completed','cancelled') NOT NULL DEFAULT 'pending',
     scheduled_date   DATE NULL,
     scheduled_time   TIME NULL,
+    -- Set whenever a scheduled consultation is moved to a new date/time (by
+    -- the student or staff) so it can be shown as "Rescheduled". (migration_28)
+    rescheduled_at   DATETIME NULL,
     counselor_notes  TEXT NULL,
     requested_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

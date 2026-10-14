@@ -75,3 +75,31 @@ function compute_skill_match(PDO $pdo, int $careerId, ?string $studentSkillsRaw)
         'match_percent' => $total > 0 ? round((count($matched) / $total) * 100) : null,
     ];
 }
+
+/**
+ * Student-facing wording for a skills comparison. Deliberately NOT a
+ * percentage: a student who left "Your Skills" blank (or typed N/A) would
+ * otherwise always see a discouraging, meaningless "0% match" on every
+ * career. Returns ['has_match' => bool, 'text' => string, 'label' => string]:
+ *  - 'text'  : an encouraging message when at least one of the career's
+ *              skills is already covered, otherwise an empty string;
+ *  - 'label' : the heading shown above the career's skill tags, which are
+ *              simply the skills this career needs (covered ones get a tick).
+ */
+function skill_match_message(array $skillMatch): array
+{
+    $total = (int) ($skillMatch['required_count'] ?? 0);
+    $have = count($skillMatch['matched'] ?? []);
+    if ($have > 0) {
+        return [
+            'has_match' => true,
+            'text' => "✨ Wow, your current skills match what this career needs! You already have $have of its $total key skills, so you've got a head start. This career is worth a closer look.",
+            'label' => 'Skills needed for this career:',
+        ];
+    }
+    return [
+        'has_match' => false,
+        'text' => '',
+        'label' => 'Skills needed for this career:',
+    ];
+}

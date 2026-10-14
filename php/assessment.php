@@ -24,28 +24,8 @@
 // "Take the Assessment".
 
 require __DIR__ . '/student_auth.php';
+require_once __DIR__ . '/riasec_helper.php';
 $currentStudent = require_student_login();
-
-// Dream-career picker (cluster -> specific job) shown before the RIASEC
-// questions. Goal: give the results page something to anchor on besides an
-// undifferentiated top-N list — e.g. Chef and Architect can both land at a
-// similar match % but are completely different fields; asking the student
-// what they're actually aiming for lets submit.php highlight that specific
-// career's fit first, with everything else tucked into an "explore other
-// careers" section instead of all being dumped together with equal weight.
-// Only categorized careers are eligible to appear here — no "Other" catch-all.
-// Every career should belong to a real, specific industry cluster (set on
-// php/careers.php when approving, or php/careers_manage.php for existing
-// ones); an uncategorized career just doesn't show up as a dream-career
-// option yet, rather than getting dumped into a vague bucket.
-$pdo = get_db();
-$careerRows = $pdo->query(
-    "SELECT career_id, career_title, career_category FROM careers WHERE status = 'active' AND career_category IS NOT NULL ORDER BY career_category, career_title"
-)->fetchAll();
-$careersByCategory = [];
-foreach ($careerRows as $row) {
-    $careersByCategory[$row['career_category']][] = ['id' => (int) $row['career_id'], 'title' => $row['career_title']];
-}
 
 // Verb-phrase consistency pass (per validator feedback: "use more consistent
 // and direct wording" instead of mixing "I would enjoy" / "I like" / "I am
@@ -152,6 +132,9 @@ $typeLabels = [
         .scale label { flex: 1; justify-content: center; padding: 10px 4px; min-height: 44px; border: 1px solid #ddd; border-radius: 8px; background: #fff; box-sizing: border-box; }
         .scale input[type="radio"] { width: 20px; height: 20px; margin: 0; }
     }
+.info-details { background: #f9f3f4; border: 1px solid #ecd5d9; border-radius: 8px; padding: 10px 14px; margin: 10px 0; font-size: 14.5px; line-height: 1.5; }
+    .info-details summary { cursor: pointer; font-weight: bold; color: #6e1423; }
+    .info-details ul { margin: 8px 0 0; padding-left: 20px; }
 </style>
 </head>
 <body>
@@ -162,24 +145,9 @@ $typeLabels = [
     <h1>CareerPath AI</h1>
     <p class="intro">Answer each statement honestly based on how much it describes you.
     Scale: 1 = Strongly Disagree, 2 = Disagree, 3 = Agree, 4 = Strongly Agree.</p>
+    <?php render_about_assessment(); render_riasec_guide(); ?>
 
     <form action="submit.php" method="POST" id="assessment-form">
-        <fieldset>
-            <legend>🎯 Your Dream Career</legend>
-            <p style="font-size:14.5px;color:#555;margin-top:0;">Before we get into the assessment — what career are you aiming for? Pick the field it falls under, then the specific career. We'll show you exactly how well your RIASEC profile fits <em>that</em> career, plus other careers you might not have considered.</p>
-            <label style="display:block;font-size:14.5px;font-weight:bold;margin:10px 0 4px;">Field / Industry</label>
-            <select id="dream_cluster" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;">
-                <option value="">— Select a field —</option>
-                <?php foreach (array_keys($careersByCategory) as $cat): ?>
-                    <option value="<?= htmlspecialchars($cat) ?>"><?= htmlspecialchars($cat) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <label style="display:block;font-size:14.5px;font-weight:bold;margin:10px 0 4px;">Specific Career</label>
-            <select name="dream_career_id" id="dream_career_id" required disabled style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;">
-                <option value="">— Select a field first —</option>
-            </select>
-        </fieldset>
-
         <?php foreach ($questions as $type => $items): ?>
             <fieldset>
                 <legend><?= htmlspecialchars($typeLabels[$type]) ?> (<?= $type ?>)</legend>
@@ -214,32 +182,6 @@ $typeLabels = [
         <button type="submit">Get My Career Recommendations</button>
     </form>
 
-    <script>
-        var careersByCategory = <?= json_encode($careersByCategory) ?>;
-        var clusterSelect = document.getElementById('dream_cluster');
-        var careerSelect = document.getElementById('dream_career_id');
-
-        clusterSelect.addEventListener('change', function () {
-            var careers = careersByCategory[clusterSelect.value] || [];
-            careerSelect.innerHTML = '';
-            if (!careers.length) {
-                careerSelect.innerHTML = '<option value="">— Select a field first —</option>';
-                careerSelect.disabled = true;
-                return;
-            }
-            careerSelect.disabled = false;
-            var placeholder = document.createElement('option');
-            placeholder.value = '';
-            placeholder.textContent = '— Select a career —';
-            careerSelect.appendChild(placeholder);
-            careers.forEach(function (c) {
-                var opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = c.title;
-                careerSelect.appendChild(opt);
-            });
-        });
-    </script>
 <?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

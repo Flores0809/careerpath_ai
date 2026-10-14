@@ -51,7 +51,7 @@ return [
     [
         'keywords' => ['take', 'assessment', 'start', 'quiz', 'test', 'sagutan', 'simulan', 'pagsusulit'],
         'question' => 'How do I take the assessment?',
-        'answer' => "Log in as a student, then go to Dashboard → Take the Assessment. You'll answer RIASEC personality questions, list your skills, enter your academic average, and optionally pick a dream career — then submit to see your matches.",
+        'answer' => "Log in as a student, then go to Dashboard → Take the Assessment. You'll answer RIASEC personality questions, list your skills, and enter your academic average — then submit to see the careers that best fit your profile.",
     ],
     [
         'keywords' => ['recommend', 'recommendation', 'match', 'matching', 'computed', 'calculate', 'algorithm',
@@ -62,18 +62,12 @@ return [
     [
         'keywords' => ['ai', 'gemini', 'insight', 'generated', 'commentary', 'paliwanag'],
         'question' => 'What do the AI-generated insights do?',
-        'answer' => "Once your matches are computed by the RIASEC matching engine, an AI (Gemini) writes a short, personalized explanation of why a career fits you and what it's like day-to-day. The matching itself is regular math — the AI only writes the explanation on top of it.",
+        'answer' => "Once your matches are computed by the RIASEC matching engine, an AI (Gemini) writes a short, personalized note on your results and an explanation of why your single best-matching career fits you. The matching itself is regular math — the AI only writes the explanation on top of it, and only for your top match.",
     ],
     [
-        // Only 'pangarap' (dream) added for Tagalog -- NOT generic words like
-        // 'gustong'/'trabaho', which would combine with the existing 'career'
-        // keyword to falsely hijack any Taglish career-specific question
-        // (e.g. "may career ba dito para sa gustong maging guro") before it
-        // ever reaches the AI/catalog tier, the same false-positive class
-        // fixed earlier for the English-only version of this bug.
-        'keywords' => ['dream', 'career', 'goal', 'choose', 'pick', 'pangarap'],
-        'question' => 'What is a "dream career"?',
-        'answer' => "It's a career you personally aspire to, which you can pick during the assessment. CareerPath AI shows how well it currently fits your RIASEC profile and highlights the gap between your traits and what that career typically needs.",
+        'keywords' => ['percentage', 'percent', 'score', 'rating', 'rate'],
+        'question' => 'What does the match percentage mean?',
+        'answer' => "The percentage shows how closely your RIASEC profile (your pattern of interests) matches the typical profile of that career. It is not a grade or a prediction of success, and it is not based on your skills or academic average. Each career card has a \"Why this match?\" section showing which traits drove the number.",
     ],
     [
         'keywords' => ['local', 'international', 'scope', 'difference', 'abroad', 'lokal', 'ibang', 'bansa'],

@@ -449,9 +449,9 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                                                     <span class="match"><?= number_format($rec['match_score'], 0) ?>%</span>
                                                 </div>
                                                 <?php $sm = $rec['skill_match']; ?>
-                                                <?php if ($sm['match_percent'] !== null): ?>
+                                                <?php if ($sm['required_count'] > 0): ?>
                                                     <div class="skill-pct">
-                                                        <?= $sm['match_percent'] ?>% skills match —
+                                                        Skills: <?= count($sm['matched']) ?> of <?= (int) $sm['required_count'] ?> required skills covered —
                                                         <?php foreach ($sm['matched'] as $s): ?>
                                                             <span class="skill-tag skill-have">✓ <?= htmlspecialchars($s['skill_name']) ?></span>
                                                         <?php endforeach; ?>

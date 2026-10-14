@@ -451,14 +451,14 @@ never diagnose, never promise future success, and never mention traits or data n
 Produce two things:
 - summary: 2-4 sentences, second person ("you"), explaining what this student's own RIASEC scores say \
 about their interests and work style. Reference their actual highest-scoring trait(s) by name.
-- career_commentary: 3-5 sentences, second person, explaining why their chosen dream career could fit \
-someone with this RIASEC profile, plus concrete skills to start building. {skills_instruction}
+- career_commentary: 3-5 sentences, second person, explaining why their best-matching career (the \
+top result of the matching engine) fits someone with this RIASEC profile, plus concrete skills to start building. {skills_instruction}
 
 Student's RIASEC scores (0-100): R={r} I={i} A={a} S={s} E={e} C={c}
 Student's self-reported academic average (0-100, may be blank): {academic_average}
 Student's self-reported existing skills (may be blank): {student_skills}
 
-Dream career: {career_title}
+Best-matching career: {career_title}
 Career description (counselor-approved, may be blank): {career_description}
 Career's key subjects (counselor-curated, may be blank): {career_key_subjects}
 Career's verified required skills (counselor-approved, may be empty): {career_required_skills}

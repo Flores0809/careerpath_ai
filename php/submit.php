@@ -10,6 +10,7 @@
 require __DIR__ . '/student_auth.php';
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/skills_helper.php';
+require_once __DIR__ . '/riasec_helper.php';
 require_once __DIR__ . '/notifications_helper.php';
 
 $currentStudent = require_student_login();
@@ -45,7 +46,6 @@ if ($isReplay) {
     ];
     $studentSkillsRaw = $replayProfile['skills'] ?? '';
     $academicAverage = (float) $replayProfile['academic_average'];
-    $dreamCareerId = (int) ($replayProfile['dream_career_id'] ?? 0);
 } else {
     $types = ['R', 'I', 'A', 'S', 'E', 'C'];
     $maxPerType = 7 * 4; // 7 questions x max score of 4
@@ -77,26 +77,17 @@ if ($isReplay) {
         die('Academic average is required. <a href="assessment.php">Go back</a>');
     }
     $academicAverage = max(0, min(100, (float) $academicAverageRaw));
-
-    // Dream career (php/assessment.php's cluster -> job picker, required there).
-    // Same server-side enforcement pattern as academic average above.
-    $dreamCareerId = (int) ($_POST['dream_career_id'] ?? 0);
-    if ($dreamCareerId <= 0) {
-        http_response_code(400);
-        die('Please choose a dream career. <a href="assessment.php">Go back</a>');
-    }
 }
 
 $riasecTypeNames = ['R' => 'Realistic', 'I' => 'Investigative', 'A' => 'Artistic', 'S' => 'Social', 'E' => 'Enterprising', 'C' => 'Conventional'];
 
-// Compute the dream career's own match score directly in PHP (same
+// Compute each career's match score directly in PHP (same
 // mean-centered cosine similarity math as the matching microservice —
 // see matching-service/app.py's profile_similarity() for why plain cosine
 // similarity on raw 0-1 RIASEC vectors was a poor discriminator: every
 // vector lives in the same all-positive octant of 6D space, so even a
 // mismatched career scored 90%+ purely from baseline overlap) rather than
-// round-tripping through Flask a second time — this also means the
-// dream-career section still works even if the matching service is down.
+// round-tripping through Flask a second time (used to rebuild saved results).
 //
 // Mean-centering each profile before comparing scores the *shape* of the
 // profile (which traits are relatively high/low vs each other) instead of
@@ -126,9 +117,7 @@ function cosine_similarity_riasec(array $a, array $b): float
 
 // Shared: turn a `careers` row into the display-ready array (with computed
 // match score + top contributing dimensions) used by render_career_card().
-// Reused for the dream career itself and for every other career in the same
-// field/industry cluster, so "your dream career" and "everything else in
-// that field" are computed identically.
+// Used to rebuild every saved recommendation identically on replay.
 function build_career_match_data(array $careerRow, array $studentVectorAssoc): array
 {
     $careerVector = [
@@ -166,6 +155,8 @@ function build_career_match_data(array $careerRow, array $studentVectorAssoc): a
         'daily_task' => $careerRow['daily_task'],
         'educational_pathway' => $careerRow['educational_pathway'],
         'key_subjects' => $careerRow['key_subjects'] ?? null,
+        'source' => $careerRow['source'] ?? null,
+        'updated_at' => $careerRow['updated_at'] ?? null,
         'match_score' => round($score, 2),
         'top_dimensions' => $topDimensions,
         'career_riasec' => [
@@ -179,87 +170,16 @@ $studentVectorAssoc = ['R' => $riasec['R'], 'I' => $riasec['I'], 'A' => $riasec[
 // 0-100 version, for the "traits to strengthen" gap comparison in render_career_card().
 $studentRiasecPct = array_map(fn($v) => round($v * 100, 1), $studentVectorAssoc);
 
-$dreamStmt = $pdo->prepare("SELECT * FROM careers WHERE career_id = :id AND status = 'active'");
-$dreamStmt->execute(['id' => $dreamCareerId]);
-$dreamCareer = $dreamStmt->fetch();
-
-$dreamCareerData = null;
-if ($dreamCareer) {
-    $dreamCareerData = build_career_match_data($dreamCareer, $studentVectorAssoc);
-    // On a replayed (GET) view, the AI commentary was already generated and
-    // cached on student_profiles the first time this profile was submitted —
-    // reuse it here instead of calling Gemini again on every back-nav/refresh.
-    if ($isReplay) {
-        $dreamCareerData['ai_summary'] = $replayProfile['ai_summary'] ?? null;
-        $dreamCareerData['ai_career_commentary'] = $replayProfile['ai_career_commentary'] ?? null;
-        $dreamCareerData['ai_skills_are_suggested'] = !empty($replayProfile['ai_skills_are_suggested']);
-    }
-}
-
-// If a Local and an International career for essentially the same role both
-// exist in the catalog (e.g. both approved as "Registered Nurse" — one from
-// PhilJobNet, one from O*NET/Adzuna/RemoteOK — see migration_19_career_scope.sql),
-// show them side by side for the student's DREAM career specifically, so they
-// can compare local vs. international pay/pathway/outlook. Matching by title
-// similarity (PHP's similar_text(), same >=55% threshold used elsewhere in
-// this app for "is this the same career?" checks) rather than a hard link,
-// since most careers won't have a counterpart at all — in that case this
-// just stays null and the section renders exactly as it did before.
-$dreamCareerCounterpart = null;
-if ($dreamCareer) {
-    $wantScope = $dreamCareer['career_scope'] === 'local' ? 'international' : 'local';
-    $candidatesStmt = $pdo->prepare(
-        "SELECT * FROM careers WHERE status = 'active' AND career_scope = :scope AND career_id != :id"
-    );
-    $candidatesStmt->execute(['scope' => $wantScope, 'id' => $dreamCareer['career_id']]);
-
-    $needle = strtolower(trim($dreamCareer['career_title']));
-    $bestMatch = null;
-    $bestPercent = 0.0;
-    foreach ($candidatesStmt->fetchAll() as $candidate) {
-        $title = strtolower(trim($candidate['career_title']));
-        if ($title === $needle) {
-            $bestMatch = $candidate;
-            $bestPercent = 100.0;
-            break;
-        }
-        similar_text($title, $needle, $percent);
-        if ($percent > $bestPercent) {
-            $bestPercent = $percent;
-            $bestMatch = $candidate;
-        }
-    }
-    if ($bestMatch && $bestPercent >= 55) {
-        $dreamCareerCounterpart = build_career_match_data($bestMatch, $studentVectorAssoc);
-    }
-}
-
-// The student picked one specific job, but the point of the field/industry
-// grouping is the whole field — so also show every other active career in
-// that same category, ranked by fit, instead of just the single job title.
-$fieldCareers = [];
-if ($dreamCareerData && $dreamCareerData['career_category']) {
-    $fieldStmt = $pdo->prepare(
-        "SELECT * FROM careers WHERE status = 'active' AND career_category = :category AND career_id != :dream_id"
-    );
-    $fieldStmt->execute(['category' => $dreamCareerData['career_category'], 'dream_id' => $dreamCareerData['career_id']]);
-    foreach ($fieldStmt->fetchAll() as $row) {
-        $fieldCareers[] = build_career_match_data($row, $studentVectorAssoc);
-    }
-    usort($fieldCareers, function ($a, $b) {
-        return $b['match_score'] <=> $a['match_score'];
-    });
-}
-
 $result = null;
 $errorMessage = null;
 $hasMatchResults = false;
+$aiSummary = null;
 
 if ($isReplay) {
-    // Rebuild the "other careers" list purely from what was already saved —
+    // Rebuild the recommendations list purely from what was already saved —
     // no Flask call, no re-insert. Each recommended career is re-run through
     // build_career_match_data(), the same local/deterministic function used
-    // above for the dream career and field careers, so it comes back with
+    // for every recommendation, so it comes back with
     // the exact same shape render_career_card() needs (title, description,
     // top_dimensions, career_riasec, etc.) — the raw Flask response never
     // had to be cached for this to work, since match_score is a pure
@@ -286,6 +206,14 @@ if ($isReplay) {
             }
         }
     }
+    // AI commentary is only generated for the single best match (rank 1), at
+    // submit time, and cached on student_profiles — reuse it here instead of
+    // calling the AI again on every back-nav/refresh.
+    if ($reconstructed) {
+        $reconstructed[0]['ai_career_commentary'] = $replayProfile['ai_career_commentary'] ?? null;
+        $reconstructed[0]['ai_skills_are_suggested'] = !empty($replayProfile['ai_skills_are_suggested']);
+    }
+    $aiSummary = $replayProfile['ai_summary'] ?? null;
     $result = ['recommendations' => $reconstructed];
     $hasMatchResults = !empty($reconstructed);
 } else {
@@ -330,20 +258,18 @@ if ($isReplay) {
 }
 
 // Save this submission + its recommendations so the student can look back
-// at it later on student_history.php. Saved whenever we have either a
-// dream-career fit (computed locally, doesn't need the matching service) or
-// a successful matching-service result — so a Flask hiccup doesn't wipe out
-// the dream-career half of the feature. Skipped entirely on replay — this
-// exact profile was already saved the first time it was submitted, and
-// re-running it here on every back-nav/refresh is exactly the duplicate-save
-// bug the redirect above exists to prevent.
-if (!$isReplay && ($dreamCareerData || $hasMatchResults)) {
+// at it later on student_history.php. Saved only when the matching service
+// returned results. Skipped entirely on replay — this exact profile was
+// already saved the first time it was submitted, and re-running it here on
+// every back-nav/refresh is exactly the duplicate-save bug the redirect
+// above exists to prevent.
+if (!$isReplay && $hasMatchResults) {
     try {
         $pdo->beginTransaction();
 
         $insertProfile = $pdo->prepare(
-            "INSERT INTO student_profiles (student_id, r_score, i_score, a_score, s_score, e_score, c_score, skills, academic_average, dream_career_id)
-             VALUES (:student_id, :r, :i, :a, :s, :e, :c, :skills, :academic_average, :dream_career_id)"
+            "INSERT INTO student_profiles (student_id, r_score, i_score, a_score, s_score, e_score, c_score, skills, academic_average)
+             VALUES (:student_id, :r, :i, :a, :s, :e, :c, :skills, :academic_average)"
         );
         $insertProfile->execute([
             'student_id' => $currentStudent['student_id'],
@@ -351,7 +277,6 @@ if (!$isReplay && ($dreamCareerData || $hasMatchResults)) {
             's' => $riasec['S'], 'e' => $riasec['E'], 'c' => $riasec['C'],
             'skills' => $studentSkillsRaw !== '' ? $studentSkillsRaw : null,
             'academic_average' => $academicAverage,
-            'dream_career_id' => $dreamCareerData ? $dreamCareerData['career_id'] : null,
         ]);
         $profileId = (int) $pdo->lastInsertId();
 
@@ -380,10 +305,10 @@ if (!$isReplay && ($dreamCareerData || $hasMatchResults)) {
         // effort, generated once here (after the transaction above has
         // already committed, so this network call to an LLM — which can
         // take several seconds — never holds a DB transaction open) and
-        // cached rather than regenerated on every future page view. Only
-        // runs when there's a dream career to comment on (always true for
-        // new submissions — dream career is required by assessment.php).
-        // Grounded in that career's own counselor-approved fields; if it has
+        // cached rather than regenerated on every future page view. To limit
+        // AI usage (token cost) it runs for ONE career only: the student's
+        // single best match (rank 1). Grounded in that career's own
+        // counselor-approved fields; if it has
         // no verified skill_requirements yet, the Flask/Gemini side flags
         // that itself in Python (skills_are_suggested) so the pages can
         // label those skills distinctly rather than passing them off as
@@ -392,12 +317,16 @@ if (!$isReplay && ($dreamCareerData || $hasMatchResults)) {
         // columns simply stay NULL and every page that would show them
         // falls back to exactly what it shows today, same convention as
         // /enrich.
-        if ($dreamCareerData) {
+        $topCareerId = (int) ($result['recommendations'][0]['career_id'] ?? 0);
+        $topCareerStmt = $pdo->prepare("SELECT * FROM careers WHERE career_id = :id");
+        $topCareerStmt->execute(['id' => $topCareerId]);
+        $topCareerRow = $topCareerId > 0 ? $topCareerStmt->fetch() : false;
+        if ($topCareerRow) {
             try {
-                $dreamSkillsStmt = $pdo->prepare(
+                $topSkillsStmt = $pdo->prepare(
                     "SELECT skill_name, proficiency_level, is_required FROM skill_requirements WHERE career_id = :id"
                 );
-                $dreamSkillsStmt->execute(['id' => $dreamCareerData['career_id']]);
+                $topSkillsStmt->execute(['id' => $topCareerId]);
                 // PDO returns every column as a PHP string here (no
                 // ATTR_STRINGIFY_FETCHES override in db.php), so is_required
                 // comes back as "0"/"1" rather than a real bool. PHP's
@@ -405,19 +334,19 @@ if (!$isReplay && ($dreamCareerData || $hasMatchResults)) {
                 // boundary, Python's bool("0") is true -- cast to a real
                 // bool now so json_encode emits an actual JSON true/false
                 // instead of a truthy string.
-                $dreamRequiredSkills = array_map(function ($s) {
+                $topRequiredSkills = array_map(function ($s) {
                     $s['is_required'] = (bool) ((int) $s['is_required']);
                     return $s;
-                }, $dreamSkillsStmt->fetchAll());
+                }, $topSkillsStmt->fetchAll());
 
                 $commentaryPayload = json_encode([
                     'riasec' => $studentRiasecPct,
                     'academic_average' => $academicAverage,
                     'student_skills' => $studentSkillsRaw !== '' ? $studentSkillsRaw : null,
-                    'career_title' => $dreamCareerData['career_title'],
-                    'career_description' => $dreamCareerData['description'],
-                    'career_key_subjects' => $dreamCareerData['key_subjects'],
-                    'career_required_skills' => $dreamRequiredSkills,
+                    'career_title' => $topCareerRow['career_title'],
+                    'career_description' => $topCareerRow['description'],
+                    'career_key_subjects' => $topCareerRow['key_subjects'] ?? null,
+                    'career_required_skills' => $topRequiredSkills,
                 ]);
 
                 $chCommentary = curl_init(STUDENT_COMMENTARY_SERVICE_URL);
@@ -453,9 +382,9 @@ if (!$isReplay && ($dreamCareerData || $hasMatchResults)) {
                     // Reflected into the in-memory array too, so the results
                     // page rendered further down this same request shows it
                     // immediately instead of only on the next page load.
-                    $dreamCareerData['ai_summary'] = $commentaryResult['summary'];
-                    $dreamCareerData['ai_career_commentary'] = $commentaryResult['career_commentary'];
-                    $dreamCareerData['ai_skills_are_suggested'] = !empty($commentaryResult['skills_are_suggested']);
+                    $aiSummary = $commentaryResult['summary'];
+                    $result['recommendations'][0]['ai_career_commentary'] = $commentaryResult['career_commentary'];
+                    $result['recommendations'][0]['ai_skills_are_suggested'] = !empty($commentaryResult['skills_are_suggested']);
                 }
                 // Any other outcome (unreachable service, non-200, ai_commentary
                 // false) — leave the ai_* columns NULL, exactly the same
@@ -560,10 +489,11 @@ try {
     .error { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15; padding: 14px 20px; border-radius: 8px; }
     a.back { display: inline-block; margin-top: 20px; color: #6e1423; }
     .skills-box { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 14.5px; }
-    .skills-box .pct { font-weight: bold; color: #6e1423; }
+    .skills-box .skills-good { display: block; background: #e8f5ec; border: 1px solid #b9dfc6; color: #0f5132; border-radius: 8px; padding: 10px 14px; font-weight: bold; line-height: 1.5; }
     .skill-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0; font-size: 13.5px; }
     .skill-have { background: #d1e7dd; color: #0f5132; }
     .skill-need { background: #fff3cd; color: #856404; }
+    .skill-needed { background: #f0dde1; color: #6e1423; }
     /* Side-by-side layout for the "how were these calculated" explanation
        and the RIASEC bar chart — was two full-width stacked boxes, now a
        matched pair of cards so the page reads as a dashboard at a glance
@@ -589,6 +519,7 @@ try {
     .how-it-works .content { font-size: 15px; line-height: 1.6; color: #444; }
     .how-it-works .content p:first-child { margin-top: 0; }
     .how-it-works .content p:last-child { margin-bottom: 0; }
+    .source-line { font-size: 12.5px; color: #888; margin: 2px 0 6px; }
     .why-match { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 14.5px; color: #444; }
     .why-match .dim { display: inline-block; background: #f0dde1; color: #6e1423; padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0; font-size: 13.5px; font-weight: bold; }
     .growth-box { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 14.5px; color: #444; }
@@ -602,22 +533,13 @@ try {
     .ai-suggestion-tag { background: #fff3cd; color: #856404; border: 1px solid #ffe69c; border-radius: 10px; padding: 2px 9px; font-size: 12px; font-weight: bold; cursor: help; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 
-    .dream-career-section { max-width: 760px; margin: 0 auto 30px; }
-    .dream-career-section.has-counterpart { max-width: 1180px; }
-    .dream-career-section h2 { font-size: 17.5px; color: #6e1423; margin: 0 0 10px; }
-    .career.dream-career-card { border: 2px solid #6e1423; box-shadow: 0 6px 18px rgba(110,20,35,0.14); }
-    .dream-note { font-size: 13.5px; color: #888; margin: -4px 0 12px; }
-    .dream-compare-row { display: flex; gap: 20px; align-items: flex-start; }
-    .dream-compare-row .career { flex: 1; min-width: 0; margin-bottom: 0; }
-    @media (max-width: 760px) { .dream-compare-row { flex-direction: column; } }
-
-    .field-careers-section { max-width: 760px; margin: 0 auto 30px; }
-    .field-careers-section h2 { font-size: 17.5px; color: #6e1423; margin: 0 0 10px; }
-
-    .explore-others { max-width: 760px; margin: 0 auto 20px; }
-    .explore-others summary { cursor: pointer; font-weight: bold; color: #6e1423; padding: 12px 0; font-size: 16.5px; }
-    .explore-others .explore-note { font-size: 14px; color: #888; margin: -6px 0 16px; }
-    .inline-note { font-size: 14.5px; color: #888; font-style: italic; max-width: 760px; margin: 0 auto 20px; }
+    .best-match-section, .other-matches-section { max-width: 760px; margin: 0 auto 30px; }
+    .best-match-section h2, .other-matches-section h2 { font-size: 17.5px; color: #6e1423; margin: 0 0 10px; }
+    .career.best-match-card { border: 2px solid #6e1423; box-shadow: 0 6px 18px rgba(110,20,35,0.14); }
+    .match-note { font-size: 13.5px; color: #888; margin: -4px 0 12px; }
+.info-details { background: #f9f3f4; border: 1px solid #ecd5d9; border-radius: 8px; padding: 10px 14px; margin: 10px 0; font-size: 14.5px; line-height: 1.5; }
+    .info-details summary { cursor: pointer; font-weight: bold; color: #6e1423; }
+    .info-details ul { margin: 8px 0 0; padding-left: 20px; }
 </style>
 </head>
 <body>
@@ -626,6 +548,7 @@ try {
     <?php require __DIR__ . '/student_nav.php'; ?>
 
     <h1>Your Career Recommendations</h1>
+    <?php render_riasec_guide(); ?>
 
     <div class="results-top-row">
         <div class="how-it-works">
@@ -662,17 +585,16 @@ try {
         </div>
     <?php endif; ?>
 
-    <?php if (!empty($dreamCareerData['ai_summary'])): ?>
+    <?php if (!empty($aiSummary)): ?>
         <div class="ai-insights-box">
             <div class="ai-insights-label">✨ AI Insights — a note on your own results</div>
-            <p><?= htmlspecialchars($dreamCareerData['ai_summary']) ?></p>
+            <p><?= htmlspecialchars($aiSummary) ?></p>
         </div>
     <?php endif; ?>
 
     <?php
-        // Shared card renderer for the dream-career highlight, same-field
-        // careers, and the "explore other careers" list, so all three stay
-        // visually/structurally identical.
+        // Shared card renderer for the best match and the other recommended
+        // careers, so they stay visually/structurally identical.
         function render_career_card($career, $pdo, $studentSkillsRaw, $riasecNames, $studentRiasecPct, $extraClass = '')
         {
             // Pass null (not '') when the student left "Your skills" blank —
@@ -718,11 +640,12 @@ try {
                 </h3>
                 <p><?= htmlspecialchars($career['description']) ?></p>
                 <p><strong>Typical tasks:</strong> <?= htmlspecialchars($career['daily_task']) ?></p>
-                <p><strong>Educational pathway:</strong> <?= htmlspecialchars($career['educational_pathway']) ?></p>
+                <p><strong>Programs you can enroll in:</strong> <?= htmlspecialchars($career['educational_pathway']) ?></p>
+                <p class="source-line"><?= htmlspecialchars(career_source_line($career)) ?></p>
 
                 <?php if (!empty($career['top_dimensions'])): ?>
                     <div class="why-match">
-                        <strong>Why this match?</strong> Your strongest overlap with this career:
+                        <strong>Why this match?</strong> <?= htmlspecialchars(recommendation_reason($career)) ?><br>Your strongest overlap with this career:
                         <div style="margin-top:6px;">
                             <?php foreach ($career['top_dimensions'] as $dim): ?>
                                 <span class="dim"><?= $riasecNames[$dim['type']] ?> — Your Score: <?= (int) round($dim['student_pct']) ?>% · Career: <?= (int) round($dim['career_pct']) ?>%</span>
@@ -760,15 +683,17 @@ try {
                     </div>
                 <?php endif; ?>
 
-                <?php if ($skillMatch && $skillMatch['match_percent'] !== null): ?>
+                <?php if ($skillMatch && $skillMatch['required_count'] > 0): ?>
+                    <?php $skillMsg = skill_match_message($skillMatch); ?>
                     <div class="skills-box">
-                        <span class="pct"><?= $skillMatch['match_percent'] ?>%</span> of this career's required skills match what you listed.
+                        <?php if ($skillMsg['text'] !== ''): ?><span class="skills-good"><?= htmlspecialchars($skillMsg['text']) ?></span><?php endif; ?>
+                        <div style="margin-top:8px;"><strong><?= htmlspecialchars($skillMsg['label']) ?></strong></div>
                         <div style="margin-top:6px;">
                             <?php foreach ($skillMatch['matched'] as $s): ?>
                                 <span class="skill-tag skill-have">✓ <?= htmlspecialchars($s['skill_name']) ?></span>
                             <?php endforeach; ?>
                             <?php foreach ($skillMatch['missing'] as $s): ?>
-                                <span class="skill-tag skill-need">to develop: <?= htmlspecialchars($s['skill_name']) ?></span>
+                                <span class="skill-tag skill-needed"><?= htmlspecialchars($s['skill_name']) ?></span>
                             <?php endforeach; ?>
                         </div>
                     </div>
@@ -780,54 +705,28 @@ try {
         }
     ?>
 
-    <?php if ($dreamCareerData): ?>
-        <div class="dream-career-section<?= $dreamCareerCounterpart ? ' has-counterpart' : '' ?>">
-            <h2>🎯 Your Dream Career<?= $dreamCareerData['career_category'] ? ' · ' . htmlspecialchars($dreamCareerData['career_category']) : '' ?></h2>
-            <?php if ($dreamCareerCounterpart): ?>
-                <p class="dream-note">This is the career you picked before the assessment — since it's available both locally and internationally, here's how your RIASEC profile fits each version.</p>
-                <div class="dream-compare-row">
-                    <?php render_career_card($dreamCareerData, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'dream-career-card'); ?>
-                    <?php render_career_card($dreamCareerCounterpart, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'dream-career-card'); ?>
-                </div>
-            <?php else: ?>
-                <p class="dream-note">This is the career you picked before the assessment — here's how your RIASEC profile actually fits it.</p>
-                <?php render_career_card($dreamCareerData, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'dream-career-card'); ?>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($fieldCareers): ?>
-        <div class="field-careers-section">
-            <h2>📂 More careers in <?= htmlspecialchars($dreamCareerData['career_category']) ?> (<?= count($fieldCareers) ?>)</h2>
-            <p class="dream-note">Other careers in the same field, ranked by how well your RIASEC profile fits each one.</p>
-            <?php foreach ($fieldCareers as $career): ?>
-                <?php render_career_card($career, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct); ?>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($dreamCareerData && $errorMessage && !$hasMatchResults): ?>
-        <p class="inline-note">Other career suggestions aren't available right now (<?= htmlspecialchars($errorMessage) ?>) — your dream career match above was calculated independently, so it's unaffected.</p>
-    <?php elseif ($errorMessage && !$hasMatchResults): ?>
+    <?php if ($errorMessage && !$hasMatchResults): ?>
         <div class="error"><?= htmlspecialchars($errorMessage) ?></div>
     <?php elseif ($hasMatchResults): ?>
         <?php
-            $shownCareerIds = array_map(function ($c) { return $c['career_id']; }, $fieldCareers);
-            if ($dreamCareerData) {
-                $shownCareerIds[] = $dreamCareerData['career_id'];
-            }
-            $otherCareers = array_filter($result['recommendations'], function ($c) use ($shownCareerIds) {
-                return !in_array((int) ($c['career_id'] ?? 0), $shownCareerIds, true);
-            });
+            $allRecommendations = array_values($result['recommendations']);
+            $bestMatch = $allRecommendations[0];
+            $otherMatches = array_slice($allRecommendations, 1);
         ?>
-        <?php if ($otherCareers): ?>
-            <details class="explore-others">
-                <summary>🔎 Explore other careers outside <?= $dreamCareerData ? 'your field' : 'your pick' ?> that might suit you (<?= count($otherCareers) ?>)</summary>
-                <p class="explore-note">These are ranked purely by RIASEC fit and fall outside your chosen field — some may be in completely different industries, worth a look if you're still exploring.</p>
-                <?php foreach ($otherCareers as $career): ?>
+        <div class="best-match-section">
+            <h2>🎯 Your Best Match</h2>
+            <p class="match-note">Based only on your answers, this is the career your RIASEC profile fits best.</p>
+            <?php render_career_card($bestMatch, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'best-match-card'); ?>
+        </div>
+
+        <?php if ($otherMatches): ?>
+            <div class="other-matches-section">
+                <h2>More careers that fit you (<?= count($otherMatches) ?>)</h2>
+                <p class="match-note">Ranked by how well your RIASEC profile fits each career.</p>
+                <?php foreach ($otherMatches as $career): ?>
                     <?php render_career_card($career, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct); ?>
                 <?php endforeach; ?>
-            </details>
+            </div>
         <?php endif; ?>
     <?php endif; ?>
 
