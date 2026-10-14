@@ -324,6 +324,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $message = ['type' => 'success', 'text' => "Updated \"$title\" — saved on " . date('M j, Y \\a\\t g:i A') . "."];
         }
+    } elseif ($action === 'link_postings') {
+        // Refresh the "Employment Opportunities" data students see: link every
+        // already-approved crawler posting that has no career link yet to the
+        // live career with the same title (only when exactly one career matches,
+        // so nothing is guessed). New approvals link themselves automatically.
+        try {
+            $unlinked = $pdo->query("SELECT pending_id, source_title FROM pending_careers WHERE status = 'approved' AND approved_career_id IS NULL")->fetchAll();
+            $find = $pdo->prepare("SELECT career_id FROM careers WHERE LOWER(TRIM(career_title)) = LOWER(TRIM(:t))");
+            $link = $pdo->prepare("UPDATE pending_careers SET approved_career_id = :c WHERE pending_id = :p AND approved_career_id IS NULL");
+            $linked = 0;
+            foreach ($unlinked as $u) {
+                $find->execute(['t' => $u['source_title']]);
+                $ids = $find->fetchAll(PDO::FETCH_COLUMN);
+                if (count($ids) === 1) {
+                    $link->execute(['c' => (int) $ids[0], 'p' => (int) $u['pending_id']]);
+                    $linked += $link->rowCount();
+                }
+            }
+            $left = count($unlinked) - $linked;
+            $message = ['type' => 'success', 'text' => "Refreshed employment opportunities: linked $linked approved job posting(s) to their careers" . ($left > 0 ? "; $left posting(s) had no single matching career title and were left unlinked." : '.')];
+        } catch (Exception $e) {
+            $message = ['type' => 'error', 'text' => 'Could not refresh job postings: ' . $e->getMessage()];
+        }
     } elseif ($action === 'toggle_status' && $careerId) {
         $stmt = $pdo->prepare("SELECT career_title, status FROM careers WHERE career_id = :id");
         $stmt->execute(['id' => $careerId]);
@@ -464,6 +487,17 @@ $allCareerIds = array_map('intval', array_column($careers, 'career_id'));
             <form class="search-form" method="GET">
                 <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Search careers by title">
                 <button type="submit">Search</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <form method="POST" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+                <input type="hidden" name="action" value="link_postings">
+                <div style="flex:1;min-width:260px;">
+                    <strong style="color:#6e1423;">💼 Refresh employment opportunities</strong>
+                    <p style="margin:4px 0 0;font-size:13.5px;color:#888;">Links approved job postings to the matching career so students see them in the career profile's Employment Opportunities box. Safe to run any time — it only fills in missing links and never changes careers.</p>
+                </div>
+                <button type="submit" class="btn btn-primary" style="white-space:nowrap;">🔄 Refresh job postings</button>
             </form>
         </div>
 
