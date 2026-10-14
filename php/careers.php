@@ -634,7 +634,9 @@ if ($statusFilter === 'pending') {
     .pending-summary-title { font-weight: bold; color: #222; font-size: 16.5px; }
     .pending-dup-tag { background: #fdecea; color: #842029; border: 1px solid #f5c2c7; border-radius: 10px; padding: 3px 10px; font-size: 12.5px; font-weight: bold; white-space: nowrap; }
     .pending-ai-tag { background: #f3edfb; color: #6f42c1; border: 1px solid #e2d4f5; border-radius: 10px; padding: 3px 10px; font-size: 12.5px; font-weight: bold; white-space: nowrap; }
-    .pending-summary-date { margin-left: auto; color: #888; font-size: 13.5px; white-space: nowrap; }
+    .pending-summary-date { margin-left: auto; white-space: nowrap; display: flex; gap: 6px; align-items: center; }
+    .pending-summary-date .ts-badge { background: #e7f1ff; color: #0a4a9e; border: 1px solid #b6d4fe; border-radius: 12px; padding: 3px 10px; font-weight: bold; font-size: 13px; }
+    .pending-summary-date .ts-badge.reviewed { background: #d1e7dd; color: #0f5132; border-color: #a3cfbb; }
     .pending-body { padding: 16px 18px 18px; border-top: 1px solid #e5e5e5; margin-top: 2px; }
     .meta { font-size: 14.5px; color: #666; margin-bottom: 10px; }
     .meta a { color: #6e1423; }
@@ -907,7 +909,12 @@ if ($statusFilter === 'pending') {
                 <?php if ($isEnriched): ?>
                     <span class="pending-ai-tag">✨ AI-enriched</span>
                 <?php endif; ?>
-                <span class="pending-summary-date">Scraped <?= htmlspecialchars($row['scraped_at']) ?></span>
+                <span class="pending-summary-date">
+                    <span class="ts-badge" title="When the crawler collected this posting">🕒 Scraped <?= htmlspecialchars(date('M j, Y g:i A', strtotime($row['scraped_at']))) ?></span>
+                    <?php if (!empty($row['reviewed_at'])): ?>
+                        <span class="ts-badge reviewed" title="When a counselor/administrator reviewed this">✔ Reviewed <?= htmlspecialchars(date('M j, Y g:i A', strtotime($row['reviewed_at']))) ?></span>
+                    <?php endif; ?>
+                </span>
             </summary>
 
             <div class="pending-body">
