@@ -53,6 +53,48 @@ $latestSkillsStmt->execute(['id' => $currentStudent['student_id']]);
 $latestSkillsRaw = $latestSkillsStmt->fetchColumn();
 $skillMatch = compute_skill_match($pdo, $careerId, $latestSkillsRaw ?: null);
 
+// Employment opportunities: the real job postings the crawler collected for this
+// career (linked at approval time via pending_careers.approved_career_id). Shown
+// so students can see actual hiring examples — employers, locations, pay — and
+// how recent they are. Wrapped in try/catch so older databases without the link
+// column simply show no panel.
+$postings = [];
+try {
+    $postStmt = $pdo->prepare(
+        "SELECT employer, location, employment_type, salary, education_level, source_url, data_source, scraped_at
+         FROM pending_careers
+         WHERE approved_career_id = :id AND status = 'approved'
+         ORDER BY scraped_at DESC LIMIT 50"
+    );
+    $postStmt->execute(['id' => $careerId]);
+    $postings = $postStmt->fetchAll();
+} catch (Exception $e) {
+    $postings = [];
+}
+$postSummary = null;
+if ($postings) {
+    $uniq = function (string $col, int $max) use ($postings) {
+        $seen = [];
+        foreach ($postings as $p) {
+            $v = trim((string) ($p[$col] ?? ''));
+            if ($v !== '' && !in_array(mb_strtolower($v), array_map('mb_strtolower', $seen), true)) {
+                $seen[] = $v;
+            }
+            if (count($seen) >= $max) break;
+        }
+        return $seen;
+    };
+    $postSummary = [
+        'count' => count($postings),
+        'employers' => $uniq('employer', 5),
+        'locations' => $uniq('location', 5),
+        'types' => $uniq('employment_type', 4),
+        'salaries' => $uniq('salary', 3),
+        'latest' => career_updated_label($postings[0]['scraped_at'] ?? null),
+        'links' => array_slice(array_filter($postings, fn($p) => preg_match('#^https?://#i', (string) $p['source_url'])), 0, 3),
+    ];
+}
+
 $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score' => 'Artistic', 's_score' => 'Social', 'e_score' => 'Enterprising', 'c_score' => 'Conventional'];
 
 // AI commentary is generated ONLY for a student's single best match, once, at
@@ -130,6 +172,10 @@ if ($cachedCommentaryRow) {
 .src-badge, .upd-badge { display: inline-block; border-radius: 12px; padding: 3px 10px; font-size: 12.5px; font-weight: bold; margin: 2px 6px 2px 0; }
     .src-badge { background: #f0dde1; color: #6e1423; }
     .upd-badge { background: #e7f1ff; color: #0a4a9e; border: 1px solid #b6d4fe; }
+.employment-panel { background: #eef7f0; border-color: #cfe6d5; }
+    .employment-panel h2 { color: #0f5132; }
+    .emp-note { font-size: 13.5px; color: #555; }
+    .employment-panel a { color: #0f5132; }
 </style>
 </head>
 <body>
@@ -172,6 +218,24 @@ if ($cachedCommentaryRow) {
         <div class="panel">
             <h2>📚 Subjects to Focus On</h2>
             <p><?= htmlspecialchars($career['key_subjects']) ?></p>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($postSummary): ?>
+        <div class="panel employment-panel">
+            <h2>💼 Employment Opportunities</h2>
+            <p class="emp-note">Based on <?= (int) $postSummary['count'] ?> real job posting<?= $postSummary['count'] === 1 ? '' : 's' ?> collected for this career<?= $postSummary['latest'] ? ' (most recent collected ' . htmlspecialchars($postSummary['latest']) . ')' : '' ?>. Openings change often, so use these as examples of what employers are looking for.</p>
+            <?php if ($postSummary['employers']): ?><p><strong>Example employers:</strong> <?= htmlspecialchars(implode(' · ', $postSummary['employers'])) ?></p><?php endif; ?>
+            <?php if ($postSummary['locations']): ?><p><strong>Where hiring:</strong> <?= htmlspecialchars(implode(' · ', $postSummary['locations'])) ?></p><?php endif; ?>
+            <?php if ($postSummary['types']): ?><p><strong>Employment type:</strong> <?= htmlspecialchars(implode(' · ', $postSummary['types'])) ?></p><?php endif; ?>
+            <?php if ($postSummary['salaries']): ?><p><strong>Posted pay examples:</strong> <?= htmlspecialchars(implode(' · ', $postSummary['salaries'])) ?></p><?php endif; ?>
+            <?php if ($postSummary['links']): ?>
+                <p><strong>Original postings:</strong>
+                <?php foreach ($postSummary['links'] as $i => $lp): ?>
+                    <a href="<?= htmlspecialchars($lp['source_url']) ?>" target="_blank" rel="noopener noreferrer">Posting <?= $i + 1 ?> (<?= htmlspecialchars(career_source_label($lp['data_source'])) ?>)</a><?= $i < count($postSummary['links']) - 1 ? ' · ' : '' ?>
+                <?php endforeach; ?>
+                </p>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 
