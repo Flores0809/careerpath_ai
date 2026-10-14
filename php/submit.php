@@ -519,7 +519,10 @@ try {
     .how-it-works .content { font-size: 15px; line-height: 1.6; color: #444; }
     .how-it-works .content p:first-child { margin-top: 0; }
     .how-it-works .content p:last-child { margin-bottom: 0; }
-    .source-line { font-size: 12.5px; color: #888; margin: 2px 0 6px; }
+    .source-line { margin: 4px 0 8px; }
+    .src-badge, .upd-badge { display: inline-block; border-radius: 12px; padding: 3px 10px; font-size: 12.5px; font-weight: bold; margin: 2px 6px 2px 0; }
+    .src-badge { background: #f0dde1; color: #6e1423; }
+    .upd-badge { background: #e7f1ff; color: #0a4a9e; border: 1px solid #b6d4fe; }
     .why-match { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 14.5px; color: #444; }
     .why-match .dim { display: inline-block; background: #f0dde1; color: #6e1423; padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0; font-size: 13.5px; font-weight: bold; }
     .growth-box { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 14.5px; color: #444; }
@@ -641,7 +644,7 @@ try {
                 <p><?= htmlspecialchars($career['description']) ?></p>
                 <p><strong>Typical tasks:</strong> <?= htmlspecialchars($career['daily_task']) ?></p>
                 <p><strong>Programs you can enroll in:</strong> <?= htmlspecialchars($career['educational_pathway']) ?></p>
-                <p class="source-line"><?= htmlspecialchars(career_source_line($career)) ?></p>
+                <p class="source-line"><?= career_source_badges($career) ?></p>
 
                 <?php if (!empty($career['top_dimensions'])): ?>
                     <div class="why-match">

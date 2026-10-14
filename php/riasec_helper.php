@@ -42,6 +42,17 @@ function career_updated_label(?string $updatedAt): ?string
     return $ts ? date('M j, Y', $ts) : null;
 }
 
+/** Prominent HTML badge row: source + last-updated date (already escaped). */
+function career_source_badges(array $careerRow): string
+{
+    $html = '<span class="src-badge">📌 Source: ' . htmlspecialchars(career_source_label($careerRow['source'] ?? null)) . '</span>';
+    $date = career_updated_label($careerRow['updated_at'] ?? null);
+    if ($date) {
+        $html .= '<span class="upd-badge">🕒 Last updated: ' . htmlspecialchars($date) . '</span>';
+    }
+    return $html;
+}
+
 /** One-line "Source: X · Last updated: Y" for a careers row. */
 function career_source_line(array $careerRow): string
 {

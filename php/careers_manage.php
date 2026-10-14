@@ -15,6 +15,7 @@
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/change_log_helper.php';
+require_once __DIR__ . '/riasec_helper.php';
 $currentUser = require_role(['administrator', 'counselor']);
 
 $pdo = get_db();
@@ -283,11 +284,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $oldCareerStmt->execute(['id' => $careerId]);
             $oldCareer = $oldCareerStmt->fetch();
 
+            // Saving always stamps "last updated" (even if nothing was changed), so a
+            // counselor can re-check a career and click Save to record the review date.
+            // Guarded so this still works before migration_28 adds the column.
+            $touchUpdated = ($oldCareer && array_key_exists('updated_at', $oldCareer)) ? ', updated_at = NOW()' : '';
             $stmt = $pdo->prepare(
                 "UPDATE careers SET
                     career_title = :title, career_category = :category, description = :description, daily_task = :daily_task,
                     educational_pathway = :pathway, key_subjects = :key_subjects, career_scope = :scope,
-                    r_score = :r, i_score = :i, a_score = :a, s_score = :s, e_score = :e, c_score = :c
+                    r_score = :r, i_score = :i, a_score = :a, s_score = :s, e_score = :e, c_score = :c" . $touchUpdated . "
                  WHERE career_id = :id"
             );
             $stmt->execute([
@@ -404,7 +409,10 @@ $allCareerIds = array_map('intval', array_column($careers, 'career_id'));
     .career-row summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 15.5px; }
     .career-row summary::-webkit-details-marker { display: none; }
     .career-row summary .title { font-weight: bold; color: #6e1423; font-size: 16.5px; }
-    .career-row summary .meta { color: #888; font-size: 13.5px; }
+    .career-row summary .meta { color: #888; font-size: 13.5px; text-align: right; }
+    .updated-badge { display: inline-block; background: #e7f1ff; color: #0a4a9e; border: 1px solid #b6d4fe; border-radius: 12px; padding: 3px 10px; font-weight: bold; font-size: 13px; margin-left: 8px; white-space: nowrap; }
+    .updated-badge.stale { background: #fff3cd; color: #856404; border-color: #ffe69c; }
+    .review-line { background: #f0f7ff; border: 1px solid #cfe2ff; border-radius: 8px; padding: 8px 12px; font-size: 14px; margin-bottom: 12px; color: #1b3a63; }
     .status-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12.5px; text-transform: uppercase; margin-left: 8px; }
     .status-active { background: #d1e7dd; color: #0f5132; }
     .status-inactive { background: #eee; color: #666; }
@@ -513,10 +521,20 @@ $allCareerIds = array_map('intval', array_column($careers, 'career_id'));
                             <span class="status-tag" style="background:#fff3cd;color:#856404;">uncategorized</span>
                         <?php endif; ?>
                     </span>
-                    <span class="meta">source: <?= htmlspecialchars($c['source'] ?? 'seed') ?></span>
+                    <span class="meta">
+                        <?= htmlspecialchars(career_source_label($c['source'] ?? null)) ?>
+                        <?php $updLabel = career_updated_label($c['updated_at'] ?? null); ?>
+                        <?php if ($updLabel): ?>
+                            <?php $isStale = strtotime($c['updated_at']) < strtotime('-1 year'); ?>
+                            <span class="updated-badge<?= $isStale ? ' stale' : '' ?>" title="Last time this career was saved, edited, or re-checked"><?= $isStale ? '⚠️' : '🕒' ?> Updated <?= htmlspecialchars($updLabel) ?></span>
+                        <?php endif; ?>
+                    </span>
                 </summary>
 
                 <form method="POST" style="margin-top:14px;">
+                    <?php if ($updLabel): ?>
+                        <div class="review-line">🕒 <strong>Last updated: <?= htmlspecialchars(date('M j, Y g:i A', strtotime($c['updated_at']))) ?></strong> · <?= htmlspecialchars(career_source_label($c['source'] ?? null)) ?>. Students see this date. Re-checked it and nothing needs changing? Just click <em>Save Changes</em> to record today as the review date.</div>
+                    <?php endif; ?>
                     <input type="hidden" name="career_id" value="<?= (int) $c['career_id'] ?>">
 
                     <label>Career title</label>

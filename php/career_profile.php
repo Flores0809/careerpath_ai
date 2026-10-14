@@ -127,6 +127,9 @@ if ($cachedCommentaryRow) {
 
     a.back { display: inline-block; margin-top: 6px; color: #6e1423; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
+.src-badge, .upd-badge { display: inline-block; border-radius: 12px; padding: 3px 10px; font-size: 12.5px; font-weight: bold; margin: 2px 6px 2px 0; }
+    .src-badge { background: #f0dde1; color: #6e1423; }
+    .upd-badge { background: #e7f1ff; color: #0a4a9e; border: 1px solid #b6d4fe; }
 </style>
 </head>
 <body>
@@ -135,7 +138,8 @@ if ($cachedCommentaryRow) {
     <?php require __DIR__ . '/student_nav.php'; ?>
 
     <h1><?= htmlspecialchars($career['career_title']) ?></h1>
-    <p class="source-note">Career profile — reviewed by a counselor/administrator before publishing.<br><?= htmlspecialchars(career_source_line($career)) ?></p>
+    <p class="source-note">Career profile — reviewed by a counselor/administrator before publishing.</p>
+    <p><?= career_source_badges($career) ?></p>
 
     <?php if ($aiCareerCommentary): ?>
         <div class="panel ai-insights-panel">
