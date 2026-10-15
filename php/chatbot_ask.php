@@ -86,7 +86,12 @@ foreach ($faq as $entry) {
 // before; a single keyword is treated as a weak guess -- kept as a
 // fallback, but the AI tier (grounded in the same FAQ plus the live career
 // catalog) gets first shot at giving a more specific answer.
-$isConfidentMatch = $bestEntry !== null && $bestScore >= 2;
+// Greetings / thanks / goodbyes (entries flagged 'instant') only ever have one
+// trigger word in a short message ("hello", "thanks po"), so a single keyword
+// is enough for them -- otherwise a plain "hello" was sent to the AI and used
+// up a Gemini call for a canned reply. Longer messages still need two keywords.
+$isConfidentMatch = $bestEntry !== null
+    && ($bestScore >= 2 || (!empty($bestEntry['instant']) && count($inputTokens) <= 3));
 
 // Second pass: nothing matched exactly (or only a weak 1-keyword guess),
 // so tolerate small typos (a missing space, a dropped/extra letter) by

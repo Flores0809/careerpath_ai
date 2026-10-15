@@ -25,16 +25,19 @@ return [
         'keywords' => ['hello', 'hi', 'hey', 'greetings', 'morning', 'afternoon', 'evening', 'yo', 'sup',
             'kumusta', 'kamusta', 'musta', 'kums'],
         'question' => 'Hey!',
+        'instant' => true, // short small talk: answer straight away, never send to the AI
         'answer' => "Hey! I'm the CareerPath AI assistant. Got questions about RIASEC, the assessment, how your matches are picked, consultations, whatever — just ask away.",
     ],
     [
         'keywords' => ['thanks', 'thank', 'thankyou', 'appreciate', 'ty', 'salamat'],
         'question' => 'No prob!',
+        'instant' => true, // short small talk: answer straight away, never send to the AI
         'answer' => "No problem at all! Hit me up if anything else comes to mind.",
     ],
     [
         'keywords' => ['bye', 'goodbye', 'later', 'cya', 'paalam', 'sige', 'ingat'],
         'question' => 'See ya!',
+        'instant' => true, // short small talk: answer straight away, never send to the AI
         'answer' => "See ya! I'll be right here if you need anything else.",
     ],
     [
