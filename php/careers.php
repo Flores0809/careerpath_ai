@@ -1004,8 +1004,10 @@ if ($statusFilter === 'pending') {
                     <input type="hidden" name="pending_id" value="<?= (int) $row['pending_id'] ?>">
 
                     <?php if ($isEnriched): ?>
+                        <?php $enrichAgeDays = (int) floor((time() - strtotime($row['ai_enriched_at'])) / 86400); ?>
                         <div class="actions" style="margin-top:0;">
-                            <span class="meta">AI enrichment ran automatically when this was staged — fields below (including category and suggested skills) are pre-filled from that response. Edit freely before approving.</span>
+                            <span class="meta">AI enrichment ran on <?= htmlspecialchars(date('M j, Y g:i A', strtotime($row['ai_enriched_at']))) ?><?= $enrichAgeDays >= 1 ? ' (' . $enrichAgeDays . ' day' . ($enrichAgeDays === 1 ? '' : 's') . ' ago)' : '' ?> — fields below (including category and suggested skills) are pre-filled from that response. Edit freely before approving.<?= $enrichAgeDays >= 30 ? ' This enrichment is over a month old; consider running it again.' : '' ?></span>
+                            <button type="submit" name="action" value="enrich" class="enrich" onclick="return confirm('Run AI enrichment again? The AI-filled description, tasks, pathway, category, RIASEC scores and suggested skills will be replaced with a fresh result, and any edits you made in this form that were not approved yet will be lost.');">✨ Re-run AI enrichment</button>
                         </div>
                     <?php else: ?>
                         <div class="actions" style="margin-top:0;">
