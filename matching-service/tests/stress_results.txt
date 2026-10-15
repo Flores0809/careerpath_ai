@@ -1,0 +1,9 @@
+Environment: Linux-6.8.0-138-generic-x86_64-with-glibc2.35 | Python 3.10.12 | CPU cores: 2
+| Scenario | Careers in catalog | Concurrent users | Total requests | Mean (ms) | Median (ms) | 95th pct (ms) | Max (ms) | Throughput (req/s) | Errors |
+|---|---|---|---|---|---|---|---|---|---|
+| Normal load | 46 | 1 | 100 | 0.84 | 0.79 | 1.02 | 3.29 | 1096 | 0 |
+| Class-size load | 46 | 50 | 500 | 1.04 | 0.96 | 1.16 | 11.21 | 987 | 0 |
+| Evaluation-size load (227 respondents) | 46 | 227 | 227 | 1.05 | 1.00 | 1.21 | 2.55 | 855 | 0 |
+| Heavy load | 46 | 100 | 5000 | 1.55 | 0.92 | 1.13 | 135.61 | 1047 | 0 |
+| Burst (500 simultaneous users) | 46 | 500 | 500 | 1.04 | 0.98 | 1.20 | 6.41 | 864 | 0 |
+| Large catalog (x100 careers) | 4600 | 50 | 500 | 334.34 | 308.80 | 642.79 | 1048.31 | 104 | 0 |
