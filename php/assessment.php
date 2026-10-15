@@ -106,7 +106,8 @@ $typeLabels = [
 <title>CareerPath AI — Student Intake</title>
 <style>
     body { font-family: Arial, sans-serif; max-width: 1280px; margin: 40px auto; padding: 0 20px; color: #222; }
-    body > h1, body > .intro, body > form { max-width: 760px; margin-left: auto; margin-right: auto; }
+    body > h1, body > .intro, body > form, body > .info-details { max-width: 760px; margin-left: auto; margin-right: auto; }
+    body > .info-details { box-sizing: border-box; }
     h1 { color: #6e1423; }
     .intro { color: #555; margin-bottom: 30px; }
     fieldset { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 22px; padding: 16px 20px; }
