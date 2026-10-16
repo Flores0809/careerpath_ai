@@ -6,6 +6,7 @@
 
 require __DIR__ . '/student_auth.php';
 require_once __DIR__ . '/skills_helper.php';
+require_once __DIR__ . '/riasec_helper.php';
 $currentStudent = require_student_login();
 
 $pdo = get_db();
@@ -17,7 +18,7 @@ $stmt->execute(['student_id' => $currentStudent['student_id']]);
 $profiles = $stmt->fetchAll();
 
 $recStmt = $pdo->prepare(
-    "SELECT r.match_score, r.rank_position, c.career_id, c.career_title, c.description
+    "SELECT r.match_score, r.rank_position, c.career_id, c.career_title, c.description, c.key_subjects
      FROM recommendations r
      JOIN careers c ON c.career_id = r.career_id
      WHERE r.profile_id = :profile_id
@@ -135,6 +136,10 @@ function cosine_similarity_riasec_history(array $a, array $b): float
 
     .dream-row { background: #faf0f1; border: 1px solid #6e1423; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
     .dream-row .dream-label { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.5px; color: #6e1423; font-weight: bold; margin-bottom: 4px; }
+    .compare-verdict { background: #faf0f1; border: 1px solid #e3c9cd; border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; font-size: 14px; line-height: 1.5; }
+    .compare-grid { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
+    .compare-grid > .dream-row { flex: 1 1 0; min-width: 0; margin-bottom: 0; }
+    @media (max-width: 700px) { .compare-grid { flex-direction: column; align-items: stretch; } }
     .field-careers-row { border: 1px solid #eee; border-radius: 8px; padding: 4px 14px 2px; margin-bottom: 12px; }
     .field-careers-row .career-row { padding: 6px 0; }
     .subjects-line { font-size: 13.5px; color: #666; margin-top: 3px; }
@@ -181,48 +186,25 @@ function cosine_similarity_riasec_history(array $a, array $b): float
             $recStmt->execute(['profile_id' => $profile['profile_id']]);
             $recommendations = $recStmt->fetchAll();
 
-            // Dream career (migration 11 — only set on submissions made after
-            // php/assessment.php's cluster -> job picker was added; older
-            // submissions have dream_career_id = NULL and just show the flat
-            // list below, same as always).
+            // Optional dream career: scored live (same math as the results page)
+            // and shown beside the system's best match (rank 1) as a comparison.
+            // Submissions made without one just show the ranked list as always.
+            $studentVec = ['R' => (float) $profile['r_score'], 'I' => (float) $profile['i_score'], 'A' => (float) $profile['a_score'], 'S' => (float) $profile['s_score'], 'E' => (float) $profile['e_score'], 'C' => (float) $profile['c_score']];
+            $dreamData = load_dream_career($pdo, $profile['dream_career_id'] ?? 0, $studentVec);
             $dreamCareer = null;
-            $fieldCareers = [];
-            if (!empty($profile['dream_career_id'])) {
-                $dreamCareerStmt->execute(['id' => $profile['dream_career_id']]);
-                $dreamCareerRow = $dreamCareerStmt->fetch();
-                if ($dreamCareerRow) {
-                    $studentVec = ['R' => (float) $profile['r_score'], 'I' => (float) $profile['i_score'], 'A' => (float) $profile['a_score'], 'S' => (float) $profile['s_score'], 'E' => (float) $profile['e_score'], 'C' => (float) $profile['c_score']];
-                    $careerVec = ['R' => $dreamCareerRow['r_score'] / 100, 'I' => $dreamCareerRow['i_score'] / 100, 'A' => $dreamCareerRow['a_score'] / 100, 'S' => $dreamCareerRow['s_score'] / 100, 'E' => $dreamCareerRow['e_score'] / 100, 'C' => $dreamCareerRow['c_score'] / 100];
-                    $dreamCareer = [
-                        'career_id' => (int) $dreamCareerRow['career_id'],
-                        'career_title' => $dreamCareerRow['career_title'],
-                        'career_category' => $dreamCareerRow['career_category'],
-                        'key_subjects' => $dreamCareerRow['key_subjects'] ?? null,
-                        'match_score' => cosine_similarity_riasec_history($studentVec, $careerVec),
-                    ];
-
-                    if ($dreamCareerRow['career_category']) {
-                        $fieldCareersStmt->execute(['category' => $dreamCareerRow['career_category'], 'dream_id' => $dreamCareer['career_id']]);
-                        foreach ($fieldCareersStmt->fetchAll() as $row) {
-                            $rowVec = ['R' => $row['r_score'] / 100, 'I' => $row['i_score'] / 100, 'A' => $row['a_score'] / 100, 'S' => $row['s_score'] / 100, 'E' => $row['e_score'] / 100, 'C' => $row['c_score'] / 100];
-                            $fieldCareers[] = [
-                                'career_id' => (int) $row['career_id'],
-                                'career_title' => $row['career_title'],
-                                'key_subjects' => $row['key_subjects'] ?? null,
-                                'match_score' => cosine_similarity_riasec_history($studentVec, $rowVec),
-                            ];
-                        }
-                        usort($fieldCareers, function ($a, $b) { return $b['match_score'] <=> $a['match_score']; });
-                    }
-                }
+            $bestRec = $recommendations[0] ?? null;
+            if ($dreamData && $bestRec) {
+                $dreamCareer = [
+                    'career_id' => (int) $dreamData['row']['career_id'],
+                    'career_title' => $dreamData['row']['career_title'],
+                    'career_category' => $dreamData['row']['career_category'],
+                    'key_subjects' => $dreamData['row']['key_subjects'] ?? null,
+                    'match_score' => $dreamData['match_score'],
+                ];
             }
-            $shownCareerIds = array_map(function ($c) { return $c['career_id']; }, $fieldCareers);
-            if ($dreamCareer) {
-                $shownCareerIds[] = $dreamCareer['career_id'];
-            }
-            $otherRecommendations = array_filter($recommendations, function ($rec) use ($shownCareerIds) {
-                return !in_array((int) $rec['career_id'], $shownCareerIds, true);
-            });
+            // With a comparison, the best match is shown in the comparison block,
+            // so the list below only carries the remaining careers.
+            $otherRecommendations = $dreamCareer ? array_slice($recommendations, 1) : $recommendations;
         ?>
         <div class="submission">
             <div class="submission-date">
@@ -260,43 +242,43 @@ function cosine_similarity_riasec_history(array $a, array $b): float
             <?php endif; ?>
 
             <?php if ($dreamCareer): ?>
-                <div class="dream-row">
-                    <div class="dream-label">🎯 Dream Career<?= $dreamCareer['career_category'] ? ' · ' . htmlspecialchars($dreamCareer['career_category']) : '' ?></div>
-                    <div style="display:flex;justify-content:space-between;align-items:baseline;">
-                        <span class="title"><a href="career_profile.php?id=<?= $dreamCareer['career_id'] ?>"><?= htmlspecialchars($dreamCareer['career_title']) ?></a></span>
-                        <span class="match"><?= number_format($dreamCareer['match_score'], 0) ?>% match</span>
-                    </div>
-                    <?php if (!empty($dreamCareer['key_subjects'])): ?>
-                        <div class="subjects-line">📚 Subjects to focus on: <?= htmlspecialchars($dreamCareer['key_subjects']) ?></div>
-                    <?php endif; ?>
-                    <?php if (!empty($profile['ai_career_commentary'])): ?>
-                        <div class="ai-insights-box ai-insights-box-inline">
-                            <div class="ai-insights-label">
-                                ✨ AI Insights
-                                <?php if (!empty($profile['ai_skills_are_suggested'])): ?>
-                                    <span class="ai-suggestion-tag" title="This career doesn't have a counselor-verified skills list yet, so any skills mentioned here are general AI suggestions, not a verified requirement.">AI-suggested skills</span>
-                                <?php endif; ?>
-                            </div>
-                            <p><?= htmlspecialchars($profile['ai_career_commentary']) ?></p>
-                        </div>
-                    <?php endif; ?>
+                <?php $sameCareer = (int) $dreamCareer['career_id'] === (int) $bestRec['career_id']; ?>
+                <div class="compare-verdict">
+                    <strong>Your results vs. your dream career.</strong>
+                    <?= htmlspecialchars(dream_comparison_text($bestRec['career_title'], (float) $bestRec['match_score'], $dreamCareer['career_title'], (float) $dreamCareer['match_score'], (int) $dreamData['rank'], (int) $dreamData['total'], $sameCareer)) ?>
                 </div>
-            <?php endif; ?>
-
-            <?php if ($fieldCareers): ?>
-                <div class="field-careers-row">
-                    <div class="dream-label" style="color:#888;">📂 More in <?= htmlspecialchars($dreamCareer['career_category']) ?> (<?= count($fieldCareers) ?>)</div>
-                    <?php foreach ($fieldCareers as $fc): ?>
-                        <div class="career-row" style="flex-direction:column;align-items:stretch;">
-                            <div style="display:flex;justify-content:space-between;align-items:baseline;">
-                                <span class="title"><a href="career_profile.php?id=<?= $fc['career_id'] ?>"><?= htmlspecialchars($fc['career_title']) ?></a></span>
-                                <span class="match"><?= number_format($fc['match_score'], 0) ?>% match</span>
-                            </div>
-                            <?php if (!empty($fc['key_subjects'])): ?>
-                                <div class="subjects-line">📚 <?= htmlspecialchars($fc['key_subjects']) ?></div>
-                            <?php endif; ?>
+                <div class="compare-grid">
+                    <div class="dream-row">
+                        <div class="dream-label">🎯 What the system found</div>
+                        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                            <span class="title"><a href="career_profile.php?id=<?= (int) $bestRec['career_id'] ?>"><?= htmlspecialchars($bestRec['career_title']) ?></a></span>
+                            <span class="match"><?= number_format($bestRec['match_score'], 0) ?>% match</span>
                         </div>
-                    <?php endforeach; ?>
+                        <?php if (!empty($bestRec['key_subjects'])): ?>
+                            <div class="subjects-line">📚 Subjects to focus on: <?= htmlspecialchars($bestRec['key_subjects']) ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($profile['ai_career_commentary'])): ?>
+                            <div class="ai-insights-box ai-insights-box-inline">
+                                <div class="ai-insights-label">
+                                    ✨ AI Insights
+                                    <?php if (!empty($profile['ai_skills_are_suggested'])): ?>
+                                        <span class="ai-suggestion-tag" title="This career doesn't have a counselor-verified skills list yet, so any skills mentioned here are general AI suggestions, not a verified requirement.">AI-suggested skills</span>
+                                    <?php endif; ?>
+                                </div>
+                                <p><?= htmlspecialchars($profile['ai_career_commentary']) ?></p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="dream-row">
+                        <div class="dream-label">💭 Your dream career<?= $dreamCareer['career_category'] ? ' · ' . htmlspecialchars($dreamCareer['career_category']) : '' ?></div>
+                        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                            <span class="title"><a href="career_profile.php?id=<?= $dreamCareer['career_id'] ?>"><?= htmlspecialchars($dreamCareer['career_title']) ?></a></span>
+                            <span class="match"><?= number_format($dreamCareer['match_score'], 0) ?>% match</span>
+                        </div>
+                        <?php if (!empty($dreamCareer['key_subjects'])): ?>
+                            <div class="subjects-line">📚 Subjects to focus on: <?= htmlspecialchars($dreamCareer['key_subjects']) ?></div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             <?php endif; ?>
 
@@ -349,13 +331,9 @@ function cosine_similarity_riasec_history(array $a, array $b): float
                     };
                 ?>
                 <?php if ($dreamCareer): ?>
-                    <details class="explore-others-row">
-                        <summary>🔎 Explore other careers from this submission (<?= count($otherRecommendations) ?>)</summary>
-                        <?php $othersMarkup(); ?>
-                    </details>
-                <?php else: ?>
-                    <?php $othersMarkup(); ?>
+                    <div class="dream-label" style="color:#888;margin:6px 0;">More careers that fit you (<?= count($otherRecommendations) ?>)</div>
                 <?php endif; ?>
+                <?php $othersMarkup(); ?>
             <?php endif; ?>
         </div>
     <?php endforeach; ?>

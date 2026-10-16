@@ -403,7 +403,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                             <?php endif; ?>
                             <?php if ($profile['dream_career']): ?>
                                 <div class="dream-row">
-                                    <div class="dream-label">🎯 Dream Career<?= $profile['dream_career']['career_category'] ? ' · ' . htmlspecialchars($profile['dream_career']['career_category']) : '' ?></div>
+                                    <div class="dream-label">💭 Student's dream career (compare with the system's best match below)<?= $profile['dream_career']['career_category'] ? ' · ' . htmlspecialchars($profile['dream_career']['career_category']) : '' ?></div>
                                     <div class="top-line">
                                         <span><a href="career_profile.php?id=<?= $profile['dream_career']['career_id'] ?>"><?= htmlspecialchars($profile['dream_career']['career_title']) ?></a></span>
                                         <span class="match"><?= number_format($profile['dream_career']['match_score'], 0) ?>% match</span>
@@ -414,29 +414,8 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                                 </div>
                             <?php endif; ?>
 
-                            <?php if ($profile['field_careers']): ?>
-                                <div class="field-careers-row">
-                                    <div class="dream-label" style="color:#888;">📂 More in <?= htmlspecialchars($profile['dream_career']['career_category']) ?> (<?= count($profile['field_careers']) ?>)</div>
-                                    <?php foreach ($profile['field_careers'] as $fc): ?>
-                                        <div class="career-row">
-                                            <div class="top-line">
-                                                <span><a href="career_profile.php?id=<?= $fc['career_id'] ?>"><?= htmlspecialchars($fc['career_title']) ?></a></span>
-                                                <span class="match"><?= number_format($fc['match_score'], 0) ?>% match</span>
-                                            </div>
-                                            <?php if (!empty($fc['key_subjects'])): ?>
-                                                <div class="subjects-line">📚 <?= htmlspecialchars($fc['key_subjects']) ?></div>
-                                            <?php endif; ?>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php endif; ?>
-
                             <?php
-                                $shownCareerIds = array_map(fn($c) => $c['career_id'], $profile['field_careers']);
-                                if ($profile['dream_career']) {
-                                    $shownCareerIds[] = $profile['dream_career']['career_id'];
-                                }
-                                $otherRecs = array_filter($profile['recommendations'], fn($rec) => !in_array((int) $rec['career_id'], $shownCareerIds, true));
+                                $otherRecs = $profile['recommendations'];
                             ?>
                             <?php if ($otherRecs): ?>
                                 <?php
@@ -465,14 +444,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                                         }
                                     };
                                 ?>
-                                <?php if ($profile['dream_career']): ?>
-                                    <details class="explore-others-row" style="margin-top:10px;">
-                                        <summary>🔎 Explore other careers from this submission (<?= count($otherRecs) ?>)</summary>
-                                        <div style="margin-top:8px;"><?php $otherRecsMarkup(); ?></div>
-                                    </details>
-                                <?php else: ?>
-                                    <div style="margin-top:10px;"><?php $otherRecsMarkup(); ?></div>
-                                <?php endif; ?>
+                                <div style="margin-top:10px;"><?php $otherRecsMarkup(); ?></div>
                             <?php elseif (!$profile['dream_career']): ?>
                                 <p class="empty" style="margin-top:8px;">No recommendations were saved for this submission.</p>
                             <?php endif; ?>

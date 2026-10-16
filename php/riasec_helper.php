@@ -113,3 +113,87 @@ function render_about_assessment(): void
        . 'A match score shows how closely your interests resemble a career\'s profile — it is guidance, not a guarantee of success or a decision for you.</p>'
        . '</details>';
 }
+
+// ---------------------------------------------------------------------
+// Dream career comparison ("what the system found" vs "what I am aiming
+// for"). The dream career is OPTIONAL and never changes the RIASEC scores
+// or the ranked recommendations; it is scored with the same mean-centered
+// cosine similarity (Pearson correlation) used for every other career.
+// Plain PHP, no AI call, so it costs nothing.
+// ---------------------------------------------------------------------
+
+/** Match % (0-100) between a student's RIASEC vector and a career's, both as ['R'..'C' => 0-1]. */
+function riasec_similarity_pct(array $a, array $b): float
+{
+    $keys = ['R', 'I', 'A', 'S', 'E', 'C'];
+    $meanA = array_sum($a) / count($keys);
+    $meanB = array_sum($b) / count($keys);
+    $dot = 0.0; $normA = 0.0; $normB = 0.0;
+    foreach ($keys as $k) {
+        $ca = $a[$k] - $meanA;
+        $cb = $b[$k] - $meanB;
+        $dot += $ca * $cb;
+        $normA += $ca ** 2;
+        $normB += $cb ** 2;
+    }
+    if ($normA == 0 || $normB == 0) {
+        return 50.0;
+    }
+    return (($dot / (sqrt($normA) * sqrt($normB))) + 1) / 2 * 100;
+}
+
+/** A careers row's RIASEC scores as a 0-1 vector. */
+function career_row_vector(array $row): array
+{
+    return [
+        'R' => $row['r_score'] / 100, 'I' => $row['i_score'] / 100, 'A' => $row['a_score'] / 100,
+        'S' => $row['s_score'] / 100, 'E' => $row['e_score'] / 100, 'C' => $row['c_score'] / 100,
+    ];
+}
+
+/**
+ * Loads the student's optional dream career and scores it against their RIASEC vector.
+ * Returns null when no dream career was chosen. 'rank' is its position among all
+ * active careers for this student's profile (1 = best fit of the whole catalog).
+ */
+function load_dream_career(PDO $pdo, $dreamCareerId, array $studentVec): ?array
+{
+    $dreamCareerId = (int) $dreamCareerId;
+    if ($dreamCareerId <= 0) {
+        return null;
+    }
+    $stmt = $pdo->prepare("SELECT * FROM careers WHERE career_id = :id");
+    $stmt->execute(['id' => $dreamCareerId]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        return null;
+    }
+    $score = riasec_similarity_pct($studentVec, career_row_vector($row));
+
+    $rank = 1;
+    $total = 0;
+    foreach ($pdo->query("SELECT r_score, i_score, a_score, s_score, e_score, c_score FROM careers WHERE status = 'active'") as $other) {
+        $total++;
+        if (riasec_similarity_pct($studentVec, career_row_vector($other)) > $score + 0.0001) {
+            $rank++;
+        }
+    }
+    return ['row' => $row, 'match_score' => round($score, 2), 'rank' => $rank, 'total' => $total];
+}
+
+/** One plain-language sentence comparing the system's best match with the dream career. */
+function dream_comparison_text(string $bestTitle, float $bestScore, string $dreamTitle, float $dreamScore, int $rank, int $total, bool $sameCareer): string
+{
+    if ($sameCareer) {
+        return 'Your dream career, ' . $dreamTitle . ', is also the career your RIASEC answers fit best (' . round($bestScore) . '% match).';
+    }
+    $diff = round($bestScore - $dreamScore);
+    $text = 'Your dream career, ' . $dreamTitle . ', is a ' . round($dreamScore) . '% match for your RIASEC profile';
+    $text .= ($total > 0 ? ' and ranks #' . $rank . ' of ' . $total . ' careers in the catalog for you.' : '.');
+    if ($diff <= 5) {
+        $text .= ' The system\'s best match, ' . $bestTitle . ' (' . round($bestScore) . '%), is very close, so both are worth exploring.';
+    } else {
+        $text .= ' The system\'s best match, ' . $bestTitle . ' (' . round($bestScore) . '%), fits your answers ' . $diff . ' points better.';
+    }
+    return $text . ' This is guidance only: interest fit is one factor, and you can also work on the traits the dream career needs.';
+}

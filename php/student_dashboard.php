@@ -36,11 +36,10 @@ $stmt = $pdo->prepare(
 $stmt->execute(['id' => $currentStudent['student_id']]);
 $latestProfile = $stmt->fetch();
 
-// "Top match" for a submission prefers its dream career (migration 11) —
-// computed live from dream_career_id, doesn't depend on the Flask matching
-// service having been up at submission time — and only falls back to the
-// Flask-sourced `recommendations` table's #1 pick when there's no dream
-// career on that submission (older pre-migration-11 submissions).
+// "Top match" for a submission is the system's own #1 pick from the
+// `recommendations` table (the career with the highest RIASEC match). An
+// optional dream career is shown only as a comparison on the results/history
+// pages, so it never replaces the system's best match here.
 function cosine_similarity_riasec_dashboard(array $a, array $b): float
 {
     $keys = ['R', 'I', 'A', 'S', 'E', 'C'];
@@ -63,21 +62,6 @@ function cosine_similarity_riasec_dashboard(array $a, array $b): float
 
 function dashboard_top_career(PDO $pdo, array $profile): ?array
 {
-    if (!empty($profile['dream_career_id'])) {
-        $stmt = $pdo->prepare("SELECT career_id, career_title, r_score, i_score, a_score, s_score, e_score, c_score FROM careers WHERE career_id = :id");
-        $stmt->execute(['id' => $profile['dream_career_id']]);
-        $career = $stmt->fetch();
-        if ($career) {
-            $studentVec = ['R' => (float) $profile['r_score'], 'I' => (float) $profile['i_score'], 'A' => (float) $profile['a_score'], 'S' => (float) $profile['s_score'], 'E' => (float) $profile['e_score'], 'C' => (float) $profile['c_score']];
-            $careerVec = ['R' => $career['r_score'] / 100, 'I' => $career['i_score'] / 100, 'A' => $career['a_score'] / 100, 'S' => $career['s_score'] / 100, 'E' => $career['e_score'] / 100, 'C' => $career['c_score'] / 100];
-            return [
-                'career_id' => (int) $career['career_id'],
-                'career_title' => $career['career_title'],
-                'match_score' => cosine_similarity_riasec_dashboard($studentVec, $careerVec),
-            ];
-        }
-    }
-
     $stmt = $pdo->prepare(
         "SELECT c.career_id, c.career_title, r.match_score
          FROM recommendations r

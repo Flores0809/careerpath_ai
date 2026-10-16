@@ -68,6 +68,11 @@ return [
         'answer' => "Once your matches are computed by the RIASEC matching engine, an AI (Gemini) writes a short, personalized note on your results and an explanation of why your single best-matching career fits you. The matching itself is regular math — the AI only writes the explanation on top of it, and only for your top match.",
     ],
     [
+        'keywords' => ['dream', 'aiming', 'pangarap', 'compare', 'comparison'],
+        'question' => 'What is the dream career option?',
+        'answer' => "At the start of the assessment you can optionally pick a dream career (choose a field, then a specific career), or skip it. Your RIASEC results and ranked matches are calculated the same way either way. If you pick one, the results page shows the career the system found to fit you best on the left and your dream career on the right, with their match percentages and RIASEC traits side by side, so you can compare them.",
+    ],
+    [
         'keywords' => ['percentage', 'percent', 'score', 'rating', 'rate'],
         'question' => 'What does the match percentage mean?',
         'answer' => "The percentage shows how closely your RIASEC profile (your pattern of interests) matches the typical profile of that career. It is not a grade or a prediction of success, and it is not based on your skills or academic average. Each career card has a \"Why this match?\" section showing which traits drove the number.",

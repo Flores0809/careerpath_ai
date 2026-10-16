@@ -46,6 +46,7 @@ if ($isReplay) {
     ];
     $studentSkillsRaw = $replayProfile['skills'] ?? '';
     $academicAverage = (float) $replayProfile['academic_average'];
+    $dreamCareerId = (int) ($replayProfile['dream_career_id'] ?? 0);
 } else {
     $types = ['R', 'I', 'A', 'S', 'E', 'C'];
     $maxPerType = 7 * 4; // 7 questions x max score of 4
@@ -77,6 +78,17 @@ if ($isReplay) {
         die('Academic average is required. <a href="assessment.php">Go back</a>');
     }
     $academicAverage = max(0, min(100, (float) $academicAverageRaw));
+
+    // OPTIONAL dream career (assessment.php): the student may leave it blank.
+    // Only an existing, active career is accepted; anything else is ignored.
+    $dreamCareerId = (int) ($_POST['dream_career_id'] ?? 0);
+    if ($dreamCareerId > 0) {
+        $dreamCheck = $pdo->prepare("SELECT COUNT(*) FROM careers WHERE career_id = :id AND status = 'active'");
+        $dreamCheck->execute(['id' => $dreamCareerId]);
+        if ((int) $dreamCheck->fetchColumn() === 0) {
+            $dreamCareerId = 0;
+        }
+    }
 }
 
 $riasecTypeNames = ['R' => 'Realistic', 'I' => 'Investigative', 'A' => 'Artistic', 'S' => 'Social', 'E' => 'Enterprising', 'C' => 'Conventional'];
@@ -268,8 +280,8 @@ if (!$isReplay && $hasMatchResults) {
         $pdo->beginTransaction();
 
         $insertProfile = $pdo->prepare(
-            "INSERT INTO student_profiles (student_id, r_score, i_score, a_score, s_score, e_score, c_score, skills, academic_average)
-             VALUES (:student_id, :r, :i, :a, :s, :e, :c, :skills, :academic_average)"
+            "INSERT INTO student_profiles (student_id, r_score, i_score, a_score, s_score, e_score, c_score, skills, academic_average, dream_career_id)
+             VALUES (:student_id, :r, :i, :a, :s, :e, :c, :skills, :academic_average, :dream_career_id)"
         );
         $insertProfile->execute([
             'student_id' => $currentStudent['student_id'],
@@ -277,6 +289,7 @@ if (!$isReplay && $hasMatchResults) {
             's' => $riasec['S'], 'e' => $riasec['E'], 'c' => $riasec['C'],
             'skills' => $studentSkillsRaw !== '' ? $studentSkillsRaw : null,
             'academic_average' => $academicAverage,
+            'dream_career_id' => $dreamCareerId > 0 ? $dreamCareerId : null,
         ]);
         $profileId = (int) $pdo->lastInsertId();
 
@@ -540,6 +553,21 @@ try {
     .best-match-section h2, .other-matches-section h2 { font-size: 17.5px; color: #6e1423; margin: 0 0 10px; }
     .career.best-match-card { border: 2px solid #6e1423; box-shadow: 0 6px 18px rgba(110,20,35,0.14); }
     .match-note { font-size: 13.5px; color: #888; margin: -4px 0 12px; }
+/* Optional dream-career comparison: system's best match on the left, the
+       student's own dream career on the right. Stacks on narrow screens. */
+    .compare-section { max-width: 1240px; margin: 0 auto 30px; }
+    .compare-verdict { background: #faf0f1; border: 1px solid #e3c9cd; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.5; }
+    .compare-grid { display: flex; gap: 20px; align-items: flex-start; }
+    .compare-col { flex: 1 1 0; min-width: 0; }
+    .compare-col h2 { font-size: 17.5px; color: #6e1423; margin: 0 0 4px; }
+    .compare-col .match-note { margin: 0 0 12px; }
+    .compare-col .career { margin-bottom: 0; }
+    .career.dream-card { border: 2px dashed #6e1423; }
+    .compare-table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 14.5px; background: #fff; border: 1px solid #e3c9cd; border-radius: 8px; }
+    .compare-table th, .compare-table td { padding: 8px 12px; border-bottom: 1px solid #eee; text-align: center; }
+    .compare-table th:first-child, .compare-table td:first-child { text-align: left; }
+    .compare-table th { background: #faf0f1; color: #6e1423; font-size: 13.5px; }
+    @media (max-width: 800px) { .compare-grid { flex-direction: column; align-items: stretch; } }
 .info-details { background: #f9f3f4; border: 1px solid #ecd5d9; border-radius: 8px; padding: 10px 14px; margin: 10px 0; font-size: 14.5px; line-height: 1.5; }
     .info-details summary { cursor: pointer; font-weight: bold; color: #6e1423; }
     .info-details ul { margin: 8px 0 0; padding-left: 20px; }
@@ -716,11 +744,60 @@ try {
             $bestMatch = $allRecommendations[0];
             $otherMatches = array_slice($allRecommendations, 1);
         ?>
+        <?php
+            // Optional dream career, scored the same way as every other career.
+            $dreamData = ($pdo && !empty($dreamCareerId)) ? load_dream_career($pdo, $dreamCareerId, $studentVectorAssoc) : null;
+            $dreamCard = $dreamData ? build_career_match_data($dreamData['row'], $studentVectorAssoc) : null;
+        ?>
+        <?php if ($dreamCard): ?>
+            <?php $sameCareer = (int) $dreamCard['career_id'] === (int) $bestMatch['career_id']; ?>
+            <div class="compare-section">
+                <div class="compare-verdict">
+                    <strong>Your results vs. your dream career.</strong>
+                    <?= htmlspecialchars(dream_comparison_text($bestMatch['career_title'], (float) $bestMatch['match_score'], $dreamCard['career_title'], (float) $dreamCard['match_score'], (int) $dreamData['rank'], (int) $dreamData['total'], $sameCareer)) ?>
+                </div>
+                <div class="compare-grid">
+                    <div class="compare-col">
+                        <h2>🎯 What the system found</h2>
+                        <p class="match-note">The career with the highest RIASEC match for your answers.</p>
+                        <?php render_career_card($bestMatch, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'best-match-card'); ?>
+                    </div>
+                    <div class="compare-col">
+                        <h2>💭 Your dream career</h2>
+                        <p class="match-note">The career you said you are aiming for, scored the same way.</p>
+                        <?php render_career_card($dreamCard, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'dream-card'); ?>
+                    </div>
+                </div>
+                <table class="compare-table">
+                    <tr>
+                        <th>RIASEC trait</th>
+                        <th>You</th>
+                        <th>System's best match<br><?= htmlspecialchars($bestMatch['career_title']) ?></th>
+                        <th>Your dream career<br><?= htmlspecialchars($dreamCard['career_title']) ?></th>
+                    </tr>
+                    <?php foreach (['R', 'I', 'A', 'S', 'E', 'C'] as $k): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($riasecTypeNames[$k]) ?> (<?= $k ?>)</td>
+                            <td><strong><?= (int) round($studentRiasecPct[$k]) ?>%</strong></td>
+                            <td><?= (int) ($bestMatch['career_riasec'][$k] ?? 0) ?>%</td>
+                            <td><?= (int) ($dreamCard['career_riasec'][$k] ?? 0) ?>%</td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <tr>
+                        <td><strong>Match with your profile</strong></td>
+                        <td>&mdash;</td>
+                        <td><strong><?= number_format($bestMatch['match_score'], 0) ?>%</strong></td>
+                        <td><strong><?= number_format($dreamCard['match_score'], 0) ?>%</strong></td>
+                    </tr>
+                </table>
+            </div>
+        <?php else: ?>
         <div class="best-match-section">
             <h2>🎯 Your Best Match</h2>
             <p class="match-note">Based only on your answers, this is the career your RIASEC profile fits best.</p>
             <?php render_career_card($bestMatch, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'best-match-card'); ?>
         </div>
+        <?php endif; ?>
 
         <?php if ($otherMatches): ?>
             <div class="other-matches-section">
