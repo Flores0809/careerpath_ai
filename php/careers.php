@@ -798,7 +798,12 @@ if ($statusFilter === 'pending') {
     .source-adzuna { background: #d1e7dd; color: #0f5132; }
     .source-remoteok { background: #fff3cd; color: #856404; }
     .filter-bar { margin-top: 22px; margin-bottom: 18px; font-size: 15.5px; display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-end; }
-    .filter-bar .bulk-form { display: flex; gap: 8px; flex-basis: 100%; }
+    .filter-bar { flex-wrap: nowrap; gap: 12px 16px; }
+    .filter-bar form:not(.bulk-form) { flex-wrap: nowrap; gap: 12px 16px; }
+    .filter-bar select { min-width: 0; width: 190px; }
+    .filter-bar .bulk-form { display: flex; gap: 6px; flex-shrink: 0; }
+    .filter-bar .bulk-form button { margin-right: 0; padding: 8px 12px; font-size: 14.5px; white-space: nowrap; }
+    @media (max-width: 900px) { .filter-bar, .filter-bar form:not(.bulk-form) { flex-wrap: wrap; } }
     .filter-bar form { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-end; }
     .filter-group { display: flex; flex-direction: column; gap: 5px; }
     .filter-group label { font-weight: bold; font-size: 13.5px; text-transform: uppercase; letter-spacing: 0.3px; color: #888; margin: 0; }
