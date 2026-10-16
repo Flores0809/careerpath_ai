@@ -368,6 +368,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = ['type' => 'success', 'text' => 'AI enrichment complete — review the updated fields (including suggested skills) below before approving.'];
             }
         }
+    } elseif (in_array($action, ['approve_all', 'reject_all'], true)) {
+        $bulkIds = array_values(array_unique(array_filter(array_map('intval', (array) ($_POST['bulk_ids'] ?? [])))));
+        if (!$bulkIds) {
+            $message = ['type' => 'error', 'text' => 'There are no entries in the current view to act on.'];
+        } elseif ($action === 'reject_all') {
+            $in = implode(',', array_fill(0, count($bulkIds), '?'));
+            $stmt = $pdo->prepare("UPDATE pending_careers SET status = 'rejected', reviewed_at = NOW(), reviewed_by = ? WHERE status = 'pending' AND pending_id IN ($in)");
+            $stmt->execute(array_merge([$currentUser['user_id']], $bulkIds));
+            $message = ['type' => 'success', 'text' => $stmt->rowCount() . ' entries rejected and removed from the review queue.'];
+        } else {
+            // Approve all: only entries that are AI-enriched, have a category,
+            // and do not look like a duplicate of an approved career. Anything
+            // else is left pending for a manual look.
+            $approved = 0;
+            $skipped = 0;
+            $rowStmt = $pdo->prepare("SELECT * FROM pending_careers WHERE pending_id = :id AND status = 'pending'");
+            $skillSel = $pdo->prepare("SELECT skill_name, proficiency_level, is_required FROM pending_career_skills WHERE pending_id = :id");
+            $ins = $pdo->prepare(
+                "INSERT INTO careers
+                    (career_title, career_category, description, daily_task, educational_pathway,
+                     r_score, i_score, a_score, s_score, e_score, c_score, source, career_scope, status)
+                 VALUES (:title, :category, :description, :daily_task, :pathway,
+                         :r, :i, :a, :s, :e, :c, 'crawler', :scope, 'active')"
+            );
+            $skillIns = $pdo->prepare(
+                "INSERT INTO skill_requirements (career_id, skill_name, proficiency_level, is_required)
+                 VALUES (:career_id, :skill_name, :proficiency, :is_required)"
+            );
+            $mark = $pdo->prepare(
+                "UPDATE pending_careers SET status = 'approved', reviewed_at = NOW(), reviewed_by = :uid, approved_career_id = :cid WHERE pending_id = :id"
+            );
+            foreach ($bulkIds as $bid) {
+                $rowStmt->execute(['id' => $bid]);
+                $r = $rowStmt->fetch();
+                $title = trim($r['source_title'] ?? '');
+                $category = trim($r['career_category'] ?? '');
+                if (!$r || empty($r['ai_enriched_at']) || $title === '' || $category === '') {
+                    $skipped++;
+                    continue;
+                }
+                $scope = $r['data_source'] === 'philjobnet' ? 'local' : 'international';
+                if (find_duplicate_career($pdo, $title, $scope)) {
+                    $skipped++;
+                    continue;
+                }
+                $pdo->beginTransaction();
+                try {
+                    $ins->execute([
+                        'title' => $title, 'category' => $category,
+                        'description' => $r['ai_description'] ?? $r['description'] ?? '',
+                        'daily_task' => $r['ai_daily_task'] ?? $r['qualifications'] ?? '',
+                        'pathway' => $r['ai_educational_pathway'] ?? $r['education_level'] ?? '',
+                        'r' => (int) ($r['ai_r_score'] ?? $r['suggested_r_score']),
+                        'i' => (int) ($r['ai_i_score'] ?? $r['suggested_i_score']),
+                        'a' => (int) ($r['ai_a_score'] ?? $r['suggested_a_score']),
+                        's' => (int) ($r['ai_s_score'] ?? $r['suggested_s_score']),
+                        'e' => (int) ($r['ai_e_score'] ?? $r['suggested_e_score']),
+                        'c' => (int) ($r['ai_c_score'] ?? $r['suggested_c_score']),
+                        'scope' => $scope,
+                    ]);
+                    $cid = (int) $pdo->lastInsertId();
+                    $skillSel->execute(['id' => $bid]);
+                    foreach ($skillSel->fetchAll() as $sk) {
+                        $skillIns->execute([
+                            'career_id' => $cid,
+                            'skill_name' => mb_substr($sk['skill_name'], 0, 150),
+                            'proficiency' => mb_substr((string) $sk['proficiency_level'], 0, 150),
+                            'is_required' => (int) $sk['is_required'],
+                        ]);
+                    }
+                    $mark->execute(['uid' => $currentUser['user_id'], 'cid' => $cid, 'id' => $bid]);
+                    $pdo->commit();
+                    $approved++;
+                } catch (Exception $e) {
+                    $pdo->rollBack();
+                    $skipped++;
+                }
+            }
+            $message = ['type' => 'success', 'text' => "Approved $approved entries into the live career database." . ($skipped ? " $skipped were left pending (not AI-enriched, no category, possible duplicate, or an error) — review those one by one." : '')];
+        }
     } elseif ($action === 'run_crawler') {
         // Starts one or more crawler/*.py scripts as background subprocesses
         // on the matching service (see matching-service/app.py's
@@ -717,7 +797,8 @@ if ($statusFilter === 'pending') {
     .source-onet { background: #e7d9f7; color: #4b2e83; }
     .source-adzuna { background: #d1e7dd; color: #0f5132; }
     .source-remoteok { background: #fff3cd; color: #856404; }
-    .filter-bar { margin-top: 22px; margin-bottom: 18px; font-size: 15.5px; }
+    .filter-bar { margin-top: 22px; margin-bottom: 18px; font-size: 15.5px; display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-end; }
+    .filter-bar .bulk-form { display: flex; gap: 8px; }
     .filter-bar form { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-end; }
     .filter-group { display: flex; flex-direction: column; gap: 5px; }
     .filter-group label { font-weight: bold; font-size: 13.5px; text-transform: uppercase; letter-spacing: 0.3px; color: #888; margin: 0; }
@@ -834,6 +915,19 @@ if ($statusFilter === 'pending') {
                 </div>
             <?php endif; ?>
         </form>
+        <?php if ($statusFilter === 'pending'):
+            $bulkVisible = array_merge($showNew ? $newPending : [], $showOlder ? $olderPending : []);
+        ?>
+            <?php if ($bulkVisible): ?>
+            <form method="POST" class="bulk-form" id="bulk-form">
+                <?php foreach ($bulkVisible as $bRow): ?>
+                    <input type="hidden" name="bulk_ids[]" value="<?= (int) $bRow['pending_id'] ?>">
+                <?php endforeach; ?>
+                <button type="submit" name="action" value="approve_all" class="approve" onclick="return confirm('Approve all <?= count($bulkVisible) ?> entries in the current view?\n\nOnly AI-enriched entries with a category and no possible duplicate are approved, using the AI-filled values as shown. The rest stay pending.');">✔ Approve all (<?= count($bulkVisible) ?>)</button>
+                <button type="submit" name="action" value="reject_all" class="reject" onclick="return confirm('Reject all <?= count($bulkVisible) ?> entries in the current view? They will be removed from the review queue.');">✖ Reject all (<?= count($bulkVisible) ?>)</button>
+            </form>
+            <?php endif; ?>
+        <?php endif; ?>
     </div>
 
     <div class="search-bar">
