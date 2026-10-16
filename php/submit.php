@@ -433,6 +433,13 @@ if (!$isReplay && $hasMatchResults) {
                     $result['recommendations'][0]['ai_career_commentary'] = $commentaryResult['career_commentary'];
                     $result['recommendations'][0]['ai_skills_are_suggested'] = !empty($commentaryResult['skills_are_suggested']);
                     $aiDreamCommentary = $commentaryResult['dream_commentary'] ?? null;
+                    if ($dreamCareerId > 0 && $dreamCareerId !== $topCareerId && empty($commentaryResult['dream_commentary'])) {
+                        // The matching service answered but sent no dream note: it is
+                        // most likely still running the older version of app.py.
+                        error_log('student_commentary: no dream_commentary returned (is the matching service up to date?)');
+                    }
+                } else {
+                    error_log('student_commentary failed: ' . ($commentaryCurlError ?: ('HTTP ' . $commentaryHttpCode . ' ' . substr((string) $commentaryResponse, 0, 300))));
                 }
                 // Any other outcome (unreachable service, non-200, ai_commentary
                 // false) — leave the ai_* columns NULL, exactly the same
@@ -826,6 +833,9 @@ try {
                         <h2>💭 Your dream career</h2>
                         <p class="match-note">The career you said you are aiming for, scored the same way.</p>
                         <?php render_career_card($dreamCard, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'dream-card'); ?>
+                        <?php if (!$sameCareer && empty($aiDreamCommentary)): ?>
+                            <p class="match-note" style="margin-top:8px;font-style:italic;">No AI insight was saved for this dream career. The AI service may have been unavailable when this assessment was submitted; retaking the assessment will generate one.</p>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
