@@ -98,34 +98,41 @@ if ($postings) {
 
 $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score' => 'Artistic', 's_score' => 'Social', 'e_score' => 'Enterprising', 'c_score' => 'Conventional'];
 
-// AI commentary is generated ONLY for a student's single best match, once, at
-// submission time (see submit.php) and cached on student_profiles. This page
-// no longer calls the AI at all (it used to generate an insight on demand for
-// every career a student opened, which used too many tokens) — it only shows
-// that already-cached text, and only if this career was the student's best
-// match (rank 1) in a past assessment. Old submissions that stored commentary
-// for a since-removed "dream career" pick are still shown for that career.
+// AI notes are generated ONLY at submission time (see submit.php), in one call,
+// and cached on student_profiles: one note for the student's best match and,
+// if they picked one, one for their optional dream career. This page never
+// calls the AI -- it only shows the cached note that belongs to THIS career
+// (best-match note if this career was their rank-1 result, dream note if it
+// was their dream career), so opening the page again costs no tokens.
 $aiCareerCommentary = null;
 $aiSkillsAreSuggested = false;
 
 $cachedCommentaryStmt = $pdo->prepare(
-    "SELECT p.ai_career_commentary, p.ai_skills_are_suggested
+    "SELECT p.*, r.career_id AS best_career_id
      FROM student_profiles p
      LEFT JOIN recommendations r ON r.profile_id = p.profile_id AND r.rank_position = 1
      WHERE p.student_id = :student_id
-       AND p.ai_career_commentary IS NOT NULL
        AND (r.career_id = :career_id OR p.dream_career_id = :career_id2)
-     ORDER BY p.submitted_at DESC LIMIT 1"
+     ORDER BY p.submitted_at DESC"
 );
 $cachedCommentaryStmt->execute([
     'student_id' => $currentStudent['student_id'],
     'career_id' => $careerId,
     'career_id2' => $careerId,
 ]);
-$cachedCommentaryRow = $cachedCommentaryStmt->fetch();
-if ($cachedCommentaryRow) {
-    $aiCareerCommentary = $cachedCommentaryRow['ai_career_commentary'];
-    $aiSkillsAreSuggested = (bool) $cachedCommentaryRow['ai_skills_are_suggested'];
+foreach ($cachedCommentaryStmt->fetchAll() as $cachedRow) {
+    if ((int) ($cachedRow['best_career_id'] ?? 0) === $careerId && !empty($cachedRow['ai_career_commentary'])) {
+        $aiCareerCommentary = $cachedRow['ai_career_commentary'];
+        $aiSkillsAreSuggested = !empty($cachedRow['ai_skills_are_suggested']);
+        break;
+    }
+    if ((int) ($cachedRow['dream_career_id'] ?? 0) === $careerId && !empty($cachedRow['ai_dream_commentary'])) {
+        $aiCareerCommentary = $cachedRow['ai_dream_commentary'];
+        $skillCountStmt = $pdo->prepare("SELECT COUNT(*) FROM skill_requirements WHERE career_id = :id");
+        $skillCountStmt->execute(['id' => $careerId]);
+        $aiSkillsAreSuggested = ((int) $skillCountStmt->fetchColumn() === 0);
+        break;
+    }
 }
 ?>
 <!DOCTYPE html>
