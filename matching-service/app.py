@@ -316,8 +316,8 @@ raw job-posting data into a clean, student-friendly career profile.
 
 Given the career/job title and raw scraped text below, produce:
 - description: a 2-3 sentence overview of the career, written for a Junior/Senior High School student.
-- daily_task: a short comma-separated list of 3-5 typical daily tasks.
-- educational_pathway: the typical Philippine degree/TVET path, e.g. "BS Information Technology" or "TVET / Vocational Certificate".
+- daily_task: a comma-separated list of 6 to 8 specific, typical tasks someone in this career does on the job. Each task is a short action phrase that starts with a verb (e.g. "preparing ingredients", "inspecting finished welds") and contains no commas inside it. Cover the main parts of the work, not just one area.
+- educational_pathway: 3 to 4 programs a Filipino student can enroll in to enter this career, separated by semicolons. Mix the realistic options where they apply: college degrees (e.g. "BS Information Technology"), TESDA/TVET courses with their NC level (e.g. "Welding NC II"), and a Senior High School track or strand when it helps (e.g. "SHS TVL - ICT strand"). Be specific and keep the whole list under 230 characters.
 - riasec: integer scores from 0-100 for each of R, I, A, S, E, C, representing the Holland Code / RIASEC profile of this career per Holland's Theory of Vocational Choice.
 - skills: 3 to 6 concrete required skills a Junior/Senior High School student could realistically start building toward this career. For each skill give: skill_name (short, e.g. "Basic coding" or "First aid"), proficiency_level (a short free-text phrase describing what's needed when first entering this field -- e.g. "Comfortable with basic HTML/CSS" or "Can follow food-safety protocols under supervision" -- concrete and specific, not a single word like "basic"), and is_required (true if essential, false if merely a plus).
 - category: pick the single best-fitting Category / Industry Cluster for this career from this exact list (copy the name character-for-character): {categories_list}. If genuinely none of them fit, return an empty string instead of guessing.
@@ -380,10 +380,17 @@ def call_gemini_enrichment(career_title, raw_description="", raw_qualifications=
     category_lookup = {c.strip().lower(): c.strip() for c in valid_categories}
     category = category_lookup.get(category.lower(), "")
 
+    # educational_pathway is VARCHAR(255) in the database: if the model ran long,
+    # cut at the last complete program ("; " boundary) instead of mid-word.
+    pathway = parsed.educational_pathway.strip()
+    if len(pathway) > 250:
+        cut = pathway[:250]
+        pathway = cut[:cut.rfind(";")].strip() if ";" in cut else cut.strip()
+
     return {
         "description": parsed.description.strip(),
         "daily_task": parsed.daily_task.strip(),
-        "educational_pathway": parsed.educational_pathway.strip(),
+        "educational_pathway": pathway,
         "riasec": clamped_riasec,
         "skills": skills,
         "category": category,

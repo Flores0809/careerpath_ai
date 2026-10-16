@@ -36,6 +36,8 @@ try {
 $message = null;
 $refreshedCareerId = null;
 $refreshedScores = null;
+$detailsCareerId = null;      // career whose tasks/programs were just AI-refreshed (preview)
+$refreshedDetails = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -84,6 +86,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'type' => 'success',
                 'text' => 'AI-suggested RIASEC scores are shown below — review and click "Save Changes" to apply them, or edit further first.',
             ];
+        }
+    } elseif ($action === 'refresh_details' && $careerId) {
+        // AI-assisted refresh of the typical tasks and "programs you can enroll
+        // in" for ONE career. Preview only: nothing is saved until the staff
+        // member reviews the filled-in fields and clicks "Save Changes".
+        $payload = json_encode([
+            'career_title' => trim($_POST['career_title'] ?? ''),
+            'raw_description' => trim($_POST['description'] ?? ''),
+            'raw_qualifications' => trim($_POST['daily_task'] ?? ''),
+        ]);
+        $ch = curl_init(ENRICH_SERVICE_URL);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_TIMEOUT => 35,
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+        $result = $curlError ? null : json_decode($response, true);
+
+        if ($curlError || $httpCode !== 200 || !$result || empty($result['ai_enriched'])) {
+            $reason = $curlError ?: ($result['error'] ?? "HTTP $httpCode");
+            $message = ['type' => 'error', 'text' => "AI refresh unavailable ($reason). Existing tasks and programs are unchanged."];
+        } else {
+            $detailsCareerId = $careerId;
+            $refreshedDetails = ['daily_task' => $result['daily_task'], 'educational_pathway' => $result['educational_pathway']];
+            $message = ['type' => 'success', 'text' => 'AI-suggested typical tasks and programs are shown below. Review them and click "Save Changes" to apply, or edit further first.'];
         }
     } elseif ($action === 'bulk_apply_riasec' && $careerId) {
         // Bulk counterpart to 'refresh_riasec' above, only reachable via the
@@ -550,6 +583,9 @@ $allCareerIds = array_map('intval', array_column($careers, 'career_id'));
         <?php foreach ($careers as $c): ?>
             <?php
                 $wasRefreshed = $refreshedCareerId === (int) $c['career_id'];
+                $detailsRefreshed = $detailsCareerId === (int) $c['career_id'];
+                $dailyTaskDefault = $detailsRefreshed ? $refreshedDetails['daily_task'] : $c['daily_task'];
+                $pathwayDefault = $detailsRefreshed ? $refreshedDetails['educational_pathway'] : $c['educational_pathway'];
                 $riasecDefaults = $wasRefreshed ? [
                     'r' => $refreshedScores['R'], 'i' => $refreshedScores['I'], 'a' => $refreshedScores['A'],
                     's' => $refreshedScores['S'], 'e' => $refreshedScores['E'], 'c' => $refreshedScores['C'],
@@ -558,7 +594,7 @@ $allCareerIds = array_map('intval', array_column($careers, 'career_id'));
                     's' => $c['s_score'], 'e' => $c['e_score'], 'c' => $c['c_score'],
                 ];
             ?>
-            <details class="career-row" data-career-id="<?= (int) $c['career_id'] ?>" data-title="<?= htmlspecialchars($c['career_title']) ?>" <?= $wasRefreshed ? 'open' : '' ?>>
+            <details class="career-row" data-career-id="<?= (int) $c['career_id'] ?>" data-title="<?= htmlspecialchars($c['career_title']) ?>" <?= ($wasRefreshed || $detailsRefreshed) ? 'open' : '' ?>>
                 <summary>
                     <span>
                         <span class="title"><?= htmlspecialchars($c['career_title']) ?></span>
@@ -600,11 +636,11 @@ $allCareerIds = array_map('intval', array_column($careers, 'career_id'));
                     <label>Description</label>
                     <textarea name="description"><?= htmlspecialchars($c['description']) ?></textarea>
 
-                    <label>Daily tasks</label>
-                    <textarea name="daily_task"><?= htmlspecialchars($c['daily_task']) ?></textarea>
+                    <label>Daily tasks<?php if ($detailsRefreshed): ?> <span style="color:#6f42c1;font-weight:normal;">— ✨ AI-suggested, review before saving</span><?php endif; ?></label>
+                    <textarea name="daily_task"><?= htmlspecialchars($dailyTaskDefault) ?></textarea>
 
-                    <label>Educational pathway</label>
-                    <input type="text" name="educational_pathway" value="<?= htmlspecialchars($c['educational_pathway']) ?>">
+                    <label>Programs students can enroll in (educational pathway)<?php if ($detailsRefreshed): ?> <span style="color:#6f42c1;font-weight:normal;">— ✨ AI-suggested, review before saving</span><?php endif; ?></label>
+                    <input type="text" name="educational_pathway" maxlength="255" value="<?= htmlspecialchars($pathwayDefault) ?>">
 
                     <label>Key subjects (JHS/SHS subjects to focus on for this career)</label>
                     <input type="text" name="key_subjects" value="<?= htmlspecialchars($c['key_subjects'] ?? '') ?>" placeholder="e.g. Mathematics, Physics, Computer/ICT electives">
@@ -632,6 +668,7 @@ $allCareerIds = array_map('intval', array_column($careers, 'career_id'));
                     <div class="actions">
                         <button type="submit" name="action" value="update" class="btn btn-primary">Save Changes</button>
                         <button type="submit" name="action" value="refresh_riasec" class="btn btn-outline">🔄 Refresh RIASEC with AI</button>
+                        <button type="submit" name="action" value="refresh_details" class="btn btn-outline" title="Asks the AI for a fuller list of typical tasks and programs; nothing is saved until you click Save Changes">✨ Refresh tasks &amp; programs with AI</button>
                     </div>
                 </form>
 
