@@ -185,7 +185,8 @@ $studentRiasecPct = array_map(fn($v) => round($v * 100, 1), $studentVectorAssoc)
 $result = null;
 $errorMessage = null;
 $hasMatchResults = false;
-$aiSummary = null;
+$aiDreamCommentary = null;
+$aiDreamSkillsSuggested = null;
 
 if ($isReplay) {
     // Rebuild the recommendations list purely from what was already saved —
@@ -225,7 +226,7 @@ if ($isReplay) {
         $reconstructed[0]['ai_career_commentary'] = $replayProfile['ai_career_commentary'] ?? null;
         $reconstructed[0]['ai_skills_are_suggested'] = !empty($replayProfile['ai_skills_are_suggested']);
     }
-    $aiSummary = $replayProfile['ai_summary'] ?? null;
+    $aiDreamCommentary = $replayProfile['ai_dream_commentary'] ?? null;
     $result = ['recommendations' => $reconstructed];
     $hasMatchResults = !empty($reconstructed);
 } else {
@@ -352,7 +353,7 @@ if (!$isReplay && $hasMatchResults) {
                     return $s;
                 }, $topSkillsStmt->fetchAll());
 
-                $commentaryPayload = json_encode([
+                $commentaryData = [
                     'riasec' => $studentRiasecPct,
                     'academic_average' => $academicAverage,
                     'student_skills' => $studentSkillsRaw !== '' ? $studentSkillsRaw : null,
@@ -360,7 +361,37 @@ if (!$isReplay && $hasMatchResults) {
                     'career_description' => $topCareerRow['description'],
                     'career_key_subjects' => $topCareerRow['key_subjects'] ?? null,
                     'career_required_skills' => $topRequiredSkills,
-                ]);
+                ];
+
+                // Optional dream career: its note comes from the SAME Gemini call
+                // (one request for both careers), only when the student picked one
+                // and it is not the same career as the best match.
+                if ($dreamCareerId > 0 && $dreamCareerId !== $topCareerId) {
+                    $dreamRowStmt = $pdo->prepare("SELECT * FROM careers WHERE career_id = :id");
+                    $dreamRowStmt->execute(['id' => $dreamCareerId]);
+                    $dreamRow = $dreamRowStmt->fetch();
+                    if ($dreamRow) {
+                        $dreamSkillsStmt = $pdo->prepare(
+                            "SELECT skill_name, proficiency_level, is_required FROM skill_requirements WHERE career_id = :id"
+                        );
+                        $dreamSkillsStmt->execute(['id' => $dreamCareerId]);
+                        $dreamSkills = array_map(function ($sk) {
+                            $sk['is_required'] = (bool) ((int) $sk['is_required']);
+                            return $sk;
+                        }, $dreamSkillsStmt->fetchAll());
+                        $commentaryData['dream_career'] = [
+                            'career_title' => $dreamRow['career_title'],
+                            'career_description' => $dreamRow['description'],
+                            'career_key_subjects' => $dreamRow['key_subjects'] ?? null,
+                            'riasec' => [
+                                'R' => (int) $dreamRow['r_score'], 'I' => (int) $dreamRow['i_score'], 'A' => (int) $dreamRow['a_score'],
+                                'S' => (int) $dreamRow['s_score'], 'E' => (int) $dreamRow['e_score'], 'C' => (int) $dreamRow['c_score'],
+                            ],
+                            'required_skills' => $dreamSkills,
+                        ];
+                    }
+                }
+                $commentaryPayload = json_encode($commentaryData);
 
                 $chCommentary = curl_init(STUDENT_COMMENTARY_SERVICE_URL);
                 curl_setopt_array($chCommentary, [
@@ -378,26 +409,30 @@ if (!$isReplay && $hasMatchResults) {
                 $commentaryResult = $commentaryCurlError ? null : json_decode($commentaryResponse, true);
 
                 if (!$commentaryCurlError && $commentaryHttpCode === 200 && !empty($commentaryResult['ai_commentary'])) {
+                    ensure_dream_commentary_column($pdo);
                     $updateCommentary = $pdo->prepare(
                         "UPDATE student_profiles SET
-                            ai_summary = :summary,
                             ai_career_commentary = :career_commentary,
                             ai_skills_are_suggested = :skills_are_suggested,
                             ai_commentary_generated_at = NOW()
                          WHERE profile_id = :id"
                     );
                     $updateCommentary->execute([
-                        'summary' => $commentaryResult['summary'],
                         'career_commentary' => $commentaryResult['career_commentary'],
                         'skills_are_suggested' => !empty($commentaryResult['skills_are_suggested']) ? 1 : 0,
                         'id' => $profileId,
                     ]);
-                    // Reflected into the in-memory array too, so the results
-                    // page rendered further down this same request shows it
-                    // immediately instead of only on the next page load.
-                    $aiSummary = $commentaryResult['summary'];
+                    if (!empty($commentaryResult['dream_commentary'])) {
+                        try {
+                            $pdo->prepare("UPDATE student_profiles SET ai_dream_commentary = :d WHERE profile_id = :id")
+                                ->execute(['d' => $commentaryResult['dream_commentary'], 'id' => $profileId]);
+                        } catch (Exception $e) {
+                            // column missing and could not be added: note just isn't stored
+                        }
+                    }
                     $result['recommendations'][0]['ai_career_commentary'] = $commentaryResult['career_commentary'];
                     $result['recommendations'][0]['ai_skills_are_suggested'] = !empty($commentaryResult['skills_are_suggested']);
+                    $aiDreamCommentary = $commentaryResult['dream_commentary'] ?? null;
                 }
                 // Any other outcome (unreachable service, non-200, ai_commentary
                 // false) — leave the ai_* columns NULL, exactly the same
@@ -563,7 +598,7 @@ try {
     .compare-col .match-note { margin: 0 0 12px; }
     .compare-col .career { margin-bottom: 0; }
     .career.dream-card { border: 2px dashed #6e1423; }
-    .compare-table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 14.5px; background: #fff; border: 1px solid #e3c9cd; border-radius: 8px; }
+    .compare-table { width: 100%; border-collapse: collapse; margin-top: 0; font-size: 14.5px; background: #fff; border: 1px solid #e3c9cd; border-radius: 8px; }
     .compare-table th, .compare-table td { padding: 8px 12px; border-bottom: 1px solid #eee; text-align: center; }
     .compare-table th:first-child, .compare-table td:first-child { text-align: left; }
     .compare-table th { background: #faf0f1; color: #6e1423; font-size: 13.5px; }
@@ -616,12 +651,6 @@ try {
         </div>
     <?php endif; ?>
 
-    <?php if (!empty($aiSummary)): ?>
-        <div class="ai-insights-box">
-            <div class="ai-insights-label">✨ AI Insights — a note on your own results</div>
-            <p><?= htmlspecialchars($aiSummary) ?></p>
-        </div>
-    <?php endif; ?>
 
     <?php
         // Shared card renderer for the best match and the other recommended
@@ -748,6 +777,15 @@ try {
             // Optional dream career, scored the same way as every other career.
             $dreamData = ($pdo && !empty($dreamCareerId)) ? load_dream_career($pdo, $dreamCareerId, $studentVectorAssoc) : null;
             $dreamCard = $dreamData ? build_career_match_data($dreamData['row'], $studentVectorAssoc) : null;
+            if ($dreamCard) {
+                // AI note for the dream career (generated in the same call as the
+                // best-match note, cached on the profile). Flag general suggestions
+                // when the dream career has no counselor-verified skills yet.
+                $dreamCard['ai_career_commentary'] = $aiDreamCommentary;
+                $dreamSkillCount = $pdo->prepare("SELECT COUNT(*) FROM skill_requirements WHERE career_id = :id");
+                $dreamSkillCount->execute(['id' => $dreamCard['career_id']]);
+                $dreamCard['ai_skills_are_suggested'] = ((int) $dreamSkillCount->fetchColumn() === 0);
+            }
         ?>
         <?php if ($dreamCard): ?>
             <?php $sameCareer = (int) $dreamCard['career_id'] === (int) $bestMatch['career_id']; ?>
@@ -755,18 +793,6 @@ try {
                 <div class="compare-verdict">
                     <strong>Your results vs. your dream career.</strong>
                     <?= htmlspecialchars(dream_comparison_text($bestMatch['career_title'], (float) $bestMatch['match_score'], $dreamCard['career_title'], (float) $dreamCard['match_score'], (int) $dreamData['rank'], (int) $dreamData['total'], $sameCareer)) ?>
-                </div>
-                <div class="compare-grid">
-                    <div class="compare-col">
-                        <h2>🎯 What the system found</h2>
-                        <p class="match-note">The career with the highest RIASEC match for your answers.</p>
-                        <?php render_career_card($bestMatch, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'best-match-card'); ?>
-                    </div>
-                    <div class="compare-col">
-                        <h2>💭 Your dream career</h2>
-                        <p class="match-note">The career you said you are aiming for, scored the same way.</p>
-                        <?php render_career_card($dreamCard, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'dream-card'); ?>
-                    </div>
                 </div>
                 <table class="compare-table">
                     <tr>
@@ -790,6 +816,18 @@ try {
                         <td><strong><?= number_format($dreamCard['match_score'], 0) ?>%</strong></td>
                     </tr>
                 </table>
+                <div class="compare-grid" style="margin-top:20px;">
+                    <div class="compare-col">
+                        <h2>🎯 What the system found</h2>
+                        <p class="match-note">The career with the highest RIASEC match for your answers.</p>
+                        <?php render_career_card($bestMatch, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'best-match-card'); ?>
+                    </div>
+                    <div class="compare-col">
+                        <h2>💭 Your dream career</h2>
+                        <p class="match-note">The career you said you are aiming for, scored the same way.</p>
+                        <?php render_career_card($dreamCard, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'dream-card'); ?>
+                    </div>
+                </div>
             </div>
         <?php else: ?>
         <div class="best-match-section">

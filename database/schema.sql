@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS student_profiles (
     --                           suggestion" label when this is true.
     ai_summary              TEXT NULL,
     ai_career_commentary    TEXT NULL,
+    ai_dream_commentary     TEXT NULL,   -- optional dream career note (migration 29)
     ai_skills_are_suggested TINYINT(1) NOT NULL DEFAULT 0,
     ai_commentary_generated_at TIMESTAMP NULL,
     submitted_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

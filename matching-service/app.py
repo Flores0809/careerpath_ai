@@ -437,9 +437,19 @@ class StudentCommentary(BaseModel):
     """Structured output schema for Gemini. Deliberately has NO field for
     "were skills suggested/invented" -- that determination is made in
     Python from whether career_required_skills was empty, before the model
-    is ever called, so it can't be talked into mislabeling its own output."""
-    summary: str
+    is ever called, so it can't be talked into mislabeling its own output.
+    (There is no general "summary of your scores" field any more: the RIASEC
+    bars already show the scores, so a restatement of them added tokens
+    without adding information.)"""
     career_commentary: str
+
+
+class StudentCommentaryWithDream(BaseModel):
+    """Same, plus a comparison note for the student's OPTIONAL dream career,
+    produced in the same single Gemini call so a dream pick never doubles
+    the number of API requests."""
+    career_commentary: str
+    dream_commentary: str
 
 
 STUDENT_COMMENTARY_PROMPT_TEMPLATE = """You are a supportive career-guidance assistant helping a Filipino \
@@ -448,12 +458,10 @@ Everything you write here is shown directly to the student, so keep it encouragi
 grounded ONLY in the specific numbers and details given below -- never invent facts about the student, \
 never diagnose, never promise future success, and never mention traits or data not given here.
 
-Produce two things:
-- summary: 2-4 sentences, second person ("you"), explaining what this student's own RIASEC scores say \
-about their interests and work style. Reference their actual highest-scoring trait(s) by name.
-- career_commentary: 3-5 sentences, second person, explaining why their best-matching career (the \
+Produce:
+- career_commentary: 3-5 sentences, second person ("you"), explaining why their best-matching career (the \
 top result of the matching engine) fits someone with this RIASEC profile, plus concrete skills to start building. {skills_instruction}
-
+{dream_task}
 Student's RIASEC scores (0-100): R={r} I={i} A={a} S={s} E={e} C={c}
 Student's self-reported academic average (0-100, may be blank): {academic_average}
 Student's self-reported existing skills (may be blank): {student_skills}
@@ -462,11 +470,35 @@ Best-matching career: {career_title}
 Career description (counselor-approved, may be blank): {career_description}
 Career's key subjects (counselor-curated, may be blank): {career_key_subjects}
 Career's verified required skills (counselor-approved, may be empty): {career_required_skills}
+{dream_block}"""
+
+DREAM_TASK_TEXT = """- dream_commentary: 3-5 sentences, second person, about the career the student said they are aiming for \
+(the dream career below). Compare the student's RIASEC scores with the dream career's RIASEC profile: name \
+which of their traits already support it and which traits the career asks for more of, then suggest concrete \
+subjects or skills to build. {dream_skills_instruction} Be encouraging and honest: if it fits less than their \
+best match, say that a lower interest match does not mean they cannot pursue it, and never tell them to give it up.
+"""
+
+DREAM_BLOCK_TEXT = """
+Dream career (the career the student chose): {dream_title}
+Dream career's RIASEC profile (0-100): R={dr} I={di} A={da} S={ds} E={de} C={dc}
+Dream career description (counselor-approved, may be blank): {dream_description}
+Dream career's key subjects (counselor-curated, may be blank): {dream_key_subjects}
+Dream career's verified required skills (counselor-approved, may be empty): {dream_required_skills}
 """
 
 
+def _skills_text(skills):
+    return "; ".join(
+        f"{s.get('skill_name', '')} ({s.get('proficiency_level', 'basic')}"
+        f"{'' if s.get('is_required') else ', optional'})"
+        for s in skills
+    ) if skills else "(none on file)"
+
+
 def call_gemini_student_commentary(riasec, academic_average, student_skills, career_title,
-                                    career_description, career_key_subjects, career_required_skills):
+                                    career_description, career_key_subjects, career_required_skills,
+                                    dream_career=None):
     client = get_gemini_client()
 
     # This is the one decision the model doesn't get to make about itself --
@@ -480,14 +512,34 @@ def call_gemini_student_commentary(riasec, academic_average, student_skills, car
         "skills a student could start building toward it, and phrase them as general suggestions "
         "rather than an official requirement list."
     )
-    skills_text = "; ".join(
-        f"{s.get('skill_name', '')} ({s.get('proficiency_level', 'basic')}"
-        f"{'' if s.get('is_required') else ', optional'})"
-        for s in career_required_skills
-    ) if career_required_skills else "(none on file)"
+
+    dream_task = ""
+    dream_block = ""
+    dream_has_verified_skills = None
+    if dream_career:
+        dream_skills = dream_career.get("required_skills") or []
+        dream_has_verified_skills = bool(dream_skills)
+        dream_skills_instruction = (
+            "Base the skills you mention on the dream career's VERIFIED required skills list -- do not invent new ones."
+            if dream_has_verified_skills else
+            "No verified required skills exist for the dream career yet, so suggest 3-4 realistic, general skills "
+            "and phrase them as general suggestions rather than an official requirement list."
+        )
+        dr = dream_career.get("riasec") or {}
+        dream_task = DREAM_TASK_TEXT.format(dream_skills_instruction=dream_skills_instruction)
+        dream_block = DREAM_BLOCK_TEXT.format(
+            dream_title=dream_career.get("career_title", ""),
+            dr=dr.get("R", 0), di=dr.get("I", 0), da=dr.get("A", 0),
+            ds=dr.get("S", 0), de=dr.get("E", 0), dc=dr.get("C", 0),
+            dream_description=dream_career.get("career_description") or "(not provided)",
+            dream_key_subjects=dream_career.get("career_key_subjects") or "(not provided)",
+            dream_required_skills=_skills_text(dream_skills),
+        )
 
     prompt = STUDENT_COMMENTARY_PROMPT_TEMPLATE.format(
         skills_instruction=skills_instruction,
+        dream_task=dream_task,
+        dream_block=dream_block,
         r=riasec.get("R", 0), i=riasec.get("I", 0), a=riasec.get("A", 0),
         s=riasec.get("S", 0), e=riasec.get("E", 0), c=riasec.get("C", 0),
         academic_average=academic_average if academic_average not in (None, "") else "(not provided)",
@@ -495,24 +547,28 @@ def call_gemini_student_commentary(riasec, academic_average, student_skills, car
         career_title=career_title,
         career_description=career_description or "(not provided)",
         career_key_subjects=career_key_subjects or "(not provided)",
-        career_required_skills=skills_text,
+        career_required_skills=_skills_text(career_required_skills),
     )
 
+    schema = StudentCommentaryWithDream if dream_career else StudentCommentary
     response = client.models.generate_content(
         model=GEMINI_MODEL,
         contents=prompt,
         config={
             "response_mime_type": "application/json",
-            "response_schema": StudentCommentary,
+            "response_schema": schema,
         },
     )
-    parsed = StudentCommentary.model_validate_json(response.text)
+    parsed = schema.model_validate_json(response.text)
 
-    return {
-        "summary": parsed.summary.strip(),
+    result = {
         "career_commentary": parsed.career_commentary.strip(),
         "skills_are_suggested": not has_verified_skills,
     }
+    if dream_career:
+        result["dream_commentary"] = parsed.dream_commentary.strip()
+        result["dream_skills_are_suggested"] = not dream_has_verified_skills
+    return result
 
 
 class StudentCommentaryResource(Resource):
@@ -521,10 +577,14 @@ class StudentCommentaryResource(Resource):
            "academic_average": number|null, "student_skills": string|null,
            "career_title": string, "career_description": string|null,
            "career_key_subjects": string|null,
-           "career_required_skills": [{"skill_name","proficiency_level","is_required"}, ...] }
+           "career_required_skills": [{"skill_name","proficiency_level","is_required"}, ...],
+           "dream_career": (optional) {"career_title", "career_description", "career_key_subjects",
+                            "riasec": {R..C 0-100}, "required_skills": [...]} }
 
-    Returns 200 with {"ai_commentary": true, "summary": "...",
-    "career_commentary": "...", "skills_are_suggested": bool} on success.
+    Returns 200 with {"ai_commentary": true, "career_commentary": "...",
+    "skills_are_suggested": bool} on success, plus "dream_commentary" and
+    "dream_skills_are_suggested" when a dream_career was sent (one Gemini call
+    for both).
     Returns 503 with {"ai_commentary": false, "error": "..."} if the API key
     is missing or the Gemini call fails for any reason -- the caller
     (php/submit.php) should treat this as "leave the ai_* columns NULL,"
@@ -551,6 +611,7 @@ class StudentCommentaryResource(Resource):
                 career_description=payload.get("career_description"),
                 career_key_subjects=payload.get("career_key_subjects"),
                 career_required_skills=payload.get("career_required_skills") or [],
+                dream_career=payload.get("dream_career") or None,
             )
             result["ai_commentary"] = True
             return result, 200

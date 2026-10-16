@@ -234,12 +234,6 @@ function cosine_similarity_riasec_history(array $a, array $b): float
                 </div>
             <?php endif; ?>
 
-            <?php if (!empty($profile['ai_summary'])): ?>
-                <div class="ai-insights-box">
-                    <div class="ai-insights-label">✨ AI Insights — a note on this result</div>
-                    <p><?= htmlspecialchars($profile['ai_summary']) ?></p>
-                </div>
-            <?php endif; ?>
 
             <?php if ($dreamCareer): ?>
                 <?php $sameCareer = (int) $dreamCareer['career_id'] === (int) $bestRec['career_id']; ?>
@@ -277,6 +271,12 @@ function cosine_similarity_riasec_history(array $a, array $b): float
                         </div>
                         <?php if (!empty($dreamCareer['key_subjects'])): ?>
                             <div class="subjects-line">📚 Subjects to focus on: <?= htmlspecialchars($dreamCareer['key_subjects']) ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($profile['ai_dream_commentary']) && !$sameCareer): ?>
+                            <div class="ai-insights-box ai-insights-box-inline">
+                                <div class="ai-insights-label">✨ AI Insights</div>
+                                <p><?= htmlspecialchars($profile['ai_dream_commentary']) ?></p>
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>

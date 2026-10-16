@@ -197,3 +197,25 @@ function dream_comparison_text(string $bestTitle, float $bestScore, string $drea
     }
     return $text . ' This is guidance only: interest fit is one factor, and you can also work on the traits the dream career needs.';
 }
+
+/**
+ * student_profiles.ai_dream_commentary (migration 29) holds the AI note about
+ * the student's optional dream career. Added on demand if the migration has
+ * not been run yet, so the page never breaks; harmless if it already exists.
+ */
+function ensure_dream_commentary_column(PDO $pdo): void
+{
+    static $checked = false;
+    if ($checked) {
+        return;
+    }
+    $checked = true;
+    try {
+        $has = $pdo->query("SHOW COLUMNS FROM student_profiles LIKE 'ai_dream_commentary'")->fetch();
+        if (!$has) {
+            $pdo->exec("ALTER TABLE student_profiles ADD COLUMN ai_dream_commentary TEXT NULL AFTER ai_career_commentary");
+        }
+    } catch (Exception $e) {
+        // No ALTER rights or table missing: the dream note is simply not stored.
+    }
+}
