@@ -174,7 +174,7 @@ $backLink = $isStaff ? 'students_lookup.php' : 'student_history.php';
             <tr>
                 <td style="width:50%;vertical-align:top;padding:0;">
                     <div class="career-block" style="border-color:#6e1423;margin-top:0;">
-                        <div style="font-size:12px;text-transform:uppercase;color:#6e1423;font-weight:bold;">🎯 What the system found</div>
+                        <div style="font-size:12px;text-transform:uppercase;color:#6e1423;font-weight:bold;">🎯 What best suits you</div>
                         <span class="match"><?= number_format($bestRec['match_score'], 0) ?>% match</span>
                         <h3><?= htmlspecialchars($bestRec['career_title']) ?></h3>
                         <?php if (!empty($bestRec['key_subjects'])): ?>

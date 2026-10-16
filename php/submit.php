@@ -818,7 +818,7 @@ try {
                 </table>
                 <div class="compare-grid" style="margin-top:20px;">
                     <div class="compare-col">
-                        <h2>🎯 What the system found</h2>
+                        <h2>🎯 What best suits you</h2>
                         <p class="match-note">The career with the highest RIASEC match for your answers.</p>
                         <?php render_career_card($bestMatch, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'best-match-card'); ?>
                     </div>

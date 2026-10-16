@@ -243,7 +243,7 @@ function cosine_similarity_riasec_history(array $a, array $b): float
                 </div>
                 <div class="compare-grid">
                     <div class="dream-row">
-                        <div class="dream-label">🎯 What the system found</div>
+                        <div class="dream-label">🎯 What best suits you</div>
                         <div style="display:flex;justify-content:space-between;align-items:baseline;">
                             <span class="title"><a href="career_profile.php?id=<?= (int) $bestRec['career_id'] ?>"><?= htmlspecialchars($bestRec['career_title']) ?></a></span>
                             <span class="match"><?= number_format($bestRec['match_score'], 0) ?>% match</span>
