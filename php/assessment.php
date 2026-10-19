@@ -34,13 +34,9 @@ $currentStudent = require_student_login();
 // changes the RIASEC scores or the ranked recommendations.
 // Only categorized, active careers are offered (no "Other" catch-all).
 $pdo = get_db();
-$careerRows = $pdo->query(
-    "SELECT career_id, career_title, career_category FROM careers WHERE status = 'active' AND career_category IS NOT NULL ORDER BY career_category, career_title"
-)->fetchAll();
-$careersByCategory = [];
-foreach ($careerRows as $row) {
-    $careersByCategory[$row['career_category']][] = ['id' => (int) $row['career_id'], 'title' => $row['career_title']];
-}
+$categoryNames = $pdo->query(
+    "SELECT DISTINCT career_category FROM careers WHERE status = 'active' AND career_category IS NOT NULL AND career_category <> '' ORDER BY career_category"
+)->fetchAll(PDO::FETCH_COLUMN);
 
 // Verb-phrase consistency pass (per validator feedback: "use more consistent
 // and direct wording" instead of mixing "I would enjoy" / "I like" / "I am
@@ -165,18 +161,14 @@ $typeLabels = [
 
     <form action="submit.php" method="POST" id="assessment-form">
         <fieldset>
-            <legend>🎯 Your Dream Career (optional)</legend>
-            <p style="font-size:14.5px;color:#555;margin-top:0;">Do you already have a career in mind? You can skip this. If you pick one, your results will show it <em>next to</em> the career your RIASEC answers fit best, so you can compare what the system found with what you are aiming for.</p>
+            <legend>🎯 Industry You Want to Work In (optional)</legend>
+            <p style="font-size:14.5px;color:#555;margin-top:0;">Do you already have an industry in mind? You can skip this. If you pick one, your results will show the career in that industry that fits you best <em>next to</em> the career your RIASEC answers fit best overall, so you can compare what the system found with what you are aiming for.</p>
             <label style="display:block;font-size:14.5px;font-weight:bold;margin:10px 0 4px;">Field / Industry</label>
-            <select id="dream_cluster" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;">
+            <select name="dream_category" id="dream_cluster" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;">
                 <option value="">— Skip / not sure yet —</option>
-                <?php foreach (array_keys($careersByCategory) as $cat): ?>
+                <?php foreach ($categoryNames as $cat): ?>
                     <option value="<?= htmlspecialchars($cat) ?>"><?= htmlspecialchars($cat) ?></option>
                 <?php endforeach; ?>
-            </select>
-            <label style="display:block;font-size:14.5px;font-weight:bold;margin:10px 0 4px;">Specific Career</label>
-            <select name="dream_career_id" id="dream_career_id" disabled style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;">
-                <option value="">— Select a field first —</option>
             </select>
         </fieldset>
 
@@ -214,32 +206,6 @@ $typeLabels = [
         <button type="submit">Get My Career Recommendations</button>
     </form>
 
-    <script>
-        var careersByCategory = <?= json_encode($careersByCategory) ?>;
-        var clusterSelect = document.getElementById('dream_cluster');
-        var careerSelect = document.getElementById('dream_career_id');
-
-        clusterSelect.addEventListener('change', function () {
-            var careers = careersByCategory[clusterSelect.value] || [];
-            careerSelect.innerHTML = '';
-            if (!careers.length) {
-                careerSelect.innerHTML = '<option value="">— Select a field first —</option>';
-                careerSelect.disabled = true;
-                return;
-            }
-            careerSelect.disabled = false;
-            var placeholder = document.createElement('option');
-            placeholder.value = '';
-            placeholder.textContent = '— Select a career (or leave blank to skip) —';
-            careerSelect.appendChild(placeholder);
-            careers.forEach(function (c) {
-                var opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = c.title;
-                careerSelect.appendChild(opt);
-            });
-        });
-    </script>
 <?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

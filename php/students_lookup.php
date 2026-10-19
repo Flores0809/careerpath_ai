@@ -403,7 +403,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                             <?php endif; ?>
                             <?php if ($profile['dream_career']): ?>
                                 <div class="dream-row">
-                                    <div class="dream-label">💭 Student's dream career (compare with the system's best match below)<?= $profile['dream_career']['career_category'] ? ' · ' . htmlspecialchars($profile['dream_career']['career_category']) : '' ?></div>
+                                    <div class="dream-label">💭 Student's chosen industry: closest-fit career (compare with the system's best match below)<?= $profile['dream_career']['career_category'] ? ' · ' . htmlspecialchars($profile['dream_career']['career_category']) : '' ?></div>
                                     <div class="top-line">
                                         <span><a href="career_profile.php?id=<?= $profile['dream_career']['career_id'] ?>"><?= htmlspecialchars($profile['dream_career']['career_title']) ?></a></span>
                                         <span class="match"><?= number_format($profile['dream_career']['match_score'], 0) ?>% match</span>

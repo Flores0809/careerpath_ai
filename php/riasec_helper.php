@@ -185,17 +185,17 @@ function load_dream_career(PDO $pdo, $dreamCareerId, array $studentVec): ?array
 function dream_comparison_text(string $bestTitle, float $bestScore, string $dreamTitle, float $dreamScore, int $rank, int $total, bool $sameCareer): string
 {
     if ($sameCareer) {
-        return 'Your dream career, ' . $dreamTitle . ', is also the career your RIASEC answers fit best (' . round($bestScore) . '% match).';
+        return 'The closest fit in your chosen industry, ' . $dreamTitle . ', is also the career your RIASEC answers fit best (' . round($bestScore) . '% match).';
     }
     $diff = round($bestScore - $dreamScore);
-    $text = 'Your dream career, ' . $dreamTitle . ', is a ' . round($dreamScore) . '% match for your RIASEC profile';
+    $text = 'The closest fit in your chosen industry, ' . $dreamTitle . ', is a ' . round($dreamScore) . '% match for your RIASEC profile';
     $text .= ($total > 0 ? ' and ranks #' . $rank . ' of ' . $total . ' careers in the catalog for you.' : '.');
     if ($diff <= 5) {
         $text .= ' The system\'s best match, ' . $bestTitle . ' (' . round($bestScore) . '%), is very close, so both are worth exploring.';
     } else {
         $text .= ' The system\'s best match, ' . $bestTitle . ' (' . round($bestScore) . '%), fits your answers ' . $diff . ' points better.';
     }
-    return $text . ' This is guidance only: interest fit is one factor, and you can also work on the traits the dream career needs.';
+    return $text . ' This is guidance only: interest fit is one factor, and you can also work on the traits that career needs.';
 }
 
 /**

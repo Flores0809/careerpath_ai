@@ -238,7 +238,7 @@ function cosine_similarity_riasec_history(array $a, array $b): float
             <?php if ($dreamCareer): ?>
                 <?php $sameCareer = (int) $dreamCareer['career_id'] === (int) $bestRec['career_id']; ?>
                 <div class="compare-verdict">
-                    <strong>Your results vs. your dream career.</strong>
+                    <strong>Your results vs. your chosen industry.</strong>
                     <?= htmlspecialchars(dream_comparison_text($bestRec['career_title'], (float) $bestRec['match_score'], $dreamCareer['career_title'], (float) $dreamCareer['match_score'], (int) $dreamData['rank'], (int) $dreamData['total'], $sameCareer)) ?>
                 </div>
                 <div class="compare-grid">
@@ -264,7 +264,7 @@ function cosine_similarity_riasec_history(array $a, array $b): float
                         <?php endif; ?>
                     </div>
                     <div class="dream-row">
-                        <div class="dream-label">💭 Your dream career<?= $dreamCareer['career_category'] ? ' · ' . htmlspecialchars($dreamCareer['career_category']) : '' ?></div>
+                        <div class="dream-label">💭 Your chosen industry<?= $dreamCareer['career_category'] ? ' · ' . htmlspecialchars($dreamCareer['career_category']) : '' ?></div>
                         <div style="display:flex;justify-content:space-between;align-items:baseline;">
                             <span class="title"><a href="career_profile.php?id=<?= $dreamCareer['career_id'] ?>"><?= htmlspecialchars($dreamCareer['career_title']) ?></a></span>
                             <span class="match"><?= number_format($dreamCareer['match_score'], 0) ?>% match</span>

@@ -168,7 +168,7 @@ $backLink = $isStaff ? 'students_lookup.php' : 'student_history.php';
 
     <?php if ($dreamCareer): ?>
         <?php $sameCareer = (int) $dreamCareer['career_id'] === (int) $bestRec['career_id']; ?>
-        <h2 class="section-title">Your results vs. your dream career</h2>
+        <h2 class="section-title">Your results vs. your chosen industry</h2>
         <p><?= htmlspecialchars(dream_comparison_text($bestRec['career_title'], (float) $bestRec['match_score'], $dreamCareer['career_title'], (float) $dreamCareer['match_score'], (int) $dreamData['rank'], (int) $dreamData['total'], $sameCareer)) ?></p>
         <table style="width:100%;border-collapse:separate;border-spacing:12px 0;">
             <tr>
@@ -184,7 +184,7 @@ $backLink = $isStaff ? 'students_lookup.php' : 'student_history.php';
                 </td>
                 <td style="width:50%;vertical-align:top;padding:0;">
                     <div class="career-block" style="border:2px dashed #6e1423;margin-top:0;">
-                        <div style="font-size:12px;text-transform:uppercase;color:#6e1423;font-weight:bold;">💭 Your dream career<?= $dreamCareer['career_category'] ? ' · ' . htmlspecialchars($dreamCareer['career_category']) : '' ?></div>
+                        <div style="font-size:12px;text-transform:uppercase;color:#6e1423;font-weight:bold;">💭 Your chosen industry<?= $dreamCareer['career_category'] ? ' · ' . htmlspecialchars($dreamCareer['career_category']) : '' ?></div>
                         <span class="match"><?= number_format($dreamCareer['match_score'], 0) ?>% match</span>
                         <h3><?= htmlspecialchars($dreamCareer['career_title']) ?></h3>
                         <?php if (!empty($dreamCareer['key_subjects'])): ?>

@@ -479,8 +479,9 @@ Career's key subjects (counselor-curated, may be blank): {career_key_subjects}
 Career's verified required skills (counselor-approved, may be empty): {career_required_skills}
 {dream_block}"""
 
-DREAM_TASK_TEXT = """- dream_commentary: 3-5 sentences, second person, about the career the student said they are aiming for \
-(the dream career below). Compare the student's RIASEC scores with the dream career's RIASEC profile: name \
+DREAM_TASK_TEXT = """- dream_commentary: 3-5 sentences, second person, about the career in the INDUSTRY the student said they want to work in that fits them best \
+(the industry career below; the student picked the industry, not this exact job, so present it as the closest fit in their chosen industry). \
+Compare the student's RIASEC scores with that career's RIASEC profile: name \
 which of their traits already support it and which traits the career asks for more of, then suggest concrete \
 subjects or skills to build. {dream_skills_instruction} Be encouraging and honest: if it fits less than their \
 best match, say that a lower interest match does not mean they cannot pursue it, and never tell them to give it up.

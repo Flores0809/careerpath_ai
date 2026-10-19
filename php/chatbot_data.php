@@ -69,8 +69,8 @@ return [
     ],
     [
         'keywords' => ['dream', 'aiming', 'pangarap', 'compare', 'comparison'],
-        'question' => 'What is the dream career option?',
-        'answer' => "At the start of the assessment you can optionally pick a dream career (choose a field, then a specific career), or skip it. Your RIASEC results and ranked matches are calculated the same way either way. If you pick one, the results page shows the career the system found to fit you best on the left and your dream career on the right, with their match percentages and RIASEC traits side by side, so you can compare them.",
+        'question' => 'What is the industry option in the assessment?',
+        'answer' => "At the start of the assessment you can optionally pick the industry you want to work in, or skip it. Your RIASEC results and ranked matches are calculated the same way either way. If you pick one, the results page shows the career the system found to fit you best on the left and, on the right, the career in your chosen industry that fits you best, with their match percentages and RIASEC traits side by side, so you can compare them.",
     ],
     [
         'keywords' => ['percentage', 'percent', 'score', 'rating', 'rate'],

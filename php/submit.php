@@ -81,12 +81,28 @@ if ($isReplay) {
 
     // OPTIONAL dream career (assessment.php): the student may leave it blank.
     // Only an existing, active career is accepted; anything else is ignored.
-    $dreamCareerId = (int) ($_POST['dream_career_id'] ?? 0);
-    if ($dreamCareerId > 0) {
-        $dreamCheck = $pdo->prepare("SELECT COUNT(*) FROM careers WHERE career_id = :id AND status = 'active'");
-        $dreamCheck->execute(['id' => $dreamCareerId]);
-        if ((int) $dreamCheck->fetchColumn() === 0) {
-            $dreamCareerId = 0;
+    // The student picks only an INDUSTRY (career category), not a specific
+    // career. It is resolved below, once the RIASEC vector is known, to the
+    // career in that industry that fits the student best (stored in
+    // dream_career_id so every results page can keep using it).
+    $dreamCategory = trim($_POST['dream_category'] ?? '');
+    $dreamCareerId = 0;
+    if ($dreamCategory !== '') {
+        $catStmt = $pdo->prepare(
+            "SELECT * FROM careers WHERE status = 'active' AND career_category = :cat"
+        );
+        $catStmt->execute(['cat' => $dreamCategory]);
+        $bestScore = -1.0;
+        foreach ($catStmt->fetchAll() as $catCareer) {
+            $catVector = [
+                'R' => $catCareer['r_score'] / 100, 'I' => $catCareer['i_score'] / 100, 'A' => $catCareer['a_score'] / 100,
+                'S' => $catCareer['s_score'] / 100, 'E' => $catCareer['e_score'] / 100, 'C' => $catCareer['c_score'] / 100,
+            ];
+            $catScore = cosine_similarity_riasec($riasec, $catVector);
+            if ($catScore > $bestScore) {
+                $bestScore = $catScore;
+                $dreamCareerId = (int) $catCareer['career_id'];
+            }
         }
     }
 }
@@ -798,7 +814,7 @@ try {
             <?php $sameCareer = (int) $dreamCard['career_id'] === (int) $bestMatch['career_id']; ?>
             <div class="compare-section">
                 <div class="compare-verdict">
-                    <strong>Your results vs. your dream career.</strong>
+                    <strong>Your results vs. your chosen industry.</strong>
                     <?= htmlspecialchars(dream_comparison_text($bestMatch['career_title'], (float) $bestMatch['match_score'], $dreamCard['career_title'], (float) $dreamCard['match_score'], (int) $dreamData['rank'], (int) $dreamData['total'], $sameCareer)) ?>
                 </div>
                 <table class="compare-table">
@@ -806,7 +822,7 @@ try {
                         <th>RIASEC trait</th>
                         <th>You</th>
                         <th>System's best match<br><?= htmlspecialchars($bestMatch['career_title']) ?></th>
-                        <th>Your dream career<br><?= htmlspecialchars($dreamCard['career_title']) ?></th>
+                        <th>Closest fit in your chosen industry<br><?= htmlspecialchars($dreamCard['career_title']) ?></th>
                     </tr>
                     <?php foreach (['R', 'I', 'A', 'S', 'E', 'C'] as $k): ?>
                         <tr>
@@ -830,11 +846,11 @@ try {
                         <?php render_career_card($bestMatch, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'best-match-card'); ?>
                     </div>
                     <div class="compare-col">
-                        <h2>💭 Your dream career</h2>
+                        <h2>💭 Your chosen industry<?= !empty($dreamData['row']['career_category']) ? ' · ' . htmlspecialchars($dreamData['row']['career_category']) : '' ?></h2>
                         <p class="match-note">The career you said you are aiming for, scored the same way.</p>
                         <?php render_career_card($dreamCard, $pdo, $studentSkillsRaw, $riasecTypeNames, $studentRiasecPct, 'dream-card'); ?>
                         <?php if (!$sameCareer && empty($aiDreamCommentary)): ?>
-                            <p class="match-note" style="margin-top:8px;font-style:italic;">No AI insight was saved for this dream career. The AI service may have been unavailable when this assessment was submitted; retaking the assessment will generate one.</p>
+                            <p class="match-note" style="margin-top:8px;font-style:italic;">No AI insight was saved for this career. The AI service may have been unavailable when this assessment was submitted; retaking the assessment will generate one.</p>
                         <?php endif; ?>
                     </div>
                 </div>
