@@ -69,6 +69,10 @@ if ($isReplay) {
     // field everywhere downstream, so it doesn't get stored or scored as if it
     // were a real (and misleadingly low) list of skills.
     $studentSkillsRaw = trim($_POST['skills'] ?? '');
+    if ($studentSkillsRaw === '') {
+        http_response_code(400);
+        die('Please list your skills (or type "N/A" if you are not sure). <a href="assessment.php">Go back</a>');
+    }
     if (preg_match('/^n\.?\/?\s?a\.?$|^none$/i', $studentSkillsRaw)) {
         $studentSkillsRaw = '';
     }

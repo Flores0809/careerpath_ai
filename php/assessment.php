@@ -192,9 +192,9 @@ $typeLabels = [
         <?php endforeach; ?>
 
         <fieldset>
-            <legend>Your Skills (optional)</legend>
-            <p style="font-size:14.5px;color:#555;margin-top:0;">List skills you already have, separated by commas (e.g. computer basics, public speaking, first aid). Optional — helps show which required skills you already meet. Not sure? Type "N/A".</p>
-            <textarea name="skills" rows="3" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;" placeholder="e.g. Microsoft Excel, teamwork, basic coding, customer service"></textarea>
+            <legend>Your Skills</legend>
+            <p style="font-size:14.5px;color:#555;margin-top:0;">List skills you already have, separated by commas (e.g. computer basics, public speaking, first aid). This helps show which required skills you already meet. Not sure? Type "N/A".</p>
+            <textarea name="skills" rows="3" requiredstyle="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;" placeholder="e.g. Microsoft Excel, teamwork, basic coding, customer service"></textarea>
         </fieldset>
 
         <fieldset>
