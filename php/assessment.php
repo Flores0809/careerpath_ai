@@ -194,7 +194,7 @@ $typeLabels = [
         <fieldset>
             <legend>Your Skills</legend>
             <p style="font-size:14.5px;color:#555;margin-top:0;">List skills you already have, separated by commas (e.g. computer basics, public speaking, first aid). This helps show which required skills you already meet. Not sure? Type "N/A".</p>
-            <textarea name="skills" rows="3" requiredstyle="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;" placeholder="e.g. Microsoft Excel, teamwork, basic coding, customer service"></textarea>
+            <textarea name="skills" rows="3" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;" placeholder="e.g. Microsoft Excel, teamwork, basic coding, customer service"></textarea>
         </fieldset>
 
         <fieldset>
@@ -206,6 +206,21 @@ $typeLabels = [
         <button type="submit">Get My Career Recommendations</button>
     </form>
 
+    <script>
+        // Keep the student on this page (with every answer intact) when the
+        // skills box is empty or only spaces: the browser's own "required"
+        // check ignores whitespace, so it is re-checked here.
+        document.getElementById('assessment-form').addEventListener('submit', function (e) {
+            var skills = this.elements['skills'];
+            if (skills && skills.value.trim() === '') {
+                e.preventDefault();
+                skills.value = '';
+                skills.setCustomValidity('Please list your skills, or type "N/A" if you are not sure.');
+                skills.reportValidity();
+                skills.addEventListener('input', function () { skills.setCustomValidity(''); }, { once: true });
+            }
+        });
+    </script>
 <?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>
