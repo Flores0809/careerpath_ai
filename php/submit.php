@@ -91,6 +91,10 @@ if ($isReplay) {
     // dream_career_id so every results page can keep using it).
     $dreamCategory = trim($_POST['dream_category'] ?? '');
     $dreamCareerId = 0;
+    if ($dreamCategory === '') {
+        http_response_code(400);
+        die('Please choose the industry you want to work in. <a href="assessment.php">Go back</a>');
+    }
     if ($dreamCategory !== '') {
         $catStmt = $pdo->prepare(
             "SELECT * FROM careers WHERE status = 'active' AND career_category = :cat"

@@ -161,11 +161,11 @@ $typeLabels = [
 
     <form action="submit.php" method="POST" id="assessment-form">
         <fieldset>
-            <legend>🎯 Industry You Want to Work In (optional)</legend>
-            <p style="font-size:14.5px;color:#555;margin-top:0;">Do you already have an industry in mind? You can skip this. If you pick one, your results will show the career in that industry that fits you best <em>next to</em> the career your RIASEC answers fit best overall, so you can compare what the system found with what you are aiming for.</p>
+            <legend>🎯 Industry You Want to Work In</legend>
+            <p style="font-size:14.5px;color:#555;margin-top:0;">Choose the industry you want to work in. Your results will show the career in that industry that fits you best <em>next to</em> the career your RIASEC answers fit best overall, so you can compare what the system found with what you are aiming for. Not sure? Pick the industry that interests you most.</p>
             <label style="display:block;font-size:14.5px;font-weight:bold;margin:10px 0 4px;">Field / Industry</label>
-            <select name="dream_category" id="dream_cluster" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;">
-                <option value="">— Skip / not sure yet —</option>
+            <select name="dream_category" id="dream_cluster" required style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;box-sizing:border-box;">
+                <option value="">— Select an industry —</option>
                 <?php foreach ($categoryNames as $cat): ?>
                     <option value="<?= htmlspecialchars($cat) ?>"><?= htmlspecialchars($cat) ?></option>
                 <?php endforeach; ?>
