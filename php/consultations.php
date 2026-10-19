@@ -66,7 +66,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $studentId = $studentStmt->fetchColumn();
         if ($studentId) {
             $when = $scheduledDate ? date('M j, Y', strtotime($scheduledDate)) : 'a date to be confirmed';
-            notify_student($pdo, (int) $studentId, "Your consultation has been scheduled for $when.", 'request_consultation.php', 'consultation');
+            if ($scheduledDate && $scheduledTime) {
+                $when .= ' at ' . date('g:i A', strtotime($scheduledTime));
+            }
+            notify_student($pdo, (int) $studentId, "Your consultation has been scheduled for $when." . ($notes !== '' ? " Note from your counselor: $notes" : ''),'request_consultation.php', 'consultation');
         }
         $message = ['type' => 'success', 'text' => 'Consultation scheduled.'];
     } elseif ($action === 'complete' && $id) {
