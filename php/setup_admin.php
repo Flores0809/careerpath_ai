@@ -8,6 +8,7 @@
 // counselor accounts and any additional administrators.
 
 require __DIR__ . '/auth.php';
+require_once __DIR__ . '/password_rules.php';
 
 $pdo = get_db();
 $existingAdminCount = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'administrator'")->fetchColumn();
@@ -43,8 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'All fields are required.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Enter a valid email address.';
-    } elseif (strlen($password) < 8) {
-        $error = 'Password must be at least 8 characters.';
+    } elseif (($pwErr = password_strength_error($password)) !== null) {
+        $error = $pwErr;
     } elseif ($password !== $confirm) {
         $error = 'Passwords do not match.';
     } else {
@@ -106,11 +107,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label>Email</label>
         <input type="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
 
-        <label>Password (min. 8 characters)</label>
-        <input type="password" name="password" required minlength="8">
+        <label>Password (8+ chars, capital letter, number, special character)</label>
+        <input type="password" name="password" required minlength="8" pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])(?!.*\s).{8,}" title="At least 8 characters with a capital letter, a number and a special character. No spaces.">
 
         <label>Confirm password</label>
-        <input type="password" name="confirm" required minlength="8">
+        <input type="password" name="confirm" required minlength="8" pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])(?!.*\s).{8,}" title="At least 8 characters with a capital letter, a number and a special character. No spaces.">
 
         <button type="submit">Create administrator account</button>
     </form>

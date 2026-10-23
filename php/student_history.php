@@ -214,13 +214,13 @@ function cosine_similarity_riasec_history(array $a, array $b): float
 
             <div class="scoring-card">
                 <div class="scoring-title">How your RIASEC profile was scored</div>
-                <p class="scoring-explain">Each of the six RIASEC types has 7 statements, and you rated each from 1 (Strongly Disagree) to 4 (Strongly Agree). Your score for a type is the total of your 7 ratings divided by the highest possible total (28), shown as a percentage. These scores are then compared with every career's own RIASEC profile to produce the match percentages below.</p>
+                <p class="scoring-explain">Each of the six RIASEC types has 10 statements, and you rated each from 1 (Strongly Disagree) to 4 (Strongly Agree). Your score for a type is the total of your 10 ratings divided by the highest possible total (40), shown as a percentage. These scores are then compared with every career's own RIASEC profile to produce the match percentages below.</p>
                 <?php foreach (['R' => ['Realistic', 'r_score'], 'I' => ['Investigative', 'i_score'], 'A' => ['Artistic', 'a_score'], 'S' => ['Social', 's_score'], 'E' => ['Enterprising', 'e_score'], 'C' => ['Conventional', 'c_score']] as $letter => [$typeName, $col]): ?>
-                    <?php $typePct = (int) round($profile[$col] * 100); $typePoints = (int) round($profile[$col] * 28); ?>
+                    <?php $typePct = (int) round($profile[$col] * 100); $typePoints = (int) round($profile[$col] * 40); ?>
                     <div class="scoring-row">
                         <span class="scoring-label"><?= $typeName ?> (<?= $letter ?>)</span>
                         <div class="scoring-track"><span class="scoring-fill" style="width: <?= $typePct ?>%;"></span></div>
-                        <span class="scoring-pts"><?= $typePoints ?>/28 · <strong><?= $typePct ?>%</strong></span>
+                        <span class="scoring-pts"><?= $typePoints ?>/40 · <strong><?= $typePct ?>%</strong></span>
                     </div>
                 <?php endforeach; ?>
                 <?php if (!empty($profile['academic_average'])): ?>

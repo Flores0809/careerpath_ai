@@ -7,6 +7,7 @@
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/change_log_helper.php';
+require_once __DIR__ . '/password_rules.php';
 $currentUser = require_login();
 
 $pdo = get_db();
@@ -60,8 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!password_verify($current, $user['password_hash'])) {
             $message = ['type' => 'error', 'text' => 'Current password is incorrect.'];
-        } elseif (strlen($new) < 8) {
-            $message = ['type' => 'error', 'text' => 'New password must be at least 8 characters.'];
+        } elseif (($pwErr = password_strength_error($new)) !== null) {
+            $message = ['type' => 'error', 'text' => $pwErr];
         } elseif ($new !== $confirm) {
             $message = ['type' => 'error', 'text' => 'New password and confirmation do not match.'];
         } else {
@@ -132,9 +133,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label>Current password</label>
             <input type="password" name="current_password" required>
             <label>New password</label>
-            <input type="password" name="new_password" required minlength="8">
+            <input type="password" name="new_password" required minlength="8" pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])(?!.*\s).{8,}" title="At least 8 characters with a capital letter, a number and a special character. No spaces.">
             <label>Confirm new password</label>
-            <input type="password" name="confirm_password" required minlength="8">
+            <input type="password" name="confirm_password" required minlength="8" pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])(?!.*\s).{8,}" title="At least 8 characters with a capital letter, a number and a special character. No spaces.">
             <button type="submit">Change password</button>
         </form>
     </div>

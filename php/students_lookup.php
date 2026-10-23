@@ -295,7 +295,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
         <?php require __DIR__ . '/nav.php'; ?>
 
         <h1>Student Lookup</h1>
-        <p class="subtitle">Search for a student by ID, name, or email to view their assessment history.</p>
+        <p class="subtitle">Search for a student by LRN, name, or email to view their assessment history.</p>
 
         <?php if ($viewError): ?>
             <div class="error"><?= htmlspecialchars($viewError) ?></div>
@@ -334,10 +334,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                             <?= htmlspecialchars($viewedStudent['email']) ?> ·
                             <?= htmlspecialchars($viewedStudent['grade_level'] ?? 'Grade level not set') ?> ·
                             <span class="status-<?= htmlspecialchars($viewedStudent['status']) ?>"><?= htmlspecialchars($viewedStudent['status']) ?></span> ·
-                            Student ID #<?= (int) $viewedStudent['student_id'] ?>
-                            <?php if (!empty($viewedStudent['student_number'])): ?>
-                                · LRN <?= htmlspecialchars($viewedStudent['student_number']) ?>
-                            <?php endif; ?>
+                            LRN <?= htmlspecialchars($viewedStudent['student_number'] ?? '—') ?>
                             <?php if (!empty($viewedStudent['age'])): ?>
                                 · Age <?= (int) $viewedStudent['age'] ?>
                             <?php endif; ?>
@@ -457,7 +454,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                 <div class="search-bar" style="display:flex;align-items:center;gap:12px;max-width:none;flex-wrap:wrap;">
                     <div style="position:relative;max-width:340px;flex:1;min-width:220px;">
                         <span class="search-icon">🔍</span>
-                        <input type="text" id="student-search" placeholder="Search by student ID, student number, name, or email..." autofocus style="width:100%;padding:9px 14px 9px 32px;border:1px solid #ccc;border-radius:20px;font-size:15.5px;box-sizing:border-box;">
+                        <input type="text" id="student-search" placeholder="Search by LRN, name, or email..." autofocus style="width:100%;padding:9px 14px 9px 32px;border:1px solid #ccc;border-radius:20px;font-size:15.5px;box-sizing:border-box;">
                     </div>
                     <?php if ($gradeLevelOptions): ?>
                         <select id="grade-filter" style="padding:8px 12px;border:1px solid #ccc;border-radius:20px;font-size:14.5px;">
@@ -475,7 +472,6 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                     <p class="empty" id="student-count" style="margin-top:16px;margin-bottom:0;"><?= count($students) ?> student account<?= count($students) === 1 ? '' : 's' ?></p>
                     <div class="cp-table-scroll"><table>
                         <tr>
-                            <th>ID</th>
                             <th>LRN</th>
                             <th>Name</th>
                             <th>Email</th>
@@ -486,8 +482,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                             <th></th>
                         </tr>
                         <?php foreach ($students as $s): ?>
-                            <tr data-search="<?= htmlspecialchars(strtolower($s['student_id'] . ' ' . ($s['student_number'] ?? '') . ' ' . $s['name'] . ' ' . $s['email'])) ?>" data-grade="<?= htmlspecialchars(strtolower($s['grade_level'] ?? '')) ?>">
-                                <td>#<?= (int) $s['student_id'] ?></td>
+                            <tr data-search="<?= htmlspecialchars(strtolower(($s['student_number'] ?? '') . ' ' . $s['name'] . ' ' . $s['email'])) ?>" data-grade="<?= htmlspecialchars(strtolower($s['grade_level'] ?? '')) ?>">
                                 <td><?= htmlspecialchars($s['student_number'] ?? '—') ?></td>
                                 <td><?= htmlspecialchars($s['name']) ?></td>
                                 <td><?= htmlspecialchars($s['email']) ?></td>
@@ -499,7 +494,7 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                             </tr>
                         <?php endforeach; ?>
                         <tr id="student-no-results" style="display:none;">
-                            <td colspan="9" class="empty" style="text-align:center;">No students match your search.</td>
+                            <td colspan="8" class="empty" style="text-align:center;">No students match your search.</td>
                         </tr>
                     </table></div>
                 <?php endif; ?>

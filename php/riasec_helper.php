@@ -107,7 +107,7 @@ function render_about_assessment(): void
     echo '<details class="info-details"><summary>About this assessment — how it works</summary>'
        . '<p><strong>Basis:</strong> The questions follow Holland\'s RIASEC interest model, the same framework used by the U.S. Department of Labor\'s O*NET Interest Profiler. '
        . 'It measures how much you are drawn to six kinds of activities: Realistic, Investigative, Artistic, Social, Enterprising and Conventional.</p>'
-       . '<p><strong>Questions:</strong> 7 statements for each of the 6 types (42 in all). Rate each from 1 (Strongly Disagree) to 4 (Strongly Agree). Each type scores out of 28 points (7 × 4).</p>'
+       . '<p><strong>Questions:</strong> 10 statements for each of the 6 types (60 in all). Rate each from 1 (Strongly Disagree) to 4 (Strongly Agree). Each type scores out of 40 points (10 × 4).</p>'
        . '<p><strong>Scoring:</strong> Your answers for each type are added up and compared with the interest profile stored for each career. '
        . 'The closer the shape of your profile is to a career\'s profile, the higher its match score, and careers are ranked from best to lowest match. '
        . 'A match score shows how closely your interests resemble a career\'s profile — it is guidance, not a guarantee of success or a decision for you.</p>'

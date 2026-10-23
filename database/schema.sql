@@ -103,14 +103,13 @@ CREATE TABLE skill_requirements (
 -- php/student_register.php and log in at php/student_login.php — a
 -- separate login domain from staff accounts (`users` table above).
 CREATE TABLE IF NOT EXISTS students (
+    -- Internal row number used by foreign keys; never shown in the UI.
     student_id     INT AUTO_INCREMENT PRIMARY KEY,
     name           VARCHAR(150) NOT NULL,
-    -- School-issued ID number printed on the student's physical MEII ID
-    -- card — separate from student_id (the internal DB row number).
-    -- Nullable (existing/test accounts may not have one) but UNIQUE once
-    -- set (migration_24_student_number.sql). Lets staff search Student
-    -- Lookup by the number actually on the card, not a DB row number.
-    student_number VARCHAR(50) NULL UNIQUE,
+    -- LRN (Learner Reference Number, 12 digits): required and unique.
+    -- This is the identifier shown and searched in Student Lookup
+    -- (migration_27_lrn_primary_key.sql).
+    student_number CHAR(12) NOT NULL UNIQUE,
     email          VARCHAR(150) NOT NULL UNIQUE,
     password_hash  VARCHAR(255) NOT NULL,
     grade_level    VARCHAR(50) NULL,
@@ -118,8 +117,36 @@ CREATE TABLE IF NOT EXISTS students (
     -- the DB level (existing accounts predate this column), but required
     -- going forward at sign-up — see php/student_register.php.
     age            TINYINT UNSIGNED NULL,
-    status         ENUM('active', 'disabled') NOT NULL DEFAULT 'active',
+    -- 'pending' = registered with an LRN not on the class list; waits for
+    -- staff approval (migration_28_registration_approval.sql).
+    status         ENUM('active', 'disabled', 'pending') NOT NULL DEFAULT 'active',
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- School class list of valid LRNs, uploaded by staff (CSV/Excel). A student
+-- registering with an LRN on this list is activated automatically.
+CREATE TABLE IF NOT EXISTS lrn_roster (
+    lrn         CHAR(12) NOT NULL PRIMARY KEY,
+    name        VARCHAR(150) NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Rejected registrations (migration_29_rejected_registrations.sql): a copy of
+-- each rejected pending account, kept in its own list; the account itself is
+-- removed from `students` so the email/LRN can be used again.
+CREATE TABLE IF NOT EXISTS rejected_registrations (
+    rejection_id   INT AUTO_INCREMENT PRIMARY KEY,
+    name           VARCHAR(150) NOT NULL,
+    student_number CHAR(12) NOT NULL,
+    email          VARCHAR(150) NOT NULL,
+    password_hash  VARCHAR(255) NOT NULL,
+    grade_level    VARCHAR(50) NULL,
+    age            TINYINT UNSIGNED NULL,
+    registered_at  TIMESTAMP NULL,
+    rejected_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    rejected_by    INT NULL,
+    reason         VARCHAR(255) NULL,
+    FOREIGN KEY (rejected_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
 -- STUDENT_PROFILE entity — one row per RIASEC assessment a student submits.

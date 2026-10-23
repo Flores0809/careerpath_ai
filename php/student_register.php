@@ -4,6 +4,8 @@
 // RIASEC submissions + recommendations) can be saved and revisited.
 
 require __DIR__ . '/student_auth.php';
+require_once __DIR__ . '/password_rules.php';
+require_once __DIR__ . '/name_match.php';
 
 if (current_student()) {
     header('Location: student_dashboard.php');
@@ -12,24 +14,8 @@ if (current_student()) {
 
 $error = null;
 
-// Locked list of MEII grade/section names (from the official section list) —
-// dropdown only, no free text, so a student can't register under a
-// mistyped/nonexistent section. Add new sections here as MEII announces them.
-$gradeLevelOptions = [
-    'Grade 7A - HEMINGWAY',
-    'Grade 7B - SHAKESPEARE',
-    'Grade 7C - FITZGERALD',
-    'Grade 8A - KIPLING',
-    'Grade 8B - CHAUCER',
-    'Grade 8C - BLAKE',
-    'Grade 9A - TOLSTOY',
-    'Grade 9B - TOLKIEN',
-    'Grade 9C - ANDERSEN',
-    'Grade 10A - DICKENS',
-    'Grade 10B - TWAIN',
-    'Grade 11 - CURIE (GAS)',
-    'Grade 12 - MENDELEEV (GAS)',
-];
+// Locked list of MEII grade/section names — see grade_levels.php.
+require_once __DIR__ . '/grade_levels.php';
 
 // MEII doesn't issue students their own institutional email addresses (unlike
 // staff), so this can't be gated by an email-domain check the way many school
@@ -68,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Enter a valid age (10-25).';
     } elseif (!in_array($gradeLevel, $gradeLevelOptions, true)) {
         $error = 'Select a valid grade level from the list.';
-    } elseif (strlen($password) < 8) {
-        $error = 'Password must be at least 8 characters.';
+    } elseif (($pwErr = password_strength_error($password)) !== null) {
+        $error = $pwErr;
     } elseif ($password !== $confirm) {
         $error = 'Passwords do not match.';
     } elseif ($requiredAccessCode !== '' && !hash_equals($requiredAccessCode, $accessCode)) {
@@ -77,12 +63,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $age = (int) $ageRaw;
         $hash = password_hash($password, PASSWORD_DEFAULT);
+
+        // Class-list check: when staff have uploaded the school's LRN list,
+        // an LRN on it is activated automatically; anything else waits as
+        // 'pending' for staff approval. With no list uploaded (or the table
+        // not yet migrated), everyone is active, as before.
+        $accountStatus = 'active';
+        try {
+            $rosterCount = (int) $pdo->query("SELECT COUNT(*) FROM lrn_roster")->fetchColumn();
+            if ($rosterCount > 0) {
+                $rosterStmt = $pdo->prepare("SELECT lrn, name FROM lrn_roster WHERE lrn = :lrn");
+                $rosterStmt->execute(['lrn' => $studentNumber]);
+                $rosterRow = $rosterStmt->fetch();
+                if (!$rosterRow) {
+                    $accountStatus = 'pending'; // LRN not on the class list
+                } elseif (($rosterRow['name'] ?? '') !== '' && !names_match($name, $rosterRow['name'])) {
+                    $accountStatus = 'pending'; // LRN is listed but the name differs
+                }
+            }
+        } catch (PDOException $e) {
+            $accountStatus = 'active';
+        }
+
         try {
             $stmt = $pdo->prepare(
                 "INSERT INTO students (name, student_number, email, password_hash, grade_level, age, status)
-                 VALUES (:name, :student_number, :email, :hash, :grade_level, :age, 'active')"
+                 VALUES (:name, :student_number, :email, :hash, :grade_level, :age, :status)"
             );
             $stmt->execute([
+                'status' => $accountStatus,
                 'name' => $name,
                 'student_number' => $studentNumber,
                 'email' => $email,
@@ -91,6 +100,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'age' => $age,
             ]);
             $newStudentId = (int) $pdo->lastInsertId();
+
+            if ($accountStatus === 'pending') {
+                header('Location: student_login.php?pending=1');
+                exit;
+            }
 
             login_student([
                 'student_id' => $newStudentId,
@@ -180,11 +194,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label>Age</label>
         <input type="number" name="age" min="10" max="25" value="<?= htmlspecialchars($_POST['age'] ?? '') ?>" required style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
 
-        <label>Password (min. 8 characters)</label>
-        <input type="password" name="password" required minlength="8">
+        <label>Password (8+ chars, capital letter, number, special character)</label>
+        <input type="password" name="password" required minlength="8" pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])(?!.*\s).{8,}" title="At least 8 characters with a capital letter, a number and a special character. No spaces.">
 
         <label>Confirm password</label>
-        <input type="password" name="confirm" required minlength="8">
+        <input type="password" name="confirm" required minlength="8" pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])(?!.*\s).{8,}" title="At least 8 characters with a capital letter, a number and a special character. No spaces.">
 
         <button type="submit">Create account</button>
     </form>

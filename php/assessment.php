@@ -1,6 +1,6 @@
 <?php
 // CareerPath AI - Barebone Student Intake (RIASEC self-assessment)
-// 42 statements, 7 per RIASEC type, 4-point Likert scale (1 = Strongly Disagree, 4 = Strongly Agree)
+// 60 statements, 10 per RIASEC type (items 8-10 added per counselor review), 4-point Likert scale (1 = Strongly Disagree, 4 = Strongly Agree)
 // Mirrors the paper's evaluation scale style for consistency.
 //
 // Item content is adapted from the O*NET Interest Profiler Short Form
@@ -52,6 +52,9 @@ $questions = [
         'I enjoy driving or operating trucks, heavy equipment, or machinery.', // revised per validator feedback (wording consistency)
         'I enjoy doing hands-on, physically demanding work to help solve urgent, real-world problems.', // revised per client feedback
         'I enjoy raising animals or growing crops/plants.', // revised per validator feedback (wording consistency)
+        'I enjoy inspecting or testing products and parts to make sure they work properly.', // added (counselor: retain)
+        'I enjoy construction work, like laying bricks or tiles, installing fixtures, or maintaining equipment.', // added (counselor: broadened)
+        'I enjoy putting together electronic parts, like circuits, wiring, or small devices.', // added (counselor: single activity)
     ],
     'I' => [
         'I enjoy solving hard problems or puzzles.', // simplified per validator feedback
@@ -61,6 +64,9 @@ $questions = [
         'I enjoy creating new medicines or making new science discoveries.', // simplified per validator feedback
         'I enjoy studying scientific topics, such as outer space, weather, or diseases.', // revised per validator feedback (wording consistency)
         'I enjoy examining the causes of things, like diseases or unusual events.', // revised per validator feedback
+        'I enjoy working in a laboratory, like examining samples under a microscope.', // added (counselor: retain)
+        'I enjoy studying ways to solve environmental problems, like pollution.', // added (counselor: retain)
+        'I enjoy inventing new or better products or materials.', // added (counselor: retain)
     ],
     'A' => [
         'I enjoy creative activities like arts and crafts, writing, or music.', // revised per validator feedback
@@ -70,6 +76,9 @@ $questions = [
         'I enjoy writing stories, plays, or scripts.', // revised per validator feedback (wording consistency)
         'I enjoy performing in front of others, such as singing, dancing, or acting.', // revised per validator feedback (wording consistency)
         'I enjoy creating visual art or effects, like drawing, painting, or filmmaking.', // revised per validator feedback (wording consistency)
+        'I enjoy playing a musical instrument or composing music.', // added (counselor: retain)
+        'I enjoy editing videos, photos, or movies.', // added (counselor: retain)
+        'I enjoy designing or decorating things, like sets, costumes, posters, or event decorations.', // added (counselor: broadened)
     ],
     'S' => [
         'I enjoy helping or caring for other people.', // revised per validator feedback
@@ -79,6 +88,9 @@ $questions = [
         'I enjoy teaching or tutoring others, like classmates or younger students.', // revised per validator feedback (wording consistency)
         'I enjoy taking care of children, the elderly, or people who need assistance.', // revised per validator feedback (wording consistency)
         'I enjoy giving advice or guidance to help someone make a decision.', // revised per validator feedback (wording consistency)
+        'I enjoy teaching or helping people with special needs, like students who are deaf or have a disability.', // added (counselor: retain)
+        'I enjoy helping people stay healthy or recover, like through therapy, exercise routines, or health advice.', // added (counselor: broadened)
+        'I enjoy coaching others in a sport or physical activity, or teaching them a new skill.', // added (counselor: broadened)
     ],
     'E' => [
         'I enjoy leading a group or convincing others to see my point of view.',
@@ -88,6 +100,9 @@ $questions = [
         'I enjoy being in charge of a group of people or a business.', // revised per validator feedback
         'I am interested in starting and running my own business someday.', // revised per validator feedback (wording consistency)
         'I enjoy marketing or advertising a product or service.', // revised per validator feedback (wording consistency)
+        'I enjoy speaking up for others or defending a person\'s rights, like in a debate or court case.', // added (counselor: retain)
+        'I enjoy making business decisions about buying and selling, like products or investments.', // added (counselor: retain)
+        'I enjoy running or managing a store, salon, or shop.', // added (counselor: retain)
     ],
     'C' => [
         'I enjoy organizing information, files, or schedules.',
@@ -97,6 +112,9 @@ $questions = [
         'I enjoy keeping accurate records, like inventories, receipts, or attendance.', // revised per validator feedback (wording consistency)
         'I enjoy double-checking documents or data for errors before submitting them.', // revised per validator feedback (wording consistency)
         'I enjoy handling routine office tasks, like filing, sorting mail, or data entry.', // revised per validator feedback (wording consistency)
+        'I enjoy setting up and maintaining computer systems that keep an organization\'s data organized, like databases or file systems.', // added (counselor: refocused on organizing data)
+        'I enjoy calculating wages, payments, or budgets accurately.', // added (counselor: retain)
+        'I enjoy processing orders, deliveries, and other administrative paperwork.', // added (counselor: broadened)
     ],
 ];
 
@@ -136,7 +154,7 @@ $typeLabels = [
        gaps) is fine with a mouse, but on a phone that's a ~26x36px tap
        target per option -- well under Apple/Google's ~44px minimum
        guideline -- for the single interaction every tester repeats 168
-       times (42 questions x 4 options) to complete the assessment. Turns
+       times (60 questions x 4 options) to complete the assessment. Turns
        each option into an evenly-sized, full-height tappable block instead,
        without touching the desktop layout at all. */
     @media (max-width: 600px) {

@@ -29,6 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$student || !password_verify($password, $student['password_hash'])) {
         $error = 'Incorrect email or password.';
+    } elseif ($student['status'] === 'pending') {
+        $error = 'Your account is waiting for approval. A guidance counselor will activate it once your LRN is verified.';
     } elseif ($student['status'] !== 'active') {
         $error = 'This account has been disabled. Contact your guidance counselor.';
     } else {
@@ -60,6 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <img src="assets/img/logo.png" alt="" class="site-watermark">
 
     <h1>CareerPath AI — Student Login</h1>
+
+    <?php if (isset($_GET['pending'])): ?>
+        <div class="error" style="background:#fff3cd;border-color:#ffe69c;color:#664d03;">Account created. Your LRN is not on the school's class list yet, so a guidance counselor must approve your account before you can log in.</div>
+    <?php endif; ?>
 
     <?php if ($error): ?>
         <div class="error"><?= htmlspecialchars($error) ?></div>

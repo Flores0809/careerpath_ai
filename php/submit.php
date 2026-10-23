@@ -49,7 +49,7 @@ if ($isReplay) {
     $dreamCareerId = (int) ($replayProfile['dream_career_id'] ?? 0);
 } else {
     $types = ['R', 'I', 'A', 'S', 'E', 'C'];
-    $maxPerType = 7 * 4; // 7 questions x max score of 4
+    $maxPerType = 10 * 4; // 10 questions x max score of 4
 
     $riasec = [];
     foreach ($types as $type) {
@@ -651,7 +651,7 @@ try {
         <div class="how-it-works">
             <div class="heading">🔍 How were these recommendations calculated? (see the math)</div>
             <div class="content">
-                <p>Your match score comes from your 42 answers. We compare your results to each career's profile, reviewed and approved by a guidance counselor, using cosine similarity, a rule-based formula, not AI, so the score is fair and consistent. Each result shows a "Why this match?" section explaining which traits mattered most.</p>
+                <p>Your match score comes from your 60 answers. We compare your results to each career's profile, reviewed and approved by a guidance counselor, using cosine similarity, a rule-based formula, not AI, so the score is fair and consistent. Each result shows a "Why this match?" section explaining which traits mattered most.</p>
                 <p><strong>AI Insights.</strong> Some career descriptions have an "AI Insights" label. These are written with the help of AI, then checked and approved by a guidance counselor. They're just extra info, they don't change your match score.</p>
             </div>
         </div>

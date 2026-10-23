@@ -7,6 +7,7 @@
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/change_log_helper.php';
+require_once __DIR__ . '/password_rules.php';
 
 $currentUser = require_role(['administrator']);
 $pdo = get_db();
@@ -37,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = ['type' => 'error', 'text' => 'Name, email, and password are all required.'];
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $message = ['type' => 'error', 'text' => 'Enter a valid email address.'];
-        } elseif (strlen($password) < 8) {
-            $message = ['type' => 'error', 'text' => 'Password must be at least 8 characters.'];
+        } elseif (($pwErr = password_strength_error($password)) !== null) {
+            $message = ['type' => 'error', 'text' => $pwErr];
         } elseif ($password !== $confirm) {
             $message = ['type' => 'error', 'text' => 'Passwords do not match.'];
         } else {
@@ -142,8 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['new_password'] ?? '';
         $confirm = $_POST['new_password_confirm'] ?? '';
 
-        if (strlen($password) < 8) {
-            $message = ['type' => 'error', 'text' => 'New password must be at least 8 characters.'];
+        if (($pwErr = password_strength_error($password)) !== null) {
+            $message = ['type' => 'error', 'text' => $pwErr];
         } elseif ($password !== $confirm) {
             $message = ['type' => 'error', 'text' => 'New passwords do not match.'];
         } else {
@@ -242,8 +243,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['new_password'] ?? '';
         $confirm = $_POST['new_password_confirm'] ?? '';
 
-        if (strlen($password) < 8) {
-            $message = ['type' => 'error', 'text' => 'New password must be at least 8 characters.'];
+        if (($pwErr = password_strength_error($password)) !== null) {
+            $message = ['type' => 'error', 'text' => $pwErr];
         } elseif ($password !== $confirm) {
             $message = ['type' => 'error', 'text' => 'New passwords do not match.'];
         } else {
@@ -264,6 +265,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+// Registration approvals + LRN class list (Approvals tab) — handles its own
+// POST actions and loads $rosterCount / $tablesReady / $pending.
+require __DIR__ . '/student_approvals_logic.php';
 
 $users = $pdo->query("SELECT * FROM users ORDER BY role, name")->fetchAll();
 $administrators = array_values(array_filter($users, fn($u) => $u['role'] === 'administrator'));
@@ -299,6 +304,7 @@ $welcome = isset($_GET['welcome']);
     .role-counselor { background: #f0dde1; color: #6e1423; }
     .status-active { color: #0f5132; }
     .status-disabled { color: #b02a37; }
+    .status-pending { color: #997404; }
     form.inline { display: inline; }
     input[type=text], input[type=email], input[type=password], select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; }
     .card { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 18px 22px; margin-bottom: 22px; }
@@ -385,12 +391,12 @@ $welcome = isset($_GET['welcome']);
                         <input type="email" name="email" required style="width:100%;box-sizing:border-box;">
                     </div>
                     <div>
-                        <label>Password (min. 8 characters)</label>
-                        <input type="password" name="password" required minlength="8" style="width:100%;box-sizing:border-box;">
+                        <label>Password (8+ chars, capital letter, number, special character)</label>
+                        <input type="password" name="password" required minlength="8" pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])(?!.*\s).{8,}" title="At least 8 characters with a capital letter, a number and a special character. No spaces." style="width:100%;box-sizing:border-box;">
                     </div>
                     <div>
                         <label>Confirm password</label>
-                        <input type="password" name="confirm" required minlength="8" style="width:100%;box-sizing:border-box;">
+                        <input type="password" name="confirm" required minlength="8" pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])(?!.*\s).{8,}" title="At least 8 characters with a capital letter, a number and a special character. No spaces." style="width:100%;box-sizing:border-box;">
                     </div>
                     <div>
                         <label>Role</label>
@@ -445,9 +451,9 @@ $welcome = isset($_GET['welcome']);
                             <input type="hidden" name="action" value="reset_password">
                             <input type="hidden" name="user_id" value="<?= (int) $u['user_id'] ?>">
                             <label>New password</label>
-                            <input type="password" name="new_password" minlength="8" required>
+                            <input type="password" name="new_password" minlength="8" pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])(?!.*\s).{8,}" title="At least 8 characters with a capital letter, a number and a special character. No spaces." required>
                             <label>Confirm</label>
-                            <input type="password" name="new_password_confirm" minlength="8" required>
+                            <input type="password" name="new_password_confirm" minlength="8" pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])(?!.*\s).{8,}" title="At least 8 characters with a capital letter, a number and a special character. No spaces." required>
                             <button type="submit" class="btn-secondary" style="margin-top:8px;">Reset password</button>
                         </form>
                     </details>
@@ -475,6 +481,7 @@ $welcome = isset($_GET['welcome']);
         <button type="button" class="tab-btn active" data-tab="admins">Administrators <span class="tab-count"><?= count($administrators) ?></span></button>
         <button type="button" class="tab-btn" data-tab="counselors">Counselors <span class="tab-count"><?= count($counselors) ?></span></button>
         <button type="button" class="tab-btn" data-tab="students">Students <span class="tab-count"><?= count($students) ?></span></button>
+        <button type="button" class="tab-btn" data-tab="approvals">Approvals <span class="tab-count"><?= count($pending) ?></span></button>
     </div>
 
     <div class="search-bar">
@@ -559,9 +566,9 @@ $welcome = isset($_GET['welcome']);
                                     <input type="hidden" name="action" value="reset_student_password">
                                     <input type="hidden" name="student_id" value="<?= (int) $s['student_id'] ?>">
                                     <label>New password</label>
-                                    <input type="password" name="new_password" minlength="8" required>
+                                    <input type="password" name="new_password" minlength="8" pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])(?!.*\s).{8,}" title="At least 8 characters with a capital letter, a number and a special character. No spaces." required>
                                     <label>Confirm</label>
-                                    <input type="password" name="new_password_confirm" minlength="8" required>
+                                    <input type="password" name="new_password_confirm" minlength="8" pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])(?!.*\s).{8,}" title="At least 8 characters with a capital letter, a number and a special character. No spaces." required>
                                     <button type="submit" class="btn-secondary" style="margin-top:8px;">Reset password</button>
                                 </form>
                             </details>
@@ -583,6 +590,10 @@ $welcome = isset($_GET['welcome']);
                 </tbody>
             </table></div>
         </div>
+    </div>
+
+    <div class="tab-panel" data-tab="approvals">
+        <?php require __DIR__ . '/student_approvals_panel.php'; ?>
     </div>
 
     <script>
