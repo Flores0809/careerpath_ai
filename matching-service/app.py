@@ -75,7 +75,18 @@ from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
+try:
+    from sklearn.metrics.pairwise import cosine_similarity
+except Exception:
+    # Some Windows setups (Smart App Control / application control policies)
+    # block scikit-learn's compiled files. The same cosine formula in NumPy
+    # gives identical results, so the service still starts.
+    def cosine_similarity(a, b):
+        a = np.asarray(a, dtype=float)
+        b = np.asarray(b, dtype=float)
+        denom = np.linalg.norm(a, axis=1, keepdims=True) * np.linalg.norm(b, axis=1)
+        denom[denom == 0] = 1.0
+        return (a @ b.T) / denom
 import pymysql
 import pymysql.cursors
 from pydantic import BaseModel
