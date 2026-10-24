@@ -1,17 +1,5 @@
 <?php
 // CareerPath AI - Manage Live Careers (counselors & administrators)
-//
-// careers.php only handles the pending_careers review queue (approve/reject
-// before a career ever goes live). This page is for the other side: editing
-// careers that are ALREADY in the live `careers` table — fixing a typo,
-// updating a stale description, or adjusting a RIASEC score after the fact.
-//
-// No hard delete here on purpose: recommendations.career_id references
-// careers ON DELETE CASCADE, so deleting a career would silently wipe every
-// student's saved recommendation history that included it. Instead,
-// "Deactivate" flips status to 'inactive', which the matching engine
-// (app.py, WHERE status = 'active') simply stops matching against — the
-// row and all history referencing it stay intact.
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/change_log_helper.php';
@@ -20,10 +8,6 @@ $currentUser = require_role(['administrator', 'counselor']);
 
 $pdo = get_db();
 
-// Self-heal: the "last updated" timestamp needs careers.updated_at (migration_28).
-// If that migration hasn't been run yet, add just this one column now so the
-// timestamp works immediately. Existing rows get the current time as their
-// starting value; every later Save Changes refreshes it.
 try {
     $pdo->query("SELECT updated_at FROM careers LIMIT 0");
 } catch (Exception $e) {
@@ -44,11 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $careerId = (int) ($_POST['career_id'] ?? 0);
 
     if ($action === 'refresh_riasec' && $careerId) {
-        // One-click AI-assisted RIASEC score refresh (Use Case Diagram /
-        // Flowchart). Reuses the same Gemini /enrich endpoint as the crawler
-        // review queue, but only takes the RIASEC suggestion — nothing is
-        // saved until the counselor reviews it and clicks "Save Changes"
-        // below, per the paper's "for administrator review and confirmation."
         $title = trim($_POST['career_title'] ?? '');
         $description = trim($_POST['description'] ?? '');
 
@@ -119,18 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = ['type' => 'success', 'text' => 'AI-suggested typical tasks and programs are shown below. Review them and click "Save Changes" to apply, or edit further first.'];
         }
     } elseif ($action === 'bulk_apply_riasec' && $careerId) {
-        // Bulk counterpart to 'refresh_riasec' above, only reachable via the
-        // "Refresh RIASEC with AI for All Careers" button below — not exposed
-        // as a per-career option. The single-career button deliberately stops
-        // at a preview so a counselor reviews AI-suggested scores before
-        // saving (see refresh_riasec above, and the paper's "for
-        // administrator review and confirmation"). Reviewing dozens of
-        // previews one at a time isn't practical for a bulk run, so this path
-        // applies each result immediately instead -- but every change is
-        // still logged to change_log exactly like a normal manual edit, so
-        // any single career's AI-refreshed scores can be reviewed and, if
-        // they look wrong, reverted individually from Change History without
-        // undoing the whole batch.
         $careerStmt = $pdo->prepare("SELECT * FROM careers WHERE career_id = :id");
         $careerStmt->execute(['id' => $careerId]);
         $careerRow = $careerStmt->fetch();
@@ -179,16 +146,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     } elseif ($action === 'ai_suggest_skills' && $careerId) {
-        // Backfills required skills for an ALREADY-APPROVED career that has
-        // none yet — the original seed catalog and any career approved
-        // before migration_20 added AI skill suggestions to the pending-side
-        // review flow never got this. Reuses the same /enrich endpoint the
-        // crawler pipeline already calls, just pointed at an approved
-        // career's own description instead of a raw scraped posting.
-        // Inserted directly (not staged for a separate review step) since a
-        // counselor triggered this deliberately here and can remove/edit any
-        // resulting row immediately with the existing "✕" button below —
-        // same as a skill they'd typed in by hand.
         $careerStmt = $pdo->prepare("SELECT career_title, description, daily_task FROM careers WHERE career_id = :id");
         $careerStmt->execute(['id' => $careerId]);
         $careerRow = $careerStmt->fetch();
@@ -264,8 +221,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($action === 'add_skill' && $careerId) {
         $skillName = trim($_POST['skill_name'] ?? '');
-        // Free text now, not a fixed basic/intermediate/advanced enum — see
-        // migration_23_freetext_proficiency.sql.
         $proficiency = mb_substr(trim($_POST['proficiency_level'] ?? ''), 0, 150);
         $isRequired = isset($_POST['is_required']) ? 1 : 0;
 
@@ -331,9 +286,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $oldCareerStmt->execute(['id' => $careerId]);
             $oldCareer = $oldCareerStmt->fetch();
 
-            // Saving always stamps "last updated" (even if nothing was changed), so a
-            // counselor can re-check a career and click Save to record the review date.
-            // Guarded so this still works before migration_28 adds the column.
             $touchUpdated = ($oldCareer && array_key_exists('updated_at', $oldCareer)) ? ', updated_at = NOW()' : '';
             $stmt = $pdo->prepare(
                 "UPDATE careers SET
@@ -422,18 +374,8 @@ if ($careers) {
     }
 }
 
-// Category / industry-cluster options — sourced from the career_categories
-// lookup table (migration_13_category_management.sql) instead of a
-// free-text field + suggestion list, so every career is tagged with a real,
-// managed category. Add/rename/remove categories on career_categories.php.
 $categoryOptions = $pdo->query("SELECT name, description FROM career_categories ORDER BY name")->fetchAll();
 
-// Count of currently-listed careers with zero skill_requirements rows — most
-// of these are original seed-catalog entries approved before the AI-skill-
-// suggestion feature (migration_20) existed, so they never got backfilled.
-// Drives the "Backfill Missing Skills for All Careers" button below: only
-// shown when there's actually something to do, and only counts careers on
-// THIS page (respects the search filter, same as everything else here).
 $missingSkillsCareerIds = [];
 foreach ($careers as $c) {
     if (empty($skillsByCareer[$c['career_id']])) {
@@ -441,15 +383,6 @@ foreach ($careers as $c) {
     }
 }
 
-// Every career already has RIASEC scores (never null/missing — they're
-// seeded or AI-enriched at approval time), so there's no "missing" subset
-// to target the way skills has one. This is every career_id on the current
-// page (respects the search filter, same as the skills list above) — the
-// "Refresh RIASEC with AI for All Careers" button below OVERWRITES existing
-// scores for all of these, which is why it's kept as a separate, deliberate
-// button rather than folded into the skills backfill (see also: keeping
-// these as two buttons means a counselor who only wants one kind of AI call
-// isn't paying for the other).
 $allCareerIds = array_map('intval', array_column($careers, 'career_id'));
 ?>
 <!DOCTYPE html>
@@ -725,27 +658,11 @@ $allCareerIds = array_map('intval', array_column($careers, 'career_id'));
     <?php if ($missingSkillsCareerIds || $allCareerIds): ?>
     <script>
     (function () {
-        // Drives both bulk-AI buttons above (skills backfill, RIASEC
-        // refresh). Deliberately client-side rather than one big
-        // server-side loop: dozens of careers x up to ~35s each for the
-        // Gemini call (see ENRICH_SERVICE_URL timeout in the PHP handlers)
-        // would very likely blow past PHP's max_execution_time and/or
-        // Railway's proxy request timeout if done as a single POST.
-        // Instead each button fires its existing single-career POST action
-        // once per career, sequentially (not in parallel -- the
-        // matching-service is a single Flask process, see migration notes
-        // on concurrency) via fetch() so the page never navigates away and
-        // can show progress.
         var titleById = {};
         document.querySelectorAll('.career-row[data-career-id]').forEach(function (row) {
             titleById[row.dataset.careerId] = row.dataset.title;
         });
 
-        // Both buttons hit the same matching-service process, so running
-        // them at the same time would just make each other slower (and
-        // muddy the progress text) rather than anything actually going
-        // wrong -- this just disables whichever button isn't running so
-        // it's not confusing to click both at once.
         var allBulkButtons = [];
 
         function runBulkAction(opts) {
@@ -785,11 +702,6 @@ $allCareerIds = array_map('intval', array_column($careers, 'career_id'));
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: 'action=' + opts.action + '&career_id=' + encodeURIComponent(id),
                     }).then(function (resp) {
-                        // The PHP handler always responds 200 (it renders the
-                        // full page either way, success or "AI unavailable") --
-                        // resp.ok alone can't tell success from failure, so check
-                        // which flash-message class the response actually
-                        // contains instead of trusting the HTTP status.
                         return resp.text();
                     }).then(function (html) {
                         if (html.indexOf('flash-success') !== -1) { succeeded++; } else { failed++; }

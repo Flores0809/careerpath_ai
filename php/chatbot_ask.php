@@ -1,20 +1,6 @@
 <?php
 // CareerPath AI - Built-in FAQ chatbot endpoint
 // --------------------------------------------------------------------
-// Primary path: no API key, no external HTTP call, no internet dependency
-// — this just scores the visitor's typed message against a fixed list of
-// keyword sets (chatbot_data.php) and returns the best-matching canned
-// answer. Safe to leave public (no login required) since it never touches
-// student/staff data — it only explains how the system itself works.
-//
-// Fallback path (added to try real AI on this widget): if nothing in the
-// FAQ list matches at all, this asks the matching-service's /chatbot_ask
-// endpoint (Gemini), grounded in the same FAQ content sent along with the
-// request, for a live answer instead of just the canned "try rephrasing"
-// message. If that call is unavailable or fails for any reason — no
-// GEMINI_API_KEY set, matching-service not running, rate limit, etc. —
-// this falls straight back to the original canned message, so the AI
-// experiment can't actually break the chatbot.
 
 header('Content-Type: application/json');
 require __DIR__ . '/config.php';
@@ -77,27 +63,9 @@ foreach ($faq as $entry) {
     }
 }
 
-// A single overlapping keyword isn't a reliable signal by itself -- e.g. a
-// question like "is there a career for someone who likes fixing cars" only
-// shares the one word "career" with the unrelated "What is a dream career?"
-// entry, which used to win outright and hijack the question before it ever
-// reached the AI/career-catalog tier below. Two or more overlapping
-// keywords is a confident, instant, zero-API-call match exactly like
-// before; a single keyword is treated as a weak guess -- kept as a
-// fallback, but the AI tier (grounded in the same FAQ plus the live career
-// catalog) gets first shot at giving a more specific answer.
-// Greetings / thanks / goodbyes (entries flagged 'instant') only ever have one
-// trigger word in a short message ("hello", "thanks po"), so a single keyword
-// is enough for them -- otherwise a plain "hello" was sent to the AI and used
-// up a Gemini call for a canned reply. Longer messages still need two keywords.
 $isConfidentMatch = $bestEntry !== null
     && ($bestScore >= 2 || (!empty($bestEntry['instant']) && count($inputTokens) <= 3));
 
-// Second pass: nothing matched exactly (or only a weak 1-keyword guess),
-// so tolerate small typos (a missing space, a dropped/extra letter) by
-// allowing a keyword to match an input token that's only 1-2 edits away
-// from it, via levenshtein(). This can only IMPROVE on a weak guess, never
-// downgrade a confident one, so it's skipped entirely once confident.
 if (!$isConfidentMatch) {
     $bestFuzzyScore = 0;
     foreach ($faq as $entry) {
@@ -134,12 +102,6 @@ if ($isConfidentMatch) {
     exit;
 }
 
-// From here, $bestEntry is either null, or a WEAK guess (a single keyword
-// overlap, or a fuzzy/typo-tolerance hit) -- not confident enough to return
-// outright. $canned is what gets shown if the AI tier below doesn't return
-// anything better: the weak guess if there is one (still better than
-// nothing), or the generic "no canned answer" message if there's truly
-// nothing to go on.
 $canned = $bestEntry !== null
     ? ['matched' => true, 'question' => $bestEntry['question'], 'answer' => $bestEntry['answer']]
     : [
@@ -148,15 +110,6 @@ $canned = $bestEntry !== null
         'suggestions' => ['What is RIASEC?', 'How do I take the assessment?', 'How are career recommendations generated?', 'How do I request a consultation?'],
     ];
 
-// Also ground it in the live, counselor-approved career catalog (title,
-// category, scope, description, key subjects) — not just the FAQ about how
-// the system itself works — so it can answer things like "is there a
-// career for X" or "what does a Civil Engineer do here" from real data
-// instead of refusing every career-specific question as out of scope.
-// Public info already visible to any logged-in student on
-// careers_manage.php/career_profile.php, so safe to expose here too.
-// Wrapped in try/catch: if this read fails for any reason, the chatbot
-// should still work with just the FAQ, not break entirely.
 $careerCatalog = [];
 try {
     $stmt = get_db()->query(
@@ -168,18 +121,13 @@ try {
     $careerCatalog = [];
 }
 
-// Second-tier fallback: ask Gemini (via the matching-service), grounded in
-// this same $faq list and the career catalog above, before settling for
-// $canned. Any failure here — key not set, matching-service down, timeout,
-// rate limit — just falls straight through to $canned, so trying this out
-// can't actually break the chatbot for anyone.
 $ch = curl_init(CHATBOT_AI_SERVICE_URL);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST => true,
     CURLOPT_POSTFIELDS => json_encode(['question' => $message, 'faq' => $faq, 'career_catalog' => $careerCatalog]),
     CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-    CURLOPT_TIMEOUT => 20, // a visitor is actively waiting on this, shorter budget than submit.php's 35s
+    CURLOPT_TIMEOUT => 20,
 ]);
 $aiResponse = curl_exec($ch);
 $aiHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);

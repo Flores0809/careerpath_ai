@@ -1,10 +1,5 @@
 <?php
 // CareerPath AI - Student Dashboard
-//
-// The real "home base" for a logged-in student — replaces landing directly
-// on the intake form after login. Summarizes their latest RIASEC profile,
-// top match, and assessment history at a glance, with quick actions to
-// take a new assessment or view full history.
 
 require __DIR__ . '/student_auth.php';
 $currentStudent = require_student_login();
@@ -19,11 +14,6 @@ $stmt = $pdo->prepare("SELECT COUNT(*) FROM student_profiles WHERE student_id = 
 $stmt->execute(['id' => $currentStudent['student_id']]);
 $assessmentCount = (int) $stmt->fetchColumn();
 
-// Counselor-recorded notes/outcomes for this student (students_lookup.php) —
-// full history always shown on student_history.php; this banner only counts
-// UNREAD ones (via the notifications table's 'counselor_note' category), so
-// it disappears once the student marks them read on the Notifications page
-// instead of nagging forever.
 $stmt = $pdo->prepare(
     "SELECT COUNT(*) FROM notifications WHERE audience = 'student' AND student_id = :id AND category = 'counselor_note' AND is_read = 0"
 );
@@ -138,15 +128,6 @@ $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score
     .riasec-bar-fill { background: linear-gradient(90deg, #6e1423, #b3465c); height: 100%; border-radius: 6px; }
     .riasec-bar-pct { width: 38px; text-align: right; font-size: 13.5px; color: #888; }
 
-    /* Was justify-content: space-between with both columns auto-width --
-       that pins the date flush-left and the title flush-right, but with no
-       fixed width on either, the title's LEFT edge (where the eye actually
-       starts reading each row) landed at a different X on every row
-       depending on how long that title was, and the date itself was free
-       to shrink/wrap onto 2 lines when a long title squeezed it -- reported
-       as the rows looking uneven ("hindi pantay"). Giving the date a fixed
-       non-wrapping column and letting the title start right after it fixes
-       both: every title now starts at the same X, and the date never wraps. */
     .activity-item { display: flex; align-items: flex-start; padding: 10px 0; border-top: 1px solid #eee; font-size: 15.5px; gap: 14px; }
     .activity-item:first-of-type { border-top: none; }
     .activity-item .date { color: #666; flex: 0 0 108px; white-space: nowrap; }

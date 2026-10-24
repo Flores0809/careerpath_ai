@@ -1,11 +1,5 @@
 <?php
 // CareerPath AI - Student session helpers
-//
-// Deliberately separate from auth.php (staff administrator/counselor
-// sessions). Students are a different login domain entirely, so this uses
-// its own $_SESSION keys (student_id/student_name/...) to avoid any chance
-// of colliding with, or being confused with, staff sessions on the same
-// browser/site.
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

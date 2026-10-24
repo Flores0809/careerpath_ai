@@ -1,26 +1,6 @@
 <?php
 // CareerPath AI - Change History / Undo (administrator only)
 // --------------------------------------------------------------------
-// Reads change_log (migration_14_change_log.sql) — the before/after
-// snapshot table that php/users.php, php/careers_manage.php, and
-// php/career_categories.php write to on every risky mutation. This is
-// where an administrator reviews what changed and, for entries flagged
-// revertible, restores the old values with one click (see
-// php/change_log_helper.php's revert_change() for the actual logic and
-// its safety guards).
-//
-// Administrator-only: unlike audit_log.php (which is just a read-only
-// event list open to both roles), reverting a change is a real write —
-// including account status/role changes users.php itself restricts to
-// administrators — so this page matches that same restriction.
-//
-// NOT everything in the app writes here. Approving/rejecting a pending
-// career (php/careers.php) touches two tables and, if reverted carelessly,
-// could cascade-delete a student's saved recommendation history — so
-// that's deliberately left out of the auto-revert system for now (still
-// visible via the career's own audit trail / status, just not "undo-able"
-// with one click). See change_log_helper.php's CHANGE_LOG_PK_COLUMNS for
-// exactly which tables are covered.
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/change_log_helper.php';

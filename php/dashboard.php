@@ -1,10 +1,5 @@
 <?php
 // CareerPath AI - Staff Dashboard (administrators & counselors)
-//
-// The real "home base" after staff login — replaces landing directly on
-// careers.php. Gives an at-a-glance view of the career review pipeline and
-// (for administrators) account counts, plus a recent review activity feed
-// built from the reviewed_by/reviewed_at columns on pending_careers.
 
 require __DIR__ . '/auth.php';
 $currentUser = require_role(['administrator', 'counselor']);
@@ -25,10 +20,6 @@ if ($currentUser['role'] === 'administrator') {
     $administratorCount = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'administrator' AND status = 'active'")->fetchColumn();
 }
 
-// Analytics panel — the "analytics" half of "Develop the Guidance Counselor
-// Dashboard (... recommendation results, consultation history, and
-// analytics)" from the Gantt chart. Open to both roles, same as the rest of
-// this dashboard.
 $avgRiasec = $pdo->query(
     "SELECT AVG(r_score) r, AVG(i_score) i, AVG(a_score) a, AVG(s_score) s, AVG(e_score) e, AVG(c_score) c
      FROM student_profiles"
@@ -51,14 +42,9 @@ $totalAssessments = (int) $pdo->query("SELECT COUNT(*) FROM student_profiles")->
 try {
     $pendingConsultations = (int) $pdo->query("SELECT COUNT(*) FROM consultations WHERE status = 'pending'")->fetchColumn();
 } catch (Exception $e) {
-    $pendingConsultations = 0; // consultations table not present yet (pre-migration_10 install)
+    $pendingConsultations = 0;
 }
 
-// Joins to the live career (when approved and still present — c.career_id
-// is NULL for rejected entries, or approved ones from before
-// migration_26_pending_career_link.sql, or a since-deleted career) so the
-// title can link straight to it on careers_manage.php instead of being
-// static text.
 $recentActivity = $pdo->query(
     "SELECT pc.source_title, pc.status, pc.reviewed_at, u.name AS reviewer_name,
             c.career_id, c.career_title AS current_career_title

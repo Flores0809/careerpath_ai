@@ -13,10 +13,8 @@ CAREERS = _common.seed_careers()
 _common.install_fake_db(CAREERS)
 KEYS = ["R", "I", "A", "S", "E", "C"]
 
-
 def profile(**kw):
     return {k: kw.get(k, 0.5) for k in KEYS}
-
 
 class UnitTests(unittest.TestCase):
     def test_seed_data_loaded(self):
@@ -61,7 +59,6 @@ class UnitTests(unittest.TestCase):
         c = np.array([[0.1, 0.8, 0.3, 0.2, 0.6, 0.7], [0.9, 0.2, 0.1, 0.5, 0.4, 0.3]])
         self.assertTrue(np.array_equal(m.profile_similarity(s, c), m.profile_similarity(s, c)))
 
-
 class EndpointTests(unittest.TestCase):
     def setUp(self):
         self.client = m.app.test_client()
@@ -103,7 +100,6 @@ class EndpointTests(unittest.TestCase):
     def test_raw_0_to_100_scores_are_accepted(self):
         r = self.client.post("/match", json={"riasec": {k: 80 for k in KEYS}, "top_n": 2})
         self.assertEqual(r.status_code, 200)
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

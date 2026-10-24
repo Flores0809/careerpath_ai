@@ -3,11 +3,6 @@
 
 require __DIR__ . '/auth.php';
 
-// Open-redirect guard: "next" is attacker-controllable (it's a GET/POST
-// param), so only accept a plain local filename like "careers.php" or
-// "careers.php?foo=bar" — never an absolute URL ("https://evil.com") or a
-// protocol-relative one ("//evil.com"), both of which a browser would
-// happily follow off-site after a successful login.
 $next = $_GET['next'] ?? ($_POST['next'] ?? 'dashboard.php');
 if ($next === '' || !preg_match('#^[a-zA-Z0-9_\-]+\.php(\?[^\s]*)?$#', $next)) {
     $next = 'dashboard.php';

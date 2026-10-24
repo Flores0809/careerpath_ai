@@ -26,8 +26,7 @@ Dedicated Python microservice with three independent jobs:
                 keep working.
 
   3. /student_commentary - AI commentary shown directly to a STUDENT about
-                their OWN assessment result (migration_21_student_ai_
-                commentary.sql), called once by php/submit.php right after a
+                their OWN assessment result, called once by php/submit.php right after a
                 new student_profiles row is inserted and cached on that row.
                 Unlike /enrich (which drafts NEW career content for a staff
                 member to review before anyone else sees it), this text is
@@ -81,9 +80,6 @@ import pymysql
 import pymysql.cursors
 from pydantic import BaseModel
 
-# Loads matching-service/.env if present (git-ignored — see .gitignore) so
-# each teammate can keep their own GEMINI_API_KEY locally without it ever
-# being committed/pushed to GitHub. Safe to skip if the file doesn't exist.
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 app = Flask(__name__)
@@ -95,7 +91,6 @@ RIASEC_KEYS = ["R", "I", "A", "S", "E", "C"]
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 _gemini_client = None
-
 
 def get_gemini_client():
     """Lazily create the Gemini client so the whole service doesn't crash
@@ -118,10 +113,8 @@ DB_CONFIG = {
     "cursorclass": pymysql.cursors.DictCursor,
 }
 
-
 def get_connection():
     return pymysql.connect(**DB_CONFIG)
-
 
 def fetch_careers():
     """Load all active careers with their RIASEC vectors from MySQL."""
@@ -141,11 +134,9 @@ def fetch_careers():
     finally:
         conn.close()
 
-
 def normalize_vector(raw_scores, scale_max=100):
     """Scale a raw 0-100 RIASEC score set down to a 0-1 vector, in R,I,A,S,E,C order."""
     return np.array([raw_scores[k] / scale_max for k in RIASEC_KEYS], dtype=float)
-
 
 def profile_similarity(student_vec, career_vecs):
     """Cosine similarity of *mean-centered* RIASEC vectors (equivalent to the
@@ -169,7 +160,6 @@ def profile_similarity(student_vec, career_vecs):
     career_centered = career_vecs - career_vecs.mean(axis=1, keepdims=True)
     raw = cosine_similarity(student_centered, career_centered)[0]
     return (raw + 1) / 2 * 100
-
 
 class MatchResource(Resource):
     def post(self):
@@ -208,13 +198,6 @@ class MatchResource(Resource):
             zip(careers, similarities), key=lambda pair: pair[1], reverse=True
         )[:top_n]
 
-        # Explainability ("glass box," not black box) — for each recommended
-        # career, expose the career's own RIASEC profile plus which specific
-        # RIASEC dimensions drove the match, so the results page can show its
-        # work instead of just a bare percentage. The per-dimension
-        # "contribution" is simply student_value * career_value for that
-        # letter — the individual terms that sum to the cosine similarity's
-        # dot product — ranked to surface the top shared traits.
         results = []
         for c, score in ranked:
             career_riasec = {
@@ -222,11 +205,6 @@ class MatchResource(Resource):
                 "S": c["s_score"], "E": c["e_score"], "C": c["c_score"],
             }
             career_vec = normalize_vector(career_riasec)
-            # Rank "why this match" dimensions by their contribution to the
-            # *centered* similarity actually used for match_score above (not
-            # raw student*career, which would just surface whichever two
-            # dimensions both happen to be numerically large — not
-            # necessarily what distinguishes this career from any other).
             student_centered = student_vector - student_vector.mean()
             career_centered = career_vec - career_vec.mean()
             contributions = student_centered * career_centered
@@ -254,7 +232,6 @@ class MatchResource(Resource):
 
         return {"student_riasec": student_scores, "recommendations": results}, 200
 
-
 class HealthResource(Resource):
     def get(self):
         ai_configured = bool(GEMINI_API_KEY)
@@ -264,7 +241,6 @@ class HealthResource(Resource):
             "ai_enrichment_configured": ai_configured,
         }, 200
 
-
 class RiasecScores(BaseModel):
     R: int
     I: int
@@ -273,18 +249,10 @@ class RiasecScores(BaseModel):
     E: int
     C: int
 
-
 class SuggestedSkill(BaseModel):
     skill_name: str
-    # Free text (e.g. "Comfortable with basic HTML/CSS"), NOT a fixed
-    # basic/intermediate/advanced enum -- the project used to constrain this
-    # to those three buckets, but classifying every skill into one of three
-    # rigid levels turned out to be more trouble than it was worth, so this
-    # is now just a short descriptive phrase. See skill_requirements /
-    # pending_career_skills columns (both plain VARCHAR as of migration 23).
     proficiency_level: str
     is_required: bool
-
 
 class CareerEnrichment(BaseModel):
     """Structured output schema for Gemini — the SDK enforces this shape
@@ -293,23 +261,8 @@ class CareerEnrichment(BaseModel):
     daily_task: str
     educational_pathway: str
     riasec: RiasecScores
-    # Feeds the skills-verification mechanism (skill_requirements /
-    # pending_career_skills) — see migration_20_pending_career_skills.sql.
-    # Staged here rather than written straight into skill_requirements
-    # because the posting isn't an approved career yet; a counselor
-    # reviews/edits these on careers.php before they're copied over on
-    # approval.
     skills: list[SuggestedSkill]
-    # Best-guess Category / Industry Cluster, expected to be copied verbatim
-    # from the `categories` list given in the prompt (or left "" if nothing
-    # fits well). Kept as a plain str rather than a Literal/Enum because the
-    # valid set is whatever's currently in the career_categories table
-    # (counselor-managed on career_categories.php) -- it can't be hardcoded
-    # at class-definition time. call_gemini_enrichment() re-validates this
-    # against the actual list before trusting it, same defensive pattern
-    # already used below for proficiency_level.
     category: str
-
 
 ENRICH_PROMPT_TEMPLATE = """You are an assistant helping a Philippine career-guidance system enrich \
 raw job-posting data into a clean, student-friendly career profile.
@@ -326,7 +279,6 @@ Career/job title: {career_title}
 Raw scraped description (may be messy or empty): {raw_description}
 Raw scraped qualifications (may be messy or empty): {raw_qualifications}
 """
-
 
 def call_gemini_enrichment(career_title, raw_description="", raw_qualifications="", valid_categories=None):
     client = get_gemini_client()
@@ -368,14 +320,6 @@ def call_gemini_enrichment(career_title, raw_description="", raw_qualifications=
             "is_required": bool(s.is_required),
         })
 
-    # Same defensive re-validation as proficiency_level above, but against a
-    # *dynamic* list (the current career_categories rows) instead of a fixed
-    # set -- Gemini is asked to copy a name verbatim, but never trusted to
-    # get that exactly right, so this only accepts an actual, currently-
-    # valid category (matched case-insensitively, canonical casing from the
-    # list wins). Anything else -- including a made-up category, or Gemini
-    # genuinely returning "" because nothing fit -- becomes "" here, which
-    # careers.php renders as "no category pre-selected," same as today.
     category = (parsed.category or "").strip()
     category_lookup = {c.strip().lower(): c.strip() for c in valid_categories}
     category = category_lookup.get(category.lower(), "")
@@ -395,7 +339,6 @@ def call_gemini_enrichment(career_title, raw_description="", raw_qualifications=
         "skills": skills,
         "category": category,
     }
-
 
 class EnrichResource(Resource):
     """
@@ -438,7 +381,6 @@ class EnrichResource(Resource):
             # crashing the request — the raw scraped data is still usable.
             return {"ai_enriched": False, "error": str(e)}, 503
 
-
 # --- Student-facing result commentary --------------------------------------
 class StudentCommentary(BaseModel):
     """Structured output schema for Gemini. Deliberately has NO field for
@@ -450,14 +392,12 @@ class StudentCommentary(BaseModel):
     without adding information.)"""
     career_commentary: str
 
-
 class StudentCommentaryWithDream(BaseModel):
     """Same, plus a comparison note for the student's OPTIONAL dream career,
     produced in the same single Gemini call so a dream pick never doubles
     the number of API requests."""
     career_commentary: str
     dream_commentary: str
-
 
 STUDENT_COMMENTARY_PROMPT_TEMPLATE = """You are a supportive career-guidance assistant helping a Filipino \
 Junior/Senior High School student understand their own RIASEC (Holland Code) career-assessment result. \
@@ -495,14 +435,12 @@ Dream career's key subjects (counselor-curated, may be blank): {dream_key_subjec
 Dream career's verified required skills (counselor-approved, may be empty): {dream_required_skills}
 """
 
-
 def _skills_text(skills):
     return "; ".join(
         f"{s.get('skill_name', '')} ({s.get('proficiency_level', 'basic')}"
         f"{'' if s.get('is_required') else ', optional'})"
         for s in skills
     ) if skills else "(none on file)"
-
 
 def call_gemini_student_commentary(riasec, academic_average, student_skills, career_title,
                                     career_description, career_key_subjects, career_required_skills,
@@ -578,7 +516,6 @@ def call_gemini_student_commentary(riasec, academic_average, student_skills, car
         result["dream_skills_are_suggested"] = not dream_has_verified_skills
     return result
 
-
 class StudentCommentaryResource(Resource):
     """
     POST { "riasec": {"R":.., "I":.., "A":.., "S":.., "E":.., "C":..} (0-100),
@@ -628,21 +565,9 @@ class StudentCommentaryResource(Resource):
             # here must never block or break a student's assessment submission.
             return {"ai_commentary": False, "error": str(e)}, 503
 
-
-# --- Chatbot AI fallback -----------------------------------------------------
-# php/chatbot_ask.php's built-in FAQ lookup (php/chatbot_data.php) is the
-# primary, default path -- deterministic keyword/fuzzy matching, no API call,
-# free, always available. This endpoint is only reached as a SECOND tier, when
-# that lookup finds no match at all, so a visitor typing something the FAQ
-# list doesn't cover gets a real answer instead of just a canned "try
-# rephrasing" message. It's grounded in the SAME FAQ content (sent fresh by
-# the caller on every request, not duplicated here) so it can't invent facts
-# about the system, and it explicitly has no access to any student's/staff
-# member's actual account data.
 class ChatbotAnswer(BaseModel):
     in_scope: bool
     answer: str
-
 
 CHATBOT_PROMPT_TEMPLATE = """You are the CareerPath AI in-app assistant, answering a visitor's question on the \
 chat widget of a JHS/SHS career-guidance web app built for Meridian Educational Institution Inc. This chatbot's \
@@ -691,7 +616,6 @@ description / key subjects):
 Visitor's question: {question}
 """
 
-
 def call_gemini_chatbot(question, faq_entries, career_catalog):
     client = get_gemini_client()
     faq_text = "\n".join(
@@ -716,7 +640,6 @@ def call_gemini_chatbot(question, faq_entries, career_catalog):
     )
     parsed = ChatbotAnswer.model_validate_json(response.text)
     return {"in_scope": parsed.in_scope, "answer": parsed.answer.strip()}
-
 
 class ChatbotAskResource(Resource):
     """
@@ -759,24 +682,9 @@ class ChatbotAskResource(Resource):
         except Exception as e:
             return {"ai_answered": False, "error": str(e)}, 503
 
-
-# --- AI-assisted duplicate resolution ---------------------------------------
-# careers.php already flags a pending posting as a "possible duplicate" of an
-# already-approved career using title-similarity alone (PHP's similar_text(),
-# >=55% or exact match) -- cheap and explainable, but a known false-positive
-# source: a more specific title ("Ship Electrician") looks similar to a
-# broader one ("Electrician") despite being a genuinely different,
-# distinctly-specialized career. This endpoint adds a second, content-aware
-# opinion at APPROVAL time: given both careers' actual descriptions/tasks/
-# pathway (not just their titles), is this really the same real-world
-# career, or a different one that just has a similar name? careers.php uses
-# the answer to decide whether approving this posting should overwrite the
-# existing career in place (same_career: true) or insert as a new, separate
-# one (false, or this endpoint unavailable -- the safe default either way).
 class DuplicateVerdict(BaseModel):
     same_career: bool
     reasoning: str
-
 
 DUPLICATE_CHECK_PROMPT_TEMPLATE = """You are helping a Philippine career-guidance system's counselors decide \
 whether a newly-scraped job posting describes the SAME real-world career/occupation as one already in their \
@@ -804,7 +712,6 @@ doubt, prefer false), and reasoning (one brief sentence explaining the call, so 
 decision later understands why).
 """
 
-
 def call_gemini_duplicate_check(posting_title, posting_description, existing_title, existing_description,
                                  existing_daily_task, existing_educational_pathway):
     client = get_gemini_client()
@@ -829,7 +736,6 @@ def call_gemini_duplicate_check(posting_title, posting_description, existing_tit
         "same_career": bool(parsed.same_career),
         "reasoning": (parsed.reasoning or "").strip(),
     }
-
 
 class DuplicateCheckResource(Resource):
     """
@@ -868,14 +774,6 @@ class DuplicateCheckResource(Resource):
         except Exception as e:
             return {"ai_available": False, "error": str(e)}, 503
 
-
-# --- Web crawler launcher -------------------------------------------------
-# Lets php/careers.php trigger a crawl with a button press instead of
-# someone having to open a terminal and run `python crawler.py` by hand.
-# Each crawler script (crawler/*.py) is a normal standalone script that
-# talks to MySQL directly — this endpoint just starts it as a background
-# subprocess (fire-and-forget, non-blocking) so the button click returns
-# instantly instead of the browser hanging for however long the crawl takes.
 CRAWLER_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "crawler")
 CRAWLER_SCRIPTS = {
     "philjobnet": "crawler.py",
@@ -895,7 +793,6 @@ CRAWL_SOURCE_LABELS = {
     "adzuna": "Adzuna (International)",
     "remoteok": "RemoteOK (International)",
 }
-
 
 def _watch_crawl_and_notify(source, process, started_at, triggered_by_user_id):
     """Runs in a background thread (not tied to any browser tab/HTTP
@@ -935,11 +832,7 @@ def _watch_crawl_and_notify(source, process, started_at, triggered_by_user_id):
         conn.commit()
         conn.close()
     except Exception:
-        # Notification is a nice-to-have on top of the existing on-page
-        # status panel -- never let a DB hiccup here crash the watcher
-        # thread or leave the subprocess unreaped.
         pass
-
 
 class CrawlResource(Resource):
     def post(self):
@@ -993,9 +886,6 @@ class CrawlResource(Resource):
         started_at = time.time()
         _running_crawls[source] = {"process": process, "log_path": log_path, "started_at": started_at}
 
-        # Fire-and-forget watcher -- separate from the on-page status panel
-        # (crawler_status.php polling), so the notification still lands even
-        # if nobody's browser tab is open when the crawl actually finishes.
         threading.Thread(
             target=_watch_crawl_and_notify,
             args=(source, process, started_at, triggered_by_user_id),
@@ -1003,7 +893,6 @@ class CrawlResource(Resource):
         ).start()
 
         return {"started": True, "source": source, "pid": process.pid}, 200
-
 
 class CrawlStatusResource(Resource):
     def get(self):
@@ -1040,7 +929,6 @@ class CrawlStatusResource(Resource):
             "log_tail": tail,
         }, 200
 
-
 api.add_resource(MatchResource, "/match")
 api.add_resource(HealthResource, "/health")
 api.add_resource(EnrichResource, "/enrich")
@@ -1051,33 +939,6 @@ api.add_resource(CrawlResource, "/crawl")
 api.add_resource(CrawlStatusResource, "/crawl/status")
 
 if __name__ == "__main__":
-    # debug=True used to be hardcoded here. That's a real security hole, not
-    # just a style nit: Flask's debug mode turns on the Werkzeug interactive
-    # debugger, which lets anyone who can trigger an unhandled exception (an
-    # unhandled error in ANY endpoint above) open a console and run arbitrary
-    # Python on this machine -- and combined with host="0.0.0.0" (listening
-    # on every network interface, not just this machine), that console is
-    # reachable by anyone else on the same network, e.g. school WiFi during a
-    # panel defense demo. Defaults to off now; set FLASK_DEBUG=1 in the
-    # environment if you specifically want it while developing locally.
-    # host="0.0.0.0" used to be hardcoded here too. None of these endpoints
-    # check any API key or auth token of their own -- the only thing
-    # stopping a random device on the same network from calling /crawl,
-    # /enrich, /duplicate_check, etc. directly (burning Gemini API quota, or
-    # kicking off crawls) was that php/config.php happens to only call
-    # localhost:5000. Binding to 0.0.0.0 exposed this on every network
-    # interface, not just this machine. Every one of these endpoints is only
-    # ever called by the PHP app running on this SAME machine (see
-    # php/config.php -- always "http://localhost:5000/..."), so there's no
-    # legitimate reason for it to be reachable from anywhere else. Override
-    # with MATCHING_SERVICE_HOST if this ever needs to run split across
-    # machines (and add real authentication first if so).
-    # Railway (and most container hosts) inject a PORT env var and require
-    # the app to bind 0.0.0.0 so their router can reach it -- hardcoding
-    # 127.0.0.1/5000 like before would make the container unreachable from
-    # outside itself. Locally, PORT is never set, so this still defaults to
-    # the original localhost-only, port-5000 behavior -- same security
-    # posture as described above, unchanged for local dev.
     port = int(os.environ.get("PORT", 5000))
     default_host = "0.0.0.0" if "PORT" in os.environ else "127.0.0.1"
     host = os.environ.get("MATCHING_SERVICE_HOST", default_host)
@@ -1088,21 +949,6 @@ if __name__ == "__main__":
         # interactive debugger + auto-reload while actively developing.
         app.run(host=host, port=port, debug=True)
     else:
-        # Production path. Flask's dev server (app.run() above) can only
-        # handle ONE request at a time -- fine for solo development, but a
-        # real problem once real students are using this: /enrich and
-        # /student_commentary call the Gemini API and can take up to ~30
-        # seconds, and while that single request is in flight, EVERY other
-        # request to this service (including plain /match calls, which
-        # don't touch the network at all) queues behind it. A whole class
-        # submitting their assessment around the same time would see later
-        # students hang or time out even though their request is cheap.
-        # waitress is a real multi-threaded WSGI server (unlike gunicorn,
-        # it also runs on Windows, which is where this app is deployed),
-        # so concurrent requests actually run in parallel. threads=8 is
-        # comfortably more than one school's worth of simultaneous
-        # submissions; raise it if load testing shows it's still the
-        # bottleneck.
         from waitress import serve
         print(f"Starting matching service on http://{host}:{port} (waitress, threads=8) ...")
         serve(app, host=host, port=port, threads=8)

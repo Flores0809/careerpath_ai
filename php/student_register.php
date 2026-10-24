@@ -1,7 +1,6 @@
 <?php
 // CareerPath AI - Student self-registration
 // Students create their own account so their assessment history (past
-// RIASEC submissions + recommendations) can be saved and revisited.
 
 require __DIR__ . '/student_auth.php';
 require_once __DIR__ . '/password_rules.php';
@@ -17,18 +16,11 @@ $error = null;
 // Locked list of MEII grade/section names — see grade_levels.php.
 require_once __DIR__ . '/grade_levels.php';
 
-// MEII doesn't issue students their own institutional email addresses (unlike
-// staff), so this can't be gated by an email-domain check the way many school
-// systems do. Instead, self-registration requires a shared access code that
-// an administrator sets/rotates on settings.php and shares only with MEII
-// students (e.g. announced in class, printed on ID handouts) — this stops a
-// random visitor who finds the site from self-enrolling and spamming
-// consultations, without requiring students to have a school email.
 $pdo = get_db();
 try {
     $requiredAccessCode = (string) ($pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'student_access_code'")->fetchColumn() ?: '');
 } catch (Exception $e) {
-    $requiredAccessCode = ''; // system_settings table missing (pre-migration_10 install) — no code required
+    $requiredAccessCode = '';
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -41,9 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $confirm = $_POST['confirm'] ?? '';
     $accessCode = trim($_POST['access_code'] ?? '');
 
-    // LRN, grade level, and age are all required per client request — no
-    // longer optional the way they briefly were. JHS/SHS students run
-    // roughly ages 11-19; the bound is a sanity check, not a strict cutoff.
     if ($name === '' || $email === '' || $password === '' || $studentNumber === '' || $gradeLevel === '' || $ageRaw === '') {
         $error = 'Name, LRN, email, grade level, age, and password are all required.';
     } elseif (!ctype_digit($studentNumber) || strlen($studentNumber) !== 12) {
@@ -116,15 +105,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: student_dashboard.php?welcome=1');
             exit;
         } catch (PDOException $e) {
-            // Log the real error either way — previously ANY failure here
-            // (even one unrelated to email, e.g. a missing/renamed column
-            // from a migration that hadn't been run yet) was shown to the
-            // student as "that email may already be in use", which was
-            // wrong and made a real bug look like a normal duplicate-signup
-            // message. Now we only claim "already in use" when the database
-            // actually reports a duplicate-key error (1062) on that specific
-            // column; anything else surfaces as a generic system-error
-            // message instead of a false accusation.
             error_log('student_register.php: account creation failed — ' . $e->getMessage());
             $sqlErrorCode = (int) ($e->errorInfo[1] ?? 0);
             if ($sqlErrorCode === 1062 && str_contains($e->getMessage(), 'student_number')) {

@@ -19,14 +19,11 @@ BASE = _common.seed_careers()
 KEYS = ["R", "I", "A", "S", "E", "C"]
 rng = random.Random(42)
 
-
 def rand_profile():
     return {k: round(rng.random(), 3) for k in KEYS}
 
-
 def pct(sorted_vals, p):
     return sorted_vals[min(len(sorted_vals) - 1, int(len(sorted_vals) * p))]
-
 
 def run(label, careers, users, per_user):
     _common.install_fake_db(careers)
@@ -54,7 +51,6 @@ def run(label, careers, users, per_user):
     lat.sort()
     total = users * per_user
     print(f"| {label} | {len(careers)} | {users} | {total} | {statistics.mean(lat):.2f} | {pct(lat, .5):.2f} | {pct(lat, .95):.2f} | {lat[-1]:.2f} | {total / wall:.0f} | {errors[0]} |")
-
 
 if __name__ == "__main__":
     print(f"Environment: {platform.platform()} | Python {platform.python_version()} | CPU cores: {__import__('os').cpu_count()}")

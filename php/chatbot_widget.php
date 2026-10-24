@@ -1,12 +1,6 @@
 <?php
-// CareerPath AI - Built-in FAQ chatbot widget (floating button + panel)
 // Included from footer.php so it appears on every page. Talks only to
 // chatbot_ask.php (same-origin). That endpoint's primary path is still the
-// built-in FAQ lookup, no API key involved — it only calls out to Gemini
-// (via the matching-service) as a fallback when nothing in the FAQ list
-// matches, and only ever grounded in that same FAQ content (see
-// chatbot_ask.php / matching-service's /chatbot_ask for the actual
-// "stay inside CareerPath AI" enforcement).
 ?>
 <div id="cp-chatbot">
     <button type="button" id="cp-chatbot-toggle" aria-label="Open CareerPath AI assistant">
@@ -36,12 +30,6 @@
 </div>
 <style>
     #cp-chatbot { position: fixed; bottom: 24px; right: 24px; z-index: 1000; font-family: Arial, sans-serif; }
-    /* The old emoji icon (💬) had no reliable center point -- different OSes
-       and browsers ship different emoji glyphs with different internal
-       bounding boxes, so it never actually sat in the middle of the circle
-       (same class of problem as the emoji-based password toggle fixed
-       earlier). An inline SVG plus explicit flex centering has one exact,
-       predictable center everywhere. */
     #cp-chatbot-toggle { width: 56px; height: 56px; border-radius: 50%; border: none; background: linear-gradient(135deg, #6e1423 0%, #4a0c17 100%); color: #fff; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; padding: 0; }
     #cp-chatbot-toggle svg { width: 26px; height: 26px; }
     #cp-chatbot-toggle:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.3); }
@@ -76,27 +64,10 @@
         #cp-chatbot-panel { right: 16px; left: 16px; width: auto; }
     }
 
-    /* On mobile, page content runs edge-to-edge, so whatever ends up at the
-       very bottom of a page (a form's last field, a card's trailing note
-       box, etc.) can land directly underneath this always-on-top fixed
-       button with no more room to scroll it clear -- e.g. a consultation
-       request's Note field getting stuck under the launcher. The .yield
-       fade above only helps once that field is already focused; this
-       reserves enough space below EVERY page's content, sitewide (this
-       file loads on every page via footer.php), so the last bit of any
-       page can always be scrolled up clear of the button's footprint
-       before you reach the true end of the page. */
     @media (max-width: 600px) {
         body { padding-bottom: 90px; }
     }
 
-    /* On narrow (mobile) screens, forms run nearly full-width, so a field's
-       own right-aligned controls (e.g. the password show/hide icon) sit at
-       almost the same spot as this fixed bottom-right button -- easy for
-       the two to visually and physically overlap. Fading the launcher out
-       of the way while the visitor is actually typing into something else
-       keeps it from blocking a tap on whatever's underneath it, without
-       permanently hiding it (it returns the moment they tap out). */
     #cp-chatbot-toggle.cp-chatbot-yield { opacity: 0.25; pointer-events: none; transition: opacity 0.15s ease; }
 </style>
 <script>

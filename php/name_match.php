@@ -1,9 +1,4 @@
 <?php
-/**
- * Compares a typed name with a class-list name. Ignores capitals, accents,
- * punctuation, extra spaces and word order ("Flores, John Paul" matches
- * "John Paul Flores"). Middle names must still agree.
- */
 function names_match(string $a, string $b): bool
 {
     $norm = function (string $s): array {

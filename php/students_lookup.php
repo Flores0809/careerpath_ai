@@ -1,11 +1,5 @@
 <?php
 // CareerPath AI - Student Lookup (counselors & administrators)
-//
-// Lets staff search for a student by ID, name, or email, and view that
-// student's full assessment history (RIASEC scores + careers recommended
-// per submission) — the "counselor connected to student accounts" feature.
-// Every profile view is logged to counselor_log (the COUNSELOR_LOG entity
-// from the paper's ERD) for later auditing of who looked at what.
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/skills_helper.php';
@@ -15,11 +9,6 @@ $currentUser = require_role(['administrator', 'counselor']);
 $pdo = get_db();
 $noteMessage = null;
 
-// Same mean-centered cosine similarity used by submit.php/student_history.php
-// — needed here so a student's "dream career" fit still shows to staff even
-// when the Flask matching service was unavailable at submission time (that
-// case only skips the flat `recommendations` table rows, not the dream
-// career, which is computed live from student_profiles.dream_career_id).
 function cosine_similarity_riasec_lookup(array $a, array $b): float
 {
     $keys = ['R', 'I', 'A', 'S', 'E', 'C'];
@@ -41,11 +30,6 @@ function cosine_similarity_riasec_lookup(array $a, array $b): float
     return ($r + 1) / 2 * 100;
 }
 
-// Counselor final-outcome recording — the paper's System Flowchart (Figure
-// 10) ends the counselor/admin track with "Counselor Reviews, Records &
-// Submits Final Outcome," which is more than the automatic 'viewed_profile'
-// audit entries below. This lets a counselor attach an actual note/decision
-// to a student, optionally tied to a specific recommendation.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'record_outcome') {
     $studentId = (int) ($_POST['student_id'] ?? 0);
     $recommendationId = (int) ($_POST['recommendation_id'] ?? 0) ?: null;
@@ -90,14 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'recor
     }
 }
 
-// The roster always loads in full (no query required) so staff can browse
-// every student account at a glance; the search box below is now a live,
-// client-side filter over this already-loaded list rather than a page
-// reload, since the full roster is small enough to render at once.
-// Distinct grade levels currently in use, for the grade-level filter
-// dropdown next to the search box — built from real data rather than a
-// hardcoded list, so it always matches whatever values students/counselors
-// have actually entered (free text on student_register.php/student_profile.php).
 $gradeLevelOptions = $pdo->query(
     "SELECT DISTINCT grade_level FROM students WHERE grade_level IS NOT NULL AND grade_level != '' ORDER BY grade_level"
 )->fetchAll(PDO::FETCH_COLUMN);
@@ -157,10 +133,6 @@ if (!empty($_GET['view'])) {
             }
             unset($rec);
 
-            // Dream career (migration 11) — computed live from
-            // student_profiles.dream_career_id, same as student_history.php,
-            // so it still shows here even on a submission where the Flask
-            // matching service was down and no `recommendations` rows exist.
             $profile['dream_career'] = null;
             $profile['field_careers'] = [];
             if (!empty($profile['dream_career_id'])) {
@@ -312,12 +284,6 @@ $riasecLabels = ['r_score' => 'Realistic (R)', 'i_score' => 'Investigative (I)',
                 // Accounts (users.php). Without this, staff had no way back
                 // except the top nav, even though they came from a list.
                 if (($_GET['from'] ?? '') === 'users') {
-                    // users.php reads the URL's #hash on load to decide which
-                    // tab to show (see its activateTab() script), defaulting
-                    // to Administrators when there isn't one -- so a plain
-                    // "users.php" link always landed back on Administrators
-                    // regardless of which tab the student was actually
-                    // opened from. #students pins it back to the right tab.
                     $backHref = 'users.php#students';
                     $backLabel = '&larr; Back to Manage Accounts';
                 } else {

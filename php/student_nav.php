@@ -1,8 +1,6 @@
 <?php
 // CareerPath AI - shared student-facing nav bar.
 // Include AFTER require_student_login() has set $currentStudent, e.g.:
-//   $currentStudent = require_student_login();
-//   require __DIR__ . '/student_nav.php';
 require_once __DIR__ . '/notifications_helper.php';
 $cpNavUnread = student_unread_count(get_db(), (int) $currentStudent['student_id']);
 $cpCurrentPage = basename($_SERVER['PHP_SELF'] ?? '');
@@ -69,12 +67,6 @@ $cpIsActive = fn(array $pages) => in_array($cpCurrentPage, $pages, true) ? 'cp-a
     a.cp-nav-user-name:hover { background: rgba(255,255,255,0.12); text-decoration: none; }
     .cp-badge { background: #e63946; color: #fff; border-radius: 10px; padding: 1px 6px; font-size: 11.5px; font-weight: bold; margin-left: 2px; }
 
-    /* Hamburger toggle: hidden entirely on desktop (the full link row
-       already fits and reads fine there). On mobile it replaces the
-       always-expanded, fully-stacked link list -- which used to push the
-       actual page content (dashboard stats, results, etc.) down below the
-       fold before a visitor saw any of it -- with a compact button that
-       reveals the same links on tap. */
     .cp-nav-hamburger { display: none; position: absolute; top: 12px; right: 16px; width: 34px; height: 34px; padding: 0; background: none; border: none; color: #fff; cursor: pointer; border-radius: 6px; align-items: center; justify-content: center; }
     .cp-nav-hamburger:hover { background: rgba(255,255,255,0.12); }
     .cp-nav-hamburger svg { width: 22px; height: 22px; }

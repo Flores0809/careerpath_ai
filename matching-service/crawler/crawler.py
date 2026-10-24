@@ -5,8 +5,7 @@ Scrapes publicly available job vacancy postings from PhilJobNet
 (https://philjobnet.gov.ph), DOLE's Bureau of Local Employment portal that
 powers the PESO Employment Information System referenced in the paper.
 
-This is the PH-specific source. For international coverage (added after
-panel feedback that the system needed non-PH requirements too), see the
+This is the PH-specific source. For international coverage, see the
 sibling scripts in this folder: onet_client.py (O*NET official occupation
 standards), adzuna_client.py (live postings across several countries), and
 remoteok_client.py (live remote postings). All four write to the same
@@ -94,12 +93,10 @@ TARGET_KEYWORDS = {
     "chef":             {"R": 65, "I": 30, "A": 55, "S": 35, "E": 40, "C": 30},
 }
 
-
 def fetch_html(url):
     resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
     resp.raise_for_status()
     return resp.text
-
 
 def get_job_links_from_listing(html):
     """Pull unique job-detail URLs out of a PhilJobNet listing page."""
@@ -110,7 +107,6 @@ def get_job_links_from_listing(html):
         if "/job-vacancies/job/" in href:
             links.add(urljoin(BASE_URL, href))
     return list(links)
-
 
 SECTION_HEADINGS = {
     "job description": "description",
@@ -124,7 +120,6 @@ EDUCATION_HINTS = [
     "elementary graduate", "graduate school", "educ level not specified",
 ]
 EMPLOYMENT_TYPE_HINTS = ["permanent", "contractual", "part-time", "part time", "project-based", "temporary"]
-
 
 def parse_job_detail(html, url):
     """
@@ -194,10 +189,8 @@ def parse_job_detail(html, url):
 
     return data
 
-
 def get_connection():
     return pymysql.connect(**DB_CONFIG)
-
 
 def save_pending_career(conn, job, keyword):
     """
@@ -246,7 +239,6 @@ def save_pending_career(conn, job, keyword):
 
     return new_pending_id  # None means it already existed (duplicate source_url)
 
-
 def run():
     conn = get_connection()
     total_new = 0
@@ -291,7 +283,6 @@ def run():
 
     print(f"\nDone. Checked {total_seen} postings, staged {total_new} new entries into pending_careers.")
     print("Open php/careers.php to review and approve them into the live career database.")
-
 
 if __name__ == "__main__":
     run()

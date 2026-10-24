@@ -1,9 +1,6 @@
 <?php
 // CareerPath AI - Staff (Administrator/Counselor) self-service Profile page.
 // Mirrors php/student_profile.php's pattern for the students table, but for
-// the users table. Any logged-in staff member (either role) can view their
-// own account and change their own name/email/password here — this does
-// NOT touch role or status, which stay administrator-only via users.php.
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/change_log_helper.php';

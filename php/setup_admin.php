@@ -1,11 +1,5 @@
 <?php
 // CareerPath AI - One-time first-administrator bootstrap.
-//
-// Run this ONCE, in your browser, right after importing the database.
-// It refuses to run again once any administrator account exists — so it
-// can't be used to plant a rogue admin account later. After creating the
-// first administrator, use users.php (logged in as that admin) to create
-// counselor accounts and any additional administrators.
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/password_rules.php';

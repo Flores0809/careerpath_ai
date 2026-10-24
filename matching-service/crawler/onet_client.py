@@ -89,7 +89,6 @@ INTEREST_NAME_TO_LETTER = {
     "Social": "S", "Enterprising": "E", "Conventional": "C",
 }
 
-
 def get_auth_header():
     if not ONET_USERNAME or not ONET_PASSWORD:
         raise RuntimeError(
@@ -99,21 +98,17 @@ def get_auth_header():
     token = base64.b64encode(f"{ONET_USERNAME}:{ONET_PASSWORD}".encode()).decode()
     return {"Authorization": f"Basic {token}", "Accept": "application/json"}
 
-
 def onet_get(path, params=None):
     resp = requests.get(f"{API_BASE}{path}", headers=get_auth_header(), params=params, timeout=REQUEST_TIMEOUT)
     resp.raise_for_status()
     return resp.json()
 
-
 def search_occupations(keyword):
     data = onet_get("/mnm/search", params={"keyword": keyword})
     return data.get("career", [])[:MAX_OCCUPATIONS_PER_KEYWORD]
 
-
 def get_overview(code):
     return onet_get(f"/mnm/careers/{code}/")
-
 
 def get_education(code):
     # Not every occupation has education/Job Zone data — degrade gracefully.
@@ -122,14 +117,12 @@ def get_education(code):
     except requests.RequestException:
         return {}
 
-
 def get_personality(code):
     # Not every occupation has Interests data collected — degrade gracefully.
     try:
         return onet_get(f"/mnm/careers/{code}/personality")
     except requests.RequestException:
         return {}
-
 
 def build_riasec_suggestion(keyword, personality):
     """Start from the keyword's rule-based baseline, then boost the letter
@@ -142,10 +135,8 @@ def build_riasec_suggestion(keyword, personality):
         riasec[letter] = max(riasec.get(letter, 0), 85)
     return riasec
 
-
 def get_connection():
     return pymysql.connect(**DB_CONFIG)
-
 
 def save_pending_career(conn, occupation, keyword):
     """
@@ -215,7 +206,6 @@ def save_pending_career(conn, occupation, keyword):
 
     return new_pending_id, job
 
-
 def run():
     conn = get_connection()
     total_new = 0
@@ -252,7 +242,6 @@ def run():
 
     print(f"\nDone. Checked {total_seen} occupations, staged {total_new} new entries into pending_careers.")
     print("Open php/careers.php to review and approve them into the live career database.")
-
 
 if __name__ == "__main__":
     run()

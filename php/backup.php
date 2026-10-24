@@ -1,17 +1,6 @@
 <?php
 // CareerPath AI - Administrator Module: Database Backup
 // --------------------------------------------------------------------
-// Same paper-alignment caveat as settings.php: "Database Backup" isn't one
-// of the paper's 5 named System Administrator use cases — built anyway
-// since it's on the group's Gantt chart. Exports application tables as
-// plain INSERT statements (no shell_exec/mysqldump dependency, so it works
-// on any XAMPP install without extra configuration) and streams it as a
-// downloadable .sql file.
-//
-// Backup options: instead of only ever exporting everything (which gets huge
-// over time, mostly from assessment history, notifications and logs), the
-// administrator picks which GROUPS of data to include. Each group is just a
-// named set of the same tables below.
 
 require __DIR__ . '/auth.php';
 $currentUser = require_role(['administrator']);
@@ -63,7 +52,7 @@ if (isset($_GET['download'])) {
         try {
             $rows = $pdo->query("SELECT * FROM `$table`")->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
-            continue; // table doesn't exist yet on this install (e.g. pre-migration_10) — skip it
+            continue;
         }
         echo "-- Table: $table (" . count($rows) . " rows)\n";
         echo "DELETE FROM `$table`;\n";
@@ -83,20 +72,6 @@ if (isset($_GET['download'])) {
     echo "SET FOREIGN_KEY_CHECKS=1;\n";
     exit;
 }
-
-// ---------------------------------------------------------------------
-// Restore: upload a .sql file previously downloaded from this page.
-// Safety design — this runs administrator-uploaded SQL, so it is NOT a
-// general SQL runner. The file is split into statements (respecting quoted
-// strings), and EVERY statement must match one of exactly three shapes this
-// page's own backup writes, otherwise nothing at all is executed:
-//   SET FOREIGN_KEY_CHECKS=0|1;
-//   DELETE FROM `known_table`;
-//   INSERT INTO `known_table` (`col`, ...) VALUES ('text' | NULL, ...);
-// Table names must be in the whitelist above, and INSERT values may only be
-// quoted strings or NULL. Everything runs inside one transaction, so a
-// failure part-way rolls the whole restore back.
-// ---------------------------------------------------------------------
 
 /** Split SQL text into statements on ';' that are outside quotes; drops -- comments. */
 function split_sql_statements(string $sql): array

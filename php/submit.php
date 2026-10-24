@@ -1,11 +1,5 @@
 <?php
-// CareerPath AI - Barebone submit handler
 // 1. Scores the RIASEC intake form (sum per type, normalize 0-1)
-// 2. Sends the vector to the Python/Scikit-learn matching microservice
-// 3. Saves the submission + returned recommendations to student_profiles/
-//    recommendations (STUDENT_PROFILE / RECOMMENDATION entities in the ERD)
-//    so the student can review it later on student_history.php
-// 4. Displays the ranked career recommendations returned
 
 require __DIR__ . '/student_auth.php';
 require_once __DIR__ . '/config.php';
@@ -17,15 +11,6 @@ $currentStudent = require_student_login();
 
 $pdo = get_db();
 
-// Post/Redirect/Get: a fresh submission (POST) is scored, saved, and then
-// redirected to this same page as a GET with ?profile_id=. That GET is what
-// actually renders the results below. This means the browser's history entry
-// for the results page is a plain GET, so pressing Back just re-fetches it —
-// no "Confirm Form Resubmission" prompt, and (more importantly) nothing in
-// the render path re-runs the matching-service call, the Gemini commentary
-// call, or the student_profiles/recommendations INSERTs on every back-nav or
-// refresh. Everything the render code needs on the GET path is reloaded from
-// the DB instead of recomputed, so results look identical either way.
 $isReplay = $_SERVER['REQUEST_METHOD'] !== 'POST' && !empty($_GET['profile_id']);
 
 $replayProfile = null;
@@ -58,16 +43,6 @@ if ($isReplay) {
         $riasec[$type] = round($sum / $maxPerType, 4); // normalize to 0-1
     }
 
-    // Skills verification mechanism (Specific Objective 2 / Research Gap #4) —
-    // captured alongside RIASEC so recommendations can show a skills gap, not
-    // just a personality match. Optional per client feedback: a student who
-    // skips it just doesn't get a skills-match percentage (compute_skill_match()
-    // in skills_helper.php already returns null rather than a misleading 0% for
-    // a blank skills field) — academic average below is still required.
-    // The form's placeholder tells students unsure what to put to type "N/A" —
-    // treat that (and "none"/"n/a", any casing/punctuation) the same as a blank
-    // field everywhere downstream, so it doesn't get stored or scored as if it
-    // were a real (and misleadingly low) list of skills.
     $studentSkillsRaw = trim($_POST['skills'] ?? '');
     if ($studentSkillsRaw === '') {
         http_response_code(400);
@@ -83,12 +58,6 @@ if ($isReplay) {
     }
     $academicAverage = max(0, min(100, (float) $academicAverageRaw));
 
-    // OPTIONAL dream career (assessment.php): the student may leave it blank.
-    // Only an existing, active career is accepted; anything else is ignored.
-    // The student picks only an INDUSTRY (career category), not a specific
-    // career. It is resolved below, once the RIASEC vector is known, to the
-    // career in that industry that fits the student best (stored in
-    // dream_career_id so every results page can keep using it).
     $dreamCategory = trim($_POST['dream_category'] ?? '');
     $dreamCareerId = 0;
     if ($dreamCategory === '') {
@@ -117,19 +86,6 @@ if ($isReplay) {
 
 $riasecTypeNames = ['R' => 'Realistic', 'I' => 'Investigative', 'A' => 'Artistic', 'S' => 'Social', 'E' => 'Enterprising', 'C' => 'Conventional'];
 
-// Compute each career's match score directly in PHP (same
-// mean-centered cosine similarity math as the matching microservice —
-// see matching-service/app.py's profile_similarity() for why plain cosine
-// similarity on raw 0-1 RIASEC vectors was a poor discriminator: every
-// vector lives in the same all-positive octant of 6D space, so even a
-// mismatched career scored 90%+ purely from baseline overlap) rather than
-// round-tripping through Flask a second time (used to rebuild saved results).
-//
-// Mean-centering each profile before comparing scores the *shape* of the
-// profile (which traits are relatively high/low vs each other) instead of
-// raw magnitude — mathematically this is the Pearson correlation between
-// the two profiles. Returned on a 0-100 scale ([-1,1] rescaled), never
-// negative, so it always reads as a normal percentage to a student.
 function cosine_similarity_riasec(array $a, array $b): float
 {
     $keys = ['R', 'I', 'A', 'S', 'E', 'C'];
@@ -145,7 +101,7 @@ function cosine_similarity_riasec(array $a, array $b): float
         $normB += $cb ** 2;
     }
     if ($normA == 0 || $normB == 0) {
-        return 50.0; // one profile is perfectly flat (no variance) — no shape to correlate against
+        return 50.0;
     }
     $r = $dot / (sqrt($normA) * sqrt($normB));
     return ($r + 1) / 2 * 100;
@@ -213,15 +169,6 @@ $aiDreamCommentary = null;
 $aiDreamSkillsSuggested = null;
 
 if ($isReplay) {
-    // Rebuild the recommendations list purely from what was already saved —
-    // no Flask call, no re-insert. Each recommended career is re-run through
-    // build_career_match_data(), the same local/deterministic function used
-    // for every recommendation, so it comes back with
-    // the exact same shape render_career_card() needs (title, description,
-    // top_dimensions, career_riasec, etc.) — the raw Flask response never
-    // had to be cached for this to work, since match_score is a pure
-    // function of $riasec (unchanged, reloaded from the saved profile) and
-    // the career's own row.
     $recStmt = $pdo->prepare(
         "SELECT career_id FROM recommendations WHERE profile_id = :id ORDER BY rank_position ASC"
     );
@@ -266,7 +213,6 @@ if ($isReplay) {
             $topN = (int) $settingValue;
         }
     } catch (Exception $e) {
-        // system_settings table missing (pre-migration_10 install) — keep default.
     }
     $payload = json_encode(['riasec' => $riasec, 'top_n' => $topN]);
 
@@ -294,12 +240,6 @@ if ($isReplay) {
     $hasMatchResults = !$errorMessage && $result && !empty($result['recommendations']);
 }
 
-// Save this submission + its recommendations so the student can look back
-// at it later on student_history.php. Saved only when the matching service
-// returned results. Skipped entirely on replay — this exact profile was
-// already saved the first time it was submitted, and re-running it here on
-// every back-nav/refresh is exactly the duplicate-save bug the redirect
-// above exists to prevent.
 if (!$isReplay && $hasMatchResults) {
     try {
         $pdo->beginTransaction();
@@ -325,7 +265,7 @@ if (!$isReplay && $hasMatchResults) {
             );
             foreach ($result['recommendations'] as $rank => $career) {
                 if (empty($career['career_id'])) {
-                    continue; // matching service didn't return one; skip rather than break the transaction
+                    continue;
                 }
                 $insertRecommendation->execute([
                     'profile_id' => $profileId,
@@ -339,22 +279,6 @@ if (!$isReplay && $hasMatchResults) {
 
         $pdo->commit();
 
-        // AI commentary on this student's own result (migration_21) — best
-        // effort, generated once here (after the transaction above has
-        // already committed, so this network call to an LLM — which can
-        // take several seconds — never holds a DB transaction open) and
-        // cached rather than regenerated on every future page view. To limit
-        // AI usage (token cost) it runs for ONE career only: the student's
-        // single best match (rank 1). Grounded in that career's own
-        // counselor-approved fields; if it has
-        // no verified skill_requirements yet, the Flask/Gemini side flags
-        // that itself in Python (skills_are_suggested) so the pages can
-        // label those skills distinctly rather than passing them off as
-        // verified. Never blocks the results page — on any failure
-        // (matching service down, no API key, Gemini error) the ai_*
-        // columns simply stay NULL and every page that would show them
-        // falls back to exactly what it shows today, same convention as
-        // /enrich.
         $topCareerId = (int) ($result['recommendations'][0]['career_id'] ?? 0);
         $topCareerStmt = $pdo->prepare("SELECT * FROM careers WHERE career_id = :id");
         $topCareerStmt->execute(['id' => $topCareerId]);
@@ -365,13 +289,6 @@ if (!$isReplay && $hasMatchResults) {
                     "SELECT skill_name, proficiency_level, is_required FROM skill_requirements WHERE career_id = :id"
                 );
                 $topSkillsStmt->execute(['id' => $topCareerId]);
-                // PDO returns every column as a PHP string here (no
-                // ATTR_STRINGIFY_FETCHES override in db.php), so is_required
-                // comes back as "0"/"1" rather than a real bool. PHP's
-                // (bool)"0" is false, but once that string crosses the JSON
-                // boundary, Python's bool("0") is true -- cast to a real
-                // bool now so json_encode emits an actual JSON true/false
-                // instead of a truthy string.
                 $topRequiredSkills = array_map(function ($s) {
                     $s['is_required'] = (bool) ((int) $s['is_required']);
                     return $s;
@@ -482,11 +399,6 @@ if (!$isReplay && $hasMatchResults) {
             // ignore
         }
 
-        // Post/Redirect/Get: send the browser to a plain GET URL for this
-        // same profile instead of rendering the results directly off this
-        // POST. See $isReplay above — this is what makes the Back button
-        // land on a safe re-fetch instead of a "Confirm Form Resubmission"
-        // prompt, without duplicating this save on every back-nav.
         header('Location: submit.php?profile_id=' . $profileId);
         exit;
     } catch (Exception $e) {
@@ -528,13 +440,6 @@ try {
         .profile { white-space: normal; overflow-x: visible; }
         .profile span { margin-bottom: 6px; }
     }
-    /* RIASEC results card — labeled, animated bars in MEII's own maroon
-       gradient (same #6e1423 -> #b3465c treatment already used for the
-       trait bars on student_dashboard.php/career_profile.php), replacing
-       the old plain-text "R: 61% I: 75% ..." line with something scannable
-       at a glance. Bars fill in on page load via a CSS-only animation
-       (width: 0 -> the real percentage) rather than JS, so it still works
-       if scripts are blocked. */
     .riasec-card-title { font-weight: bold; color: #6e1423; font-size: 16px; margin-bottom: 14px; }
     .riasec-row { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
     .riasec-row:last-of-type { margin-bottom: 0; }
@@ -544,12 +449,6 @@ try {
     @keyframes riasec-fill-in { to { width: var(--pct); } }
     .riasec-row-pct { flex: 0 0 48px; text-align: right; font-size: 14.5px; font-weight: bold; color: #6e1423; }
     .riasec-academic-row { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px solid #e3c9cd; font-size: 14.5px; color: #555; }
-    /* At narrow widths the fixed 190px label + 48px pct + 2x14px gap (266px)
-       left literally 0px for the middle bar in a ~266px-wide mobile card --
-       the colored fill collapsed to nothing, leaving a label ... blank gap
-       ... percentage layout that read as "the bar disappeared" / broken
-       alignment. Shrinking the label/pct columns and the gap on mobile
-       reclaims enough room for the bar to render at a visible width again. */
     @media (max-width: 480px) {
         .how-it-works, .riasec-card { padding: 16px; }
         .riasec-row { gap: 8px; }
@@ -573,24 +472,8 @@ try {
     .skill-have { background: #d1e7dd; color: #0f5132; }
     .skill-need { background: #fff3cd; color: #856404; }
     .skill-needed { background: #f0dde1; color: #6e1423; }
-    /* Side-by-side layout for the "how were these calculated" explanation
-       and the RIASEC bar chart — was two full-width stacked boxes, now a
-       matched pair of cards so the page reads as a dashboard at a glance
-       instead of a long scroll. Stacks back to one column on narrow
-       screens/mobile rather than squeezing both into half-width. */
     .results-top-row { display: flex; gap: 20px; align-items: flex-start; margin-bottom: 26px; }
     .results-top-row > div { flex: 1 1 0; min-width: 0; }
-    /* align-items: flex-start (above) is meant for the desktop side-by-side
-       layout, so a shorter card doesn't stretch to match a taller one. But
-       once flex-direction flips to column here, that same align-items now
-       controls the CROSS axis, which is horizontal in column mode -- so
-       flex-start made each stacked card shrink-wrap to its own minimum
-       content width instead of using the phone's full width. With the
-       RIASEC card's fixed-width label+percentage columns, that minimum
-       content width left ~0px for the colored bar itself. align-items:
-       stretch here restores full-width stacked cards, which is what
-       actually fixes the vanishing bar (the column-width tweaks below are
-       just a secondary safety margin on very narrow phones). */
     @media (max-width: 880px) { .results-top-row { flex-direction: column; align-items: stretch; } }
     .how-it-works, .riasec-card { background: #faf0f1; border-radius: 10px; padding: 20px 24px; box-shadow: 0 2px 6px rgba(110,20,35,0.06); transition: transform 0.15s ease, box-shadow 0.15s ease; }
     .how-it-works:hover, .riasec-card:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(110,20,35,0.14); }
@@ -682,7 +565,6 @@ try {
         </div>
     <?php endif; ?>
 
-
     <?php
         // Shared card renderer for the best match and the other recommended
         // careers, so they stay visually/structurally identical.
@@ -696,12 +578,6 @@ try {
                 ? compute_skill_match($pdo, (int) $career['career_id'], $studentSkillsRaw !== '' ? $studentSkillsRaw : null)
                 : null;
 
-            // Traits to strengthen: RIASEC dimensions where this career's
-            // profile sits notably higher than the student's own — i.e. not
-            // what already matches (that's "Why this match?" above), but
-            // what's genuinely underdeveloped relative to what the career
-            // actually needs. Only flagged above a threshold so a student
-            // isn't told to "develop" a trait over a trivial few-point gap.
             $growthDimensions = [];
             if (!empty($career['career_riasec'])) {
                 $gaps = [];

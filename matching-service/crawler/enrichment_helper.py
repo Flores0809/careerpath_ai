@@ -8,7 +8,7 @@ counselor opening Career Review usually finds AI-suggested content,
 required skills, AND a pre-picked Category / Industry Cluster already
 filled in, instead of having to click a manual "Enrich with AI" button and
 choose a category by hand per entry (that button no longer exists in
-php/careers.php -- see migration_20_pending_career_skills.sql). The
+php/careers.php). The
 category suggestion is always one of the counselor's own existing
 career_categories names (never invented) -- if nothing fits well, it's just
 left blank for a counselor to pick, same as before this existed.
@@ -28,28 +28,15 @@ import os
 import sys
 import requests
 
-# Windows runs this script's stdout/stderr through the legacy cp1252 console
-# codepage by default, which can't encode most Unicode symbols (emoji,
-# curly quotes, etc.) -- printing one crashes the whole crawler subprocess
-# with UnicodeEncodeError. Force UTF-8 with a safe fallback so a stray
-# non-ASCII character in a log line never takes the crawler down again.
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
         _stream.reconfigure(encoding="utf-8", errors="replace")
 
-# This script always runs as a subprocess launched by app.py itself (see
-# CRAWLER_DIR / subprocess.Popen in matching-service/app.py), so it's always
-# on the same machine/container as the Flask app it's calling -- "localhost"
-# is correct in both local dev and on Railway. Only the port can differ: it
-# follows the same PORT env var app.py itself binds to (defaults to 5000
-# locally; Railway sets this to a fixed value, e.g. 8080). Explicitly setting
-# ENRICH_SERVICE_URL still overrides this entirely, if ever needed.
 _enrich_port = os.environ.get("PORT", "5000")
 ENRICH_URL = os.environ.get("ENRICH_SERVICE_URL", f"http://localhost:{_enrich_port}/enrich")
 # Gemini calls can take a few seconds; generous but bounded so one slow
 # entry can't hang an entire crawl run indefinitely.
 ENRICH_TIMEOUT_SECONDS = 40
-
 
 def auto_enrich_pending(conn, pending_id, source_title, description, qualifications):
     """
@@ -61,24 +48,10 @@ def auto_enrich_pending(conn, pending_id, source_title, description, qualificati
     try:
         return _auto_enrich_pending_impl(conn, pending_id, source_title, description, qualifications)
     except Exception as e:
-        # Belt-and-suspenders: every expected failure mode below already has
-        # its own try/except (network unreachable, bad response, DB write
-        # failure), but this outer guard exists so a truly unexpected error
-        # (e.g. the UnicodeEncodeError that used to happen on the success
-        # print, or anything else not anticipated here) can NEVER escape and
-        # kill the whole crawl loop for every posting after this one -- it
-        # just gets logged and the crawler moves on to the next entry.
         print(f"  [!] Auto-enrich hit an unexpected error for '{source_title}': {e}")
         return False
 
-
 def _auto_enrich_pending_impl(conn, pending_id, source_title, description, qualifications):
-    # Current Category / Industry Cluster options (counselor-managed on
-    # php/career_categories.php) -- sent along so /enrich can suggest one of
-    # these verbatim instead of inventing a category that doesn't exist in
-    # the system. Best-effort: if this lookup fails for any reason, just
-    # enrich without a category suggestion rather than skipping enrichment
-    # entirely.
     valid_categories = []
     try:
         conn.ping(reconnect=True)

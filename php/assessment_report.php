@@ -1,13 +1,6 @@
 <?php
 // CareerPath AI - Downloadable/printable assessment report
 // --------------------------------------------------------------------
-// "Generate downloadable assessment reports and career recommendation
-// summaries (PDF/Print)" from the Gantt chart. Built as a print-friendly
-// HTML page (browser's own "Print to PDF" covers the PDF half) rather than
-// adding a server-side PDF library — consistent with the project's
-// lightweight stack. Reachable by the owning student (their own profile)
-// or any counselor/administrator (any student's profile, for consultation
-// prep and printed hand-outs).
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/skills_helper.php';
@@ -57,10 +50,6 @@ $recStmt = $pdo->prepare(
 $recStmt->execute(['id' => $profileId]);
 $recommendations = $recStmt->fetchAll();
 
-// Dream career (migration 11) — computed live from student_profiles.dream_career_id,
-// same as student_history.php/students_lookup.php, so it still shows on this
-// printable report even for a submission where the Flask matching service was
-// down at the time and no `recommendations` rows were ever saved.
 function cosine_similarity_riasec_report(array $a, array $b): float
 {
     $keys = ['R', 'I', 'A', 'S', 'E', 'C'];

@@ -1,13 +1,5 @@
 <?php
 // CareerPath AI - Student registration approvals + LRN class list (logic).
-//
-// Included by php/users.php (Manage Accounts > Approvals tab, administrators
-// only). Staff upload the school's list of valid LRNs (CSV or Excel). A
-// student who registers with an LRN on the list is activated automatically;
-// any other registration waits as "pending" until an administrator approves
-// or rejects it. While no list is uploaded, registration stays open.
-//
-// Expects $pdo, $currentUser and $message from the including page.
 
 require_once __DIR__ . '/name_match.php';
 require_once __DIR__ . '/grade_levels.php';
@@ -359,5 +351,5 @@ try {
          ORDER BY r.rejected_at DESC"
     )->fetchAll();
 } catch (PDOException $e) {
-    $rejected = []; // migration_29 not run yet
+    $rejected = [];
 }

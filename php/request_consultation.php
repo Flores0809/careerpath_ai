@@ -1,11 +1,6 @@
 <?php
 // CareerPath AI - Consultation Request & Appointment Scheduling (student side)
 // --------------------------------------------------------------------
-// Not a named entity/use case in the capstone paper's ERD or Use Case
-// Diagram (see README for the alignment note) — built anyway since it's on
-// the group's Gantt chart under Software Development. A student submits a
-// request with a required reason + preferred date/time; a counselor or
-// administrator picks it up on consultations.php and schedules it.
 
 require __DIR__ . '/student_auth.php';
 require_once __DIR__ . '/notifications_helper.php';
@@ -14,9 +9,6 @@ $currentStudent = require_student_login();
 $pdo = get_db();
 $message = null;
 
-// consultations.rescheduled_at comes from migration_28. If that migration
-// hasn't been run yet on this database, quietly fall back to the old
-// behavior instead of breaking the page.
 try {
     $pdo->query("SELECT rescheduled_at FROM consultations LIMIT 0");
     $hasRescheduleCol = true;

@@ -1,19 +1,5 @@
 <?php
 // CareerPath AI - Manage Career Categories (counselors & administrators)
-//
-// career_categories is the lookup table backing careers.career_category /
-// pending_careers.career_category (migration_13_category_management.sql).
-// Before this page existed, a category was just whatever string a counselor
-// typed into a free-text field on careers.php / careers_manage.php, guided
-// only by a hardcoded suggestion list — no way to see the full set, describe
-// what a category actually covers, rename one, or remove it. This page is
-// that missing management surface.
-//
-// Not a hard foreign key on purpose: careers.career_category stays plain
-// VARCHAR so this migration didn't have to touch every existing row under a
-// constraint. Consistency is enforced here instead — renaming a category
-// cascades to every career/pending_career using the old name, and deleting
-// a category is blocked while any career still references it.
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/change_log_helper.php';

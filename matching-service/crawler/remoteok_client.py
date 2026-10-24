@@ -73,14 +73,12 @@ TARGET_KEYWORDS = {
     "chef":             {"R": 65, "I": 30, "A": 55, "S": 35, "E": 40, "C": 30},
 }
 
-
 def fetch_feed():
     resp = requests.get(API_URL, headers=HEADERS, timeout=REQUEST_TIMEOUT)
     resp.raise_for_status()
     data = resp.json()
     # First element is RemoteOK's own legal/attribution notice, not a job.
     return [item for item in data if "position" in item]
-
 
 def match_keyword(job):
     """Returns the first target keyword found in the job's title or tags, or None."""
@@ -90,13 +88,11 @@ def match_keyword(job):
             return keyword
     return None
 
-
 def clean_description(html):
     if not html:
         return ""
     text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
     return text[:DESCRIPTION_MAX_CHARS]
-
 
 def format_salary(job):
     lo = job.get("salary_min") or 0
@@ -107,16 +103,13 @@ def format_salary(job):
         return f"${lo:,.0f} - ${hi:,.0f}"
     return f"${(lo or hi):,.0f}"
 
-
 def format_employment_type(job):
     tags = [t for t in (job.get("tags") or []) if t.lower() in ("full time", "part time", "contract")]
     label = tags[0].title() if tags else "Full Time"
     return f"Remote, {label}"
 
-
 def get_connection():
     return pymysql.connect(**DB_CONFIG)
-
 
 def save_pending_career(conn, job, keyword):
     conn.ping(reconnect=True)
@@ -168,7 +161,6 @@ def save_pending_career(conn, job, keyword):
 
     return new_pending_id, row
 
-
 def run():
     print("=== Fetching RemoteOK public feed ===")
     try:
@@ -204,7 +196,6 @@ def run():
 
     print(f"\nDone. Checked {total_seen} matching postings, staged {total_new} new entries into pending_careers.")
     print("Open php/careers.php to review and approve them into the live career database.")
-
 
 if __name__ == "__main__":
     run()

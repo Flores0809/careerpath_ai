@@ -14,7 +14,6 @@ sys.path.insert(0, os.path.dirname(HERE))  # matching-service/
 
 import app as matching_app  # noqa: E402
 
-
 def seed_careers():
     """RIASEC profiles of the seeded careers, parsed from database/schema.sql."""
     sql = open(os.path.join(ROOT, "database", "schema.sql"), encoding="utf-8").read()
@@ -28,7 +27,6 @@ def seed_careers():
             "r_score": r, "i_score": i_, "a_score": a, "s_score": s, "e_score": e, "c_score": c,
         })
     return careers
-
 
 def install_fake_db(careers):
     matching_app.fetch_careers = lambda: careers

@@ -1,14 +1,6 @@
 <?php
 // CareerPath AI - Skills verification helper
 // --------------------------------------------------------------------
-// Specific Objective 2 / Research Gap #4: compare a student's self-reported
-// skills against a career's required skills (SKILL_REQUIREMENTS entity in
-// the ERD) so recommendations show not just RIASEC fit but a concrete,
-// actionable skills gap. Skills are free text on both sides (student input
-// on php/assessment.php, counselor-entered requirements on
-// php/careers_manage.php), so matching here is a simple, case-insensitive,
-// trimmed comparison — consistent with the project's rule-based approach
-// (no custom-trained ML, per the paper's Technology Stack section).
 
 /**
  * Split a comma/newline-separated free-text skills string into a clean list.
@@ -29,11 +21,6 @@ function parse_skill_list(?string $raw): array
     return $skills;
 }
 
-/**
- * Compare a student's free-text skills against a career's required skills.
- * Returns null match_percent when the career has no skills defined yet
- * (nothing to verify against), rather than a misleading 0% or 100%.
- */
 function compute_skill_match(PDO $pdo, int $careerId, ?string $studentSkillsRaw): array
 {
     $studentSkills = parse_skill_list($studentSkillsRaw);
@@ -76,16 +63,6 @@ function compute_skill_match(PDO $pdo, int $careerId, ?string $studentSkillsRaw)
     ];
 }
 
-/**
- * Student-facing wording for a skills comparison. Deliberately NOT a
- * percentage: a student who left "Your Skills" blank (or typed N/A) would
- * otherwise always see a discouraging, meaningless "0% match" on every
- * career. Returns ['has_match' => bool, 'text' => string, 'label' => string]:
- *  - 'text'  : an encouraging message when at least one of the career's
- *              skills is already covered, otherwise an empty string;
- *  - 'label' : the heading shown above the career's skill tags, which are
- *              simply the skills this career needs (covered ones get a tick).
- */
 function skill_match_message(array $skillMatch): array
 {
     $total = (int) ($skillMatch['required_count'] ?? 0);

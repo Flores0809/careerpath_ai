@@ -1,8 +1,6 @@
 <?php
 // CareerPath AI - Student assessment history
 // Shows every past RIASEC submission the logged-in student made, and the
-// ranked careers they were shown for each one (STUDENT_PROFILE +
-// RECOMMENDATION entities from the ERD).
 
 require __DIR__ . '/student_auth.php';
 require_once __DIR__ . '/skills_helper.php';
@@ -49,13 +47,6 @@ $fieldCareersStmt = $pdo->prepare(
     "SELECT * FROM careers WHERE status = 'active' AND career_category = :category AND career_id != :dream_id"
 );
 
-// Mean-centered cosine similarity (Pearson correlation between the two
-// profiles' shapes), rescaled to 0-100 — same formula as submit.php's
-// cosine_similarity_riasec() and matching-service/app.py's
-// profile_similarity(). Plain cosine similarity on raw 0-1 RIASEC vectors
-// scored almost everything 90%+ since every vector lives in the same
-// all-positive octant of 6D space; centering each profile before comparing
-// scores its shape (relatively high/low traits) instead of raw magnitude.
 function cosine_similarity_riasec_history(array $a, array $b): float
 {
     $keys = ['R', 'I', 'A', 'S', 'E', 'C'];
@@ -92,13 +83,6 @@ function cosine_similarity_riasec_history(array $a, array $b): float
     .submission-date { font-size: 14.5px; color: #666; margin-bottom: 10px; }
     .profile { background: #faf0f1; border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; white-space: nowrap; overflow-x: auto; }
     .profile span { display: inline-block; margin-right: 12px; font-size: 14px; }
-    /* On mobile the 6 RIASEC stats + academic average don't fit on one line,
-       so the nowrap+scroll above just clipped the last item at the screen
-       edge (e.g. "Investigative (I): 82% A|") with no visual hint that more
-       was scrollable off-screen -- read as a cut-off/broken page rather than
-       a swipeable row. These are short, self-contained "Label: NN%" pairs
-       (unlike a wide data table), so wrapping them onto a couple of lines
-       reads fine and needs no swipe gesture at all. */
     @media (max-width: 600px) {
         .profile { white-space: normal; overflow-x: visible; }
         .profile span { margin-bottom: 6px; }
@@ -233,7 +217,6 @@ function cosine_similarity_riasec_history(array $a, array $b): float
                     <span><strong>Skills listed:</strong> <?= htmlspecialchars(implode(', ', array_map('trim', explode(',', $profile['skills'])))) ?></span>
                 </div>
             <?php endif; ?>
-
 
             <?php if ($dreamCareer): ?>
                 <?php $sameCareer = (int) $dreamCareer['career_id'] === (int) $bestRec['career_id']; ?>

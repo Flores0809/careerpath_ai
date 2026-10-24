@@ -1,12 +1,6 @@
 <?php
 // CareerPath AI - Administrator Module: full Audit Log viewer
 // --------------------------------------------------------------------
-// counselor_log itself IS a named ERD entity (COUNSELOR_LOG, Chapter III),
-// so this page is on firmer paper-alignment ground than settings.php/
-// backup.php — it's just a cross-student, cross-counselor view of the same
-// table students_lookup.php already writes to and shows per-student.
-// Open to both roles (counselors can already see their own actions on
-// students_lookup.php; this just adds the "audit" cross-section view).
 
 require __DIR__ . '/auth.php';
 $currentUser = require_role(['administrator', 'counselor']);
@@ -100,7 +94,6 @@ $totalCount = (int) $pdo->query("SELECT COUNT(*) FROM counselor_log")->fetchColu
     .action-recorded_outcome { background: #d1e7dd; color: #0f5132; }
     .empty { color: #666; font-style: italic; }
 
-    /* Table panel — same card treatment as Manage Accounts */
     .table-card { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 6px 18px 12px; }
     .table-card table { margin-top: 6px; }
     tbody tr:hover { background: rgba(110,20,35,0.04); }

@@ -1,10 +1,5 @@
 <?php
 // CareerPath AI - Session-based auth helpers
-//
-// Two roles: 'administrator' (manages counselor/administrator accounts via
-// users.php) and 'counselor' (reviews/approves careers via careers.php).
-// Passwords are hashed with PHP's own password_hash()/password_verify(),
-// so there's no cross-platform hash-format guesswork.
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -38,12 +33,6 @@ function require_login(): array
     return $user;
 }
 
-/**
- * Requires the logged-in user's role to be in $allowedRoles, e.g.
- * require_role(['administrator']) or require_role(['administrator','counselor']).
- * Shows a 403 page (not a silent redirect) so a counselor hitting an
- * administrator-only page understands why, rather than looking logged out.
- */
 function require_role(array $allowedRoles): array
 {
     $user = require_login();

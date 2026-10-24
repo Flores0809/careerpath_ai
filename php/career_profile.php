@@ -1,13 +1,5 @@
 <?php
 // CareerPath AI - Student-facing Career Profile page
-//
-// A student clicks a recommended career (from submit.php or
-// student_history.php) to land here. Shows the full career profile: the
-// AI/crawler-sourced description, typical tasks, educational pathway, RIASEC
-// profile, and the complete required-skills list (SKILL_REQUIREMENTS entity)
-// compared against the student's own most recently submitted skills — a
-// standing reference page independent of any single AI recommendation call,
-// per the "safe to still have an existing one available" requirement.
 
 require __DIR__ . '/student_auth.php';
 require_once __DIR__ . '/skills_helper.php';
@@ -53,11 +45,6 @@ $latestSkillsStmt->execute(['id' => $currentStudent['student_id']]);
 $latestSkillsRaw = $latestSkillsStmt->fetchColumn();
 $skillMatch = compute_skill_match($pdo, $careerId, $latestSkillsRaw ?: null);
 
-// Employment opportunities: the real job postings the crawler collected for this
-// career (linked at approval time via pending_careers.approved_career_id, or — for careers approved before that link existed — matched by identical title). Shown
-// so students can see actual hiring examples — employers, locations, pay — and
-// how recent they are. Wrapped in try/catch so older databases without the link
-// column simply show no panel.
 $postings = [];
 try {
     $postStmt = $pdo->prepare(
@@ -98,12 +85,6 @@ if ($postings) {
 
 $riasecNames = ['r_score' => 'Realistic', 'i_score' => 'Investigative', 'a_score' => 'Artistic', 's_score' => 'Social', 'e_score' => 'Enterprising', 'c_score' => 'Conventional'];
 
-// AI notes are generated ONLY at submission time (see submit.php), in one call,
-// and cached on student_profiles: one note for the student's best match and,
-// if they picked one, one for their optional dream career. This page never
-// calls the AI -- it only shows the cached note that belongs to THIS career
-// (best-match note if this career was their rank-1 result, dream note if it
-// was their dream career), so opening the page again costs no tokens.
 $aiCareerCommentary = null;
 $aiSkillsAreSuggested = false;
 

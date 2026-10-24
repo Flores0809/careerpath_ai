@@ -1,11 +1,6 @@
 <?php
 // CareerPath AI - Administrator Module: System Settings
 // --------------------------------------------------------------------
-// The paper's Use Case Diagram (Figure 8) names 5 System Administrator use
-// cases and doesn't include "System Settings" — see README for the
-// alignment note. Built anyway since it's on the group's Gantt chart.
-// Deliberately small: a couple of real, load-bearing settings rather than a
-// generic settings dumping ground.
 
 require __DIR__ . '/auth.php';
 $currentUser = require_role(['administrator']);

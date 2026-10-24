@@ -1,14 +1,5 @@
 <?php
 // CareerPath AI - Career Review Queue (Counselor + Administrator)
-//
-// Lists everything the crawler (matching-service/crawler/crawler.py) staged in pending_careers
-// and lets a counselor (or administrator) edit + approve entries into the
-// live `careers` table, or reject them. This matches the paper's design:
-// crawled data always passes through human review before students ever see it.
-//
-// Formerly admin.php — renamed now that account management (users.php,
-// administrator-only) is a separate page from career review (this page,
-// open to both roles).
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/change_log_helper.php';
@@ -17,11 +8,6 @@ $currentUser = require_role(['administrator', 'counselor']);
 $pdo = get_db();
 $message = null;
 
-// Cards render collapsed by default (see render_pending_card()) so 84
-// pending entries don't mean 84 fully-expanded forms on screen at once.
-// Whichever entry the counselor just acted on (enriched, or hit a
-// validation error on approve/reject) stays expanded after the page
-// reloads, so they don't lose their spot.
 $focusPendingId = (int) ($_POST['pending_id'] ?? 0);
 
 $sourceLabels = [
@@ -32,15 +18,6 @@ $sourceLabels = [
     'remoteok' => 'RemoteOK (International)',
 ];
 
-// Approval-time duplicate re-check (AI-assisted duplicate resolution — see
-// DUPLICATE_CHECK_SERVICE_URL). Separate from the render-time duplicate
-// badge below (which batches every approved career once per page load for
-// efficiency across dozens of pending cards) — this one only ever needs to
-// check a single title at the moment a counselor clicks Approve, so a
-// fresh, targeted query is simpler and cheap enough on its own. Matches
-// title-similarity against active careers in the SAME scope only (local vs
-// international are intentionally separate lanes — see the render-time
-// version's own comment for why), same >=55%-or-exact threshold.
 function find_duplicate_career(PDO $pdo, string $sourceTitle, string $scope): ?array
 {
     $needle = strtolower(trim($sourceTitle));
@@ -97,24 +74,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // eligible to appear in the assessment's dream-career picker.
             $message = ['type' => 'error', 'text' => 'Category / Industry Cluster is required before approving.'];
         } else {
-            // Local (PhilJobNet) vs. international (O*NET/Adzuna/RemoteOK) —
-            // captured here so php/submit.php can show a student's dream
-            // career's local + international versions side by side when
-            // both exist. See migration_19_career_scope.sql.
             $sourceStmt = $pdo->prepare("SELECT data_source FROM pending_careers WHERE pending_id = :id");
             $sourceStmt->execute(['id' => $pendingId]);
             $careerScope = $sourceStmt->fetchColumn() === 'philjobnet' ? 'local' : 'international';
 
-            // AI-assisted duplicate resolution: if this posting (as it's
-            // about to be saved — the counselor's own edited title/
-            // description, not the stale scraped values) still matches an
-            // already-approved career, ask Gemini whether it's genuinely the
-            // same real-world career or just a similarly-titled but distinct
-            // one. Fully automatic by design — clicking Approve on an entry
-            // that already showed the duplicate badge IS the counselor's
-            // confirmation, per how this was scoped. Any failure to reach
-            // the AI (or a "different career" verdict) falls back to the
-            // original, safe behavior: insert as a new, separate career.
             $duplicateMatch = find_duplicate_career($pdo, $careerTitle, $careerScope);
             $mergeIntoCareerId = null;
 
@@ -149,12 +112,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
             try {
                 if ($mergeIntoCareerId) {
-                    // Overwrite path — full replace, per the counselor's own
-                    // choice that an AI-confirmed duplicate should just take
-                    // over the existing entry rather than create a second
-                    // one. Old values are captured and logged BEFORE the
-                    // UPDATE so this is a one-click revert from Change
-                    // History if the AI called it wrong.
                     $oldCareerStmt = $pdo->prepare("SELECT * FROM careers WHERE career_id = :id");
                     $oldCareerStmt->execute(['id' => $mergeIntoCareerId]);
                     $oldCareerRow = $oldCareerStmt->fetch();
@@ -181,11 +138,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         );
                     }
 
-                    // Full replace of skill_requirements too — logged per row
-                    // (delete + insert), same granularity as the existing
-                    // add_skill/delete_skill actions on careers_manage.php,
-                    // so each individual skill change is independently
-                    // revertible rather than one opaque bulk operation.
                     $oldSkillsStmt = $pdo->prepare("SELECT * FROM skill_requirements WHERE career_id = :id");
                     $oldSkillsStmt->execute(['id' => $mergeIntoCareerId]);
                     foreach ($oldSkillsStmt->fetchAll() as $oldSkill) {
@@ -219,14 +171,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $careerId = (int) $pdo->lastInsertId();
                 }
 
-                // Copy the (possibly counselor-edited) skills list into the
-                // approved-side skill_requirements table — same
-                // stage-then-copy pattern already used for key_subjects,
-                // just per-row instead of a single column. Rows with an
-                // emptied-out name are skipped (that's how a counselor
-                // "removes" an AI-suggested skill from this form). On the
-                // merge path this is rebuilding the list just cleared above;
-                // on the new-career path it's the only skill insert.
                 $skillInsert = $pdo->prepare(
                     "INSERT INTO skill_requirements (career_id, skill_name, proficiency_level, is_required)
                      VALUES (:career_id, :skill_name, :proficiency, :is_required)"
@@ -236,8 +180,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($skillName === '') {
                         continue;
                     }
-                    // Free text now, not a fixed basic/intermediate/advanced
-                    // enum — see migration_23_freetext_proficiency.sql.
                     $proficiency = mb_substr(trim($skillInput['proficiency'] ?? ''), 0, 150);
                     $isRequired = isset($skillInput['required']) ? 1 : 0;
                     $skillInsert->execute([
@@ -255,10 +197,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                // Records which live career this became — whether newly
-                // created or merged into an existing one — so pages like
-                // the staff dashboard's "Recent Review Activity" list can
-                // link straight to it (migration_26_pending_career_link.sql).
                 $update = $pdo->prepare(
                     "UPDATE pending_careers SET status = 'approved', reviewed_at = NOW(), reviewed_by = :uid, approved_career_id = :career_id WHERE pending_id = :id"
                 );
@@ -449,21 +387,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = ['type' => 'success', 'text' => "Approved $approved entries into the live career database." . ($skipped ? " $skipped were left pending (not AI-enriched, no category, possible duplicate, or an error) — review those one by one." : '')];
         }
     } elseif ($action === 'run_crawler') {
-        // Starts one or more crawler/*.py scripts as background subprocesses
-        // on the matching service (see matching-service/app.py's
-        // CrawlResource) so a counselor/admin never has to open a terminal.
-        // Each request returns immediately — the crawl itself keeps running
-        // in the background and results are polled via CRAWL_STATUS_SERVICE_URL.
-        //
-        // Sources are now checkboxes (name="sources[]") instead of a single
-        // <select>, so a counselor can kick off several at once with one
-        // click. This doesn't need any concurrency work on the Python side —
-        // CrawlResource already tracks one in-flight subprocess *per source*
-        // (keyed by source name in _running_crawls), so firing off a POST
-        // per selected source here just launches that many genuinely
-        // separate, already-parallel subprocesses. This loop is only about
-        // letting the UI request several in one click; each individual
-        // /crawl call is the same one the single-source flow always used.
         $crawlSources = array_values(array_intersect((array) ($_POST['sources'] ?? []), array_keys($sourceLabels)));
         if (!$crawlSources) {
             $message = ['type' => 'error', 'text' => 'Pick at least one source to crawl.'];
@@ -566,10 +489,6 @@ $sourceCounts = $pdo->query(
     "SELECT data_source, COUNT(*) as n FROM pending_careers WHERE status = 'pending' GROUP BY data_source"
 )->fetchAll(PDO::FETCH_KEY_PAIR);
 
-// Category / industry-cluster options — sourced from the career_categories
-// lookup table (migration_13_category_management.sql), same as
-// php/careers_manage.php, so newly-approved careers land with a consistent,
-// managed cluster label the dream-career picker can group by.
 $categoryOptions = $pdo->query("SELECT name, description FROM career_categories ORDER BY name")->fetchAll();
 
 // Split "New" (scraped in the last 24 hours) vs everything else, so a
@@ -581,35 +500,6 @@ $enrichedCount = 0;
 $notEnrichedCount = 0;
 
 if ($statusFilter === 'pending') {
-    // Flag entries that look like a duplicate of a career that's already
-    // approved — stays entirely within the Pending tab as a small badge on
-    // the card (see render_pending_card()); doesn't touch the careers
-    // table, doesn't need its own tab/section, and doesn't change how
-    // Approve/Reject work. Staff still decide either way, same buttons as
-    // always — this just gives them a heads-up before they do.
-    //
-    // Matching compares the scraped posting's own title (source_title)
-    // against each active career's title with PHP's similar_text() (a
-    // character-overlap percentage) — exact match, or >=55% similar. Rule-
-    // based and explainable, not perfect, but good enough to flag the
-    // obvious case (e.g. a re-scraped "Welder" posting when "Welder" is
-    // already an approved career).
-    //
-    // Scoped by career_scope (local vs international — same lane the
-    // Local/International side-by-side feature on the results page uses):
-    // a RemoteOK/O*NET/Adzuna posting is only compared against other
-    // *international* approved careers, and a PhilJobNet posting only
-    // against *local* ones. Local and international are intentionally
-    // separate areas, not duplicates of each other — an international
-    // "Architect" isn't a dupe of the local "Architect" any more than an
-    // administrator account is a dupe of a counselor account on
-    // php/users.php; they're different lanes that can coexist on purpose
-    // (and are exactly what the results-page comparison feature pairs up).
-    // AI-suggested required skills staged per pending entry (migration 20 —
-    // pending_career_skills mirrors the approved-side skill_requirements
-    // table). Grouped by pending_id so render_pending_card() can pre-fill an
-    // editable skills list; counselors add/remove/edit rows before
-    // approving, same as every other AI-suggested field on this form.
     $pendingSkillsByPendingId = [];
     $pendingSkillsStmt = $pdo->query(
         "SELECT pending_id, skill_name, proficiency_level, is_required FROM pending_career_skills ORDER BY pending_id, is_required DESC, skill_name"
@@ -628,13 +518,6 @@ if ($statusFilter === 'pending') {
         $approvedCareersByScope[$scope][] = $approved;
     }
 
-    // Returns the full matched career row (not just its title) plus the
-    // similarity percent, so the duplicate badge can show staff exactly
-    // what the approved entry actually says — title similarity alone can
-    // false-positive (e.g. "Ship Electrician" vs "Electrician" are related
-    // but genuinely different specializations), so seeing the real
-    // description/RIASEC/category lets a counselor judge "real duplicate"
-    // vs "just a coincidentally similar title" without leaving the page.
     $findDuplicateCareer = function (string $sourceTitle, string $scope) use ($approvedCareersByScope): ?array {
         $needle = strtolower(trim($sourceTitle));
         if ($needle === '') {
@@ -765,21 +648,6 @@ if ($statusFilter === 'pending') {
     .duplicate-scope-tag.duplicate-scope-international { background: #e2e8f0; color: #1e3a5f; }
     .duplicate-scope-tag.duplicate-scope-local { background: #f0dde1; color: #6e1423; }
     .duplicate-detail-hint { margin: 0 0 10px; font-size: 13px; color: #8a5a5a; font-style: italic; line-height: 1.5; }
-    /* Raw-vs-AI-enriched comparison — same full-width collapsible-table
-       pattern as the "possible duplicate" box above (.duplicate-badge/
-       .duplicate-compare), just re-themed purple to match this page's
-       existing AI accent color (.pending-ai-tag/.ai-badge) instead of red.
-       A narrow floating sidebar next to the tall form looked disconnected/
-       orphaned once the form ran longer than the reference box, so this
-       matches the duplicate box's own full-width row layout instead, which
-       doesn't have that problem regardless of content height. */
-    /* Raw-vs-AI-enriched comparison, permanent two-column layout (not a
-       click-to-expand table) — left column is the raw scraped text,
-       read-only reference; right column is the existing editable form
-       (pre-filled from AI enrichment). Side by side by default so a
-       counselor can scan both without an extra click. Stacks on narrow
-       screens since a 260px reference column doesn't leave the form enough
-       room below ~820px. */
     .pending-columns { display: flex; gap: 20px; align-items: flex-start; }
     .pending-raw-col { flex: 0 0 260px; background: #f7f7f7; border: 1px solid #e2e2e2; border-radius: 8px; padding: 14px 16px; }
     .pending-raw-heading { font-weight: bold; color: #555; font-size: 13px; margin-bottom: 8px; }
@@ -836,7 +704,6 @@ if ($statusFilter === 'pending') {
     .reviewed-row .title { font-weight: bold; color: #6e1423; }
     .reviewed-row .meta { margin-top: 4px; }
 
-    /* Run Web Crawler panel */
     .crawler-panel { max-width: 1100px; margin: 0 auto 20px; background: #faf0f1; border: 1px solid #f0dde1; border-radius: 8px; padding: 16px 20px; }
     .crawler-panel-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
     .crawler-panel select { padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; font-size: 14.5px; }
@@ -1206,13 +1073,6 @@ if ($statusFilter === 'pending') {
         });
     })();
 
-    // Required-skills editor on each pending card: "+ Add skill" appends a
-    // blank row (its own name/proficiency/required inputs, indexed past
-    // whatever AI-suggested rows already exist so submitted array keys
-    // never collide); the ✕ on a row just removes it from the DOM — an
-    // emptied-out / removed row simply isn't in the POST, so the approve
-    // handler skips it. Delegated to the document since every pending card
-    // has its own independent skills-editor.
     (function () {
         document.addEventListener('click', function (e) {
             if (e.target.classList.contains('add-skill-btn')) {
@@ -1235,17 +1095,6 @@ if ($statusFilter === 'pending') {
         });
     })();
 
-    // Live status for the "Run Web Crawler" panel — polls crawler_status.php
-    // (same-origin proxy to the matching service) every few seconds so staff
-    // can watch a crawl finish without manually refreshing the page.
-    //
-    // Now polls every checkbox's source at once (not just one selected
-    // value), since multiple crawlers can genuinely be running in parallel —
-    // each checkbox fires its own independent /crawl subprocess on the
-    // matching service (see careers.php's run_crawler handler + app.py's
-    // CrawlResource, which already tracks one in-flight process per source).
-    // One status line per source; the log panel shows whichever source is
-    // still running, or the most recently finished one if none are.
     (function () {
         var checkboxes = document.querySelectorAll('#crawler-form input[name="sources[]"]');
         var statusEl = document.getElementById('crawler-status');

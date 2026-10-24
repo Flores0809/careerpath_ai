@@ -1,7 +1,6 @@
 <?php
 // CareerPath AI - shared wording helpers (RIASEC meanings, data-source labels,
 // rule-based "why we recommend this" text). All plain PHP, no AI calls, so the
-// explanations are deterministic and cost nothing.
 
 /** What each RIASEC (Holland) type means, in student-friendly words. */
 function riasec_type_info(): array
@@ -65,11 +64,6 @@ function career_source_line(array $careerRow): string
     return $line;
 }
 
-/**
- * Brief, rule-based reason a career was recommended, built from the two
- * RIASEC dimensions that contributed most to the match (see
- * build_career_match_data) — no AI involved.
- */
 function recommendation_reason(array $career): string
 {
     $info = riasec_type_info();
@@ -114,14 +108,6 @@ function render_about_assessment(): void
        . '</details>';
 }
 
-// ---------------------------------------------------------------------
-// Dream career comparison ("what the system found" vs "what I am aiming
-// for"). The dream career is OPTIONAL and never changes the RIASEC scores
-// or the ranked recommendations; it is scored with the same mean-centered
-// cosine similarity (Pearson correlation) used for every other career.
-// Plain PHP, no AI call, so it costs nothing.
-// ---------------------------------------------------------------------
-
 /** Match % (0-100) between a student's RIASEC vector and a career's, both as ['R'..'C' => 0-1]. */
 function riasec_similarity_pct(array $a, array $b): float
 {
@@ -151,11 +137,6 @@ function career_row_vector(array $row): array
     ];
 }
 
-/**
- * Loads the student's optional dream career and scores it against their RIASEC vector.
- * Returns null when no dream career was chosen. 'rank' is its position among all
- * active careers for this student's profile (1 = best fit of the whole catalog).
- */
 function load_dream_career(PDO $pdo, $dreamCareerId, array $studentVec): ?array
 {
     $dreamCareerId = (int) $dreamCareerId;
@@ -198,11 +179,6 @@ function dream_comparison_text(string $bestTitle, float $bestScore, string $drea
     return $text . ' This is guidance only: interest fit is one factor, and you can also work on the traits that career needs.';
 }
 
-/**
- * student_profiles.ai_dream_commentary (migration 29) holds the AI note about
- * the student's optional dream career. Added on demand if the migration has
- * not been run yet, so the page never breaks; harmless if it already exists.
- */
 function ensure_dream_commentary_column(PDO $pdo): void
 {
     static $checked = false;

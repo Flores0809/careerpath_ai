@@ -1,7 +1,6 @@
 <?php
 // CareerPath AI - Student Profile Management module
 // (paired with the Student Dashboard in the paper's own task wording:
-// "Develop the Student Dashboard and Profile Management module")
 
 require __DIR__ . '/student_auth.php';
 require_once __DIR__ . '/change_log_helper.php';
@@ -25,8 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $gradeLevel = trim($_POST['grade_level'] ?? '');
         $ageRaw = trim($_POST['age'] ?? '');
 
-        // LRN, grade level, and age are all required per client request —
-        // same rule now enforced at sign-up (php/student_register.php).
         if ($name === '' || $email === '' || $studentNumber === '' || $gradeLevel === '' || $ageRaw === '') {
             $message = ['type' => 'error', 'text' => 'Name, LRN, email, grade level, and age are all required.'];
         } elseif (!ctype_digit($studentNumber) || strlen($studentNumber) !== 12) {

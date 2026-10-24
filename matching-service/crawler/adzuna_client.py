@@ -88,7 +88,6 @@ TARGET_KEYWORDS = {
     "chef":             {"R": 65, "I": 30, "A": 55, "S": 35, "E": 40, "C": 30},
 }
 
-
 def format_salary(result, currency_symbol):
     lo = result.get("salary_min") or 0
     hi = result.get("salary_max") or 0
@@ -98,11 +97,9 @@ def format_salary(result, currency_symbol):
         return f"{currency_symbol}{lo:,.0f} - {currency_symbol}{hi:,.0f}"
     return f"{currency_symbol}{(lo or hi):,.0f}"
 
-
 def format_employment_type(result):
     parts = [p for p in (result.get("contract_time"), result.get("contract_type")) if p]
     return ", ".join(p.replace("_", " ").title() for p in parts) or None
-
 
 def search_jobs(country_code, keyword):
     if not ADZUNA_APP_ID or not ADZUNA_APP_KEY:
@@ -122,10 +119,8 @@ def search_jobs(country_code, keyword):
     resp.raise_for_status()
     return resp.json().get("results", [])
 
-
 def get_connection():
     return pymysql.connect(**DB_CONFIG)
-
 
 def save_pending_career(conn, result, keyword, country_name, currency_symbol):
     conn.ping(reconnect=True)
@@ -178,7 +173,6 @@ def save_pending_career(conn, result, keyword, country_name, currency_symbol):
 
     return new_pending_id, job
 
-
 def run():
     conn = get_connection()
     total_new = 0
@@ -213,7 +207,6 @@ def run():
 
     print(f"\nDone. Checked {total_seen} postings, staged {total_new} new entries into pending_careers.")
     print("Open php/careers.php to review and approve them into the live career database.")
-
 
 if __name__ == "__main__":
     run()

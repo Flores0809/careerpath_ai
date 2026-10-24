@@ -1,8 +1,6 @@
 <?php
 // CareerPath AI - Sample LRN class-list file for the Approvals tab.
 //   ?type=xlsx  Excel file with the LRN column already formatted as Text
-//   ?type=csv   plain CSV with the same sample rows
-// Administrators only.
 
 require __DIR__ . '/auth.php';
 $currentUser = require_role(['administrator']);

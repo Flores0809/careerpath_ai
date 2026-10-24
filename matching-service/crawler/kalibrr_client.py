@@ -66,7 +66,7 @@ HEADERS = {
     "User-Agent": "CareerPathAI-ResearchCrawler/0.1 (Colegio de San Juan de Letran Calamba capstone project; contact via institution)"
 }
 
-CRAWL_DELAY_SECONDS = 2       # delay between HTTP requests (one per keyword — no per-job detail fetch, see docstring above)
+CRAWL_DELAY_SECONDS = 2
 MAX_JOBS_PER_KEYWORD = 5
 REQUEST_TIMEOUT = 15
 
@@ -97,12 +97,10 @@ TITLE_LINK_RE = re.compile(r"^/c/[^/]+/jobs/\d+/")
 COMPANY_LINK_RE = re.compile(r"^/c/[^/]+/jobs\?")
 EMPLOYMENT_TYPE_HINTS = ["Full time", "Part time", "Contract", "Internship", "Temporary", "Freelance"]
 
-
 def fetch_html(url):
     resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
     resp.raise_for_status()
     return resp.text
-
 
 def parse_listing(html):
     """
@@ -116,7 +114,7 @@ def parse_listing(html):
 
     container = soup.find(attrs={"itemtype": "http://schema.org/ItemList"})
     if not container:
-        return jobs  # page structure changed enough that our anchor is gone — nothing to safely parse
+        return jobs
 
     cards = container.find_all("div", recursive=False)
     for card in cards:
@@ -163,10 +161,8 @@ def parse_listing(html):
 
     return jobs
 
-
 def get_connection():
     return pymysql.connect(**DB_CONFIG)
-
 
 def save_pending_career(conn, job, keyword):
     conn.ping(reconnect=True)
@@ -204,7 +200,6 @@ def save_pending_career(conn, job, keyword):
 
     return new_pending_id
 
-
 def run():
     conn = get_connection()
     total_new = 0
@@ -238,7 +233,6 @@ def run():
 
     print(f"\nDone. Checked {total_seen} postings, staged {total_new} new entries into pending_careers.")
     print("Open php/careers.php to review and approve them into the live career database.")
-
 
 if __name__ == "__main__":
     run()

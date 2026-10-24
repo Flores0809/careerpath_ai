@@ -1,9 +1,5 @@
 <?php
 // CareerPath AI - Administrator-only account management
-//
-// Administrators create and manage counselor (and other administrator)
-// accounts here. Counselors cannot reach this page — require_role() below
-// enforces that with a 403, not just a hidden link.
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/change_log_helper.php';
@@ -157,25 +153,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute(['hash' => $newHash, 'id' => $targetId]);
 
             if ($target) {
-                // Only the password_hash field is logged (not a full-row
-                // snapshot) — reverting restores the old hash so the
-                // previous password works again, without touching name/
-                // email/role. Hashes aren't reversible to plaintext, so
-                // this is safe to store, but change_history.php masks the
-                // raw value in the UI since showing a hash string is just
-                // noise, not something a reviewer needs to read.
                 log_change($pdo, 'users', $targetId, $target['name'], 'update', ['password_hash' => $target['password_hash']], ['password_hash' => $newHash], $currentUser['user_id']);
             }
             $message = ['type' => 'success', 'text' => 'Password reset.'];
         }
     } elseif ($action === 'delete_account' && !empty($_POST['user_id'])) {
-        // Deletes a staff account (admin or counselor). Not permanent right
-        // away — delete_account_with_log() snapshots the full row (plus
-        // anything ON DELETE CASCADE would take with it, e.g. this
-        // counselor's counselor_log entries) into change_log, and an
-        // administrator can restore it from Change History within 24 hours
-        // (see change_log_helper.php's ACCOUNT_DELETE_UNDO_WINDOW_SECONDS).
-        // Past that window it's the same as any other permanent delete.
         $targetId = (int) $_POST['user_id'];
 
         if ($targetId === $currentUser['user_id']) {
@@ -324,7 +306,6 @@ $welcome = isset($_GET['welcome']);
     .empty { color: #666; font-style: italic; }
     .site-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 60vw; opacity: 0.15; z-index: -1; pointer-events: none; user-select: none; }
 
-    /* Collapsible "create account" panel, styled as a button until opened */
     .create-toggle { margin-top: 18px; }
     .create-toggle > summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; background: #6e1423; color: #fff; padding: 10px 20px; border-radius: 6px; font-size: 15.5px; font-weight: bold; cursor: pointer; }
     .create-toggle > summary::-webkit-details-marker { display: none; }
@@ -355,7 +336,6 @@ $welcome = isset($_GET['welcome']);
     .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14.5px; opacity: 0.55; pointer-events: none; }
     .no-results-row td { text-align: center; color: #888; font-style: italic; padding: 18px 10px; }
 
-    /* Table panel + row polish */
     .table-card { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 6px 18px 12px; }
     .table-card table { margin-top: 6px; }
     tbody tr:hover { background: rgba(110,20,35,0.04); }
@@ -415,11 +395,6 @@ $welcome = isset($_GET['welcome']);
         // Renders one staff row (administrator or counselor) — same edit/reset/toggle actions for both.
         function render_staff_row(array $u, array $currentUser, string $tab): void
         {
-            // $tab ('admins' or 'counselors') is echoed into each form's
-            // action so that submitting Edit/Reset/Disable-Re-enable lands
-            // back on the same tab instead of always resetting to
-            // Administrators (the tabs are client-side only — see the
-            // hash-restoring script near the bottom of this file).
             $tabAction = 'users.php#' . htmlspecialchars($tab);
     ?>
             <tr data-search="<?= htmlspecialchars(strtolower($u['name'] . ' ' . $u['email'])) ?>">
@@ -617,11 +592,6 @@ $welcome = isset($_GET['welcome']);
             });
         });
 
-        // Every Edit/Reset password/Disable/Re-enable form's action targets
-        // "users.php#<tab>" (set server-side in render_staff_row() and the
-        // student rows below) — since these are plain form POSTs (full page
-        // reload, no AJAX), this is what lands the user back on the tab
-        // they were on instead of always resetting to Administrators.
         if (location.hash) {
             activateTab(location.hash.slice(1));
         }

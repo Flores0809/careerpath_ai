@@ -59,7 +59,6 @@ SAMPLE_PROFILES = [
     {"R": 0.5, "I": 0.4, "A": 0.2, "S": 0.4, "E": 0.5, "C": 0.9},
 ]
 
-
 def one_request(url, i):
     profile = SAMPLE_PROFILES[i % len(SAMPLE_PROFILES)]
     body = json.dumps({"riasec": profile, "top_n": 5}).encode()
@@ -74,7 +73,6 @@ def one_request(url, i):
     except urllib.error.URLError as e:
         return {"i": i, "elapsed": time.perf_counter() - start, "ok": False, "error": str(e)}
     return {"i": i, "elapsed": time.perf_counter() - start, "ok": ok}
-
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -120,7 +118,6 @@ def main():
         else:
             print("-> Requests are genuinely overlapping -- the service is handling\n"
                   "   concurrent load, not serializing it.")
-
 
 if __name__ == "__main__":
     main()

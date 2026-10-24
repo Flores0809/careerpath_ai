@@ -1,11 +1,5 @@
 <?php
 // CareerPath AI - Crawler status proxy (JSON endpoint for careers.php's JS)
-//
-// The browser can't call the matching-service Flask app directly (different
-// port = different origin = blocked by CORS unless Flask is reconfigured for
-// it). Instead, this small same-origin endpoint does the curl server-side
-// and just relays the JSON back to the page's own JavaScript, same idea as
-// every other PHP-to-Flask call in this app (submit.php, careers.php).
 
 require __DIR__ . '/auth.php';
 require_role(['administrator', 'counselor']);

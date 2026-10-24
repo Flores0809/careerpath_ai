@@ -1,11 +1,5 @@
 <?php
 // CareerPath AI - Front landing page
-//
-// The public entry point for the whole system. Routes visitors down one of
-// two paths — Student or Staff — since they're two completely separate
-// login systems (see php/student_auth.php vs php/auth.php). If someone's
-// already logged in as either, this page shows shortcuts instead of a
-// login prompt.
 
 require __DIR__ . '/student_auth.php';
 require __DIR__ . '/auth.php';
@@ -25,10 +19,6 @@ $currentStaff = current_user();
 
     .page { position: relative; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
 
-    /* Split-panel shell: colored brand panel on the left, page content on
-       the right — same two-pane login-screen layout the client referenced,
-       adapted to this page's actual job (routing to Student/Staff), not a
-       login form of its own. */
     .auth-shell { width: 100%; max-width: 1080px; min-height: 600px; background: #fff; border-radius: 22px; box-shadow: 0 20px 50px rgba(0,0,0,0.18); overflow: hidden; display: flex; }
     @media (max-width: 800px) { .auth-shell { flex-direction: column; min-height: 0; } }
 

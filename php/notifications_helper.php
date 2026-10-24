@@ -1,21 +1,9 @@
 <?php
 // CareerPath AI - Notification Module helpers
 // --------------------------------------------------------------------
-// A Gantt-chart item not named anywhere in the capstone paper's ERD or Use
-// Case Diagram (see README for the alignment note) — built anyway since
-// it's on the group's Software Development list. Deliberately simple:
-// in-app only (no email/SMS), one flat table, read/unread per audience.
 
 require_once __DIR__ . '/db.php';
 
-/**
- * Create a notification for a single student.
- * $category tags what kind of notification this is (e.g. 'counselor_note',
- * 'consultation', 'assessment') so the Notifications list can visibly tell
- * them apart, and other views (like the dashboard's notes banner) can count
- * just one category's unread total instead of everything. Null is fine for
- * anything generic.
- */
 function notify_student(PDO $pdo, int $studentId, string $message, ?string $link = null, ?string $category = null): void
 {
     $stmt = $pdo->prepare(

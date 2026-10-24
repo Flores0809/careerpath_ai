@@ -1,26 +1,8 @@
 <?php
 // CareerPath AI - Built-in FAQ chatbot knowledge base
 // --------------------------------------------------------------------
-// Deliberately NOT an LLM call — no API key, no external service, no
-// internet dependency. Each entry is a canned question/answer pair with
-// a list of trigger keywords. chatbot_ask.php scores the visitor's typed
-// message against these keyword lists (simple overlap counting, the same
-// "hand-roll it in PHP since there's no scikit-learn here" approach the
-// rest of this app already uses for RIASEC matching) and returns the
-// best-matching answer. Fully deterministic and easy to explain/defend:
-// there's no black box, just a lookup table.
-//
-// To add a new FAQ entry: append another array with 'keywords' (words a
-// student/staff member might actually type — include common misspellings
-// or synonyms), 'question' (shown as the canned label), and 'answer'.
 
 return [
-    // Basic small talk gets its own canned entries rather than being left to
-    // the AI fallback tier -- greetings/thanks/goodbyes aren't "covered by
-    // the reference knowledge" in any topical sense, so the AI tier's
-    // in_scope rule would (correctly, per its instructions) refuse them,
-    // which reads as unfriendly for something this simple. Free, instant,
-    // and no API call needed either way.
     [
         'keywords' => ['hello', 'hi', 'hey', 'greetings', 'morning', 'afternoon', 'evening', 'yo', 'sup',
             'kumusta', 'kamusta', 'musta', 'kums'],

@@ -1,8 +1,6 @@
 <?php
 // Locked list of MEII grade/section names (from the official section list) —
 // dropdown only, no free text, so a student can't register under a
-// mistyped/nonexistent section. Add new sections here as MEII announces them.
-// Shared by student_register.php and the admin Approvals tab (users.php).
 $gradeLevelOptions = [
     'Grade 7A - HEMINGWAY',
     'Grade 7B - SHAKESPEARE',

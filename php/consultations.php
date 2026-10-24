@@ -1,12 +1,6 @@
 <?php
 // CareerPath AI - Consultation Request & Appointment Scheduling (staff side)
 // Counselor/administrator view: pick up a pending request, schedule a date
-// and time, add notes, reschedule, and mark it completed or cancelled later.
-// Rescheduling and cancelling both REQUIRE a written explanation, which is
-// saved to the consultation's notes (the student sees it on their
-// Consultations page) and included in the notification sent to the student —
-// a student should never have an appointment moved or cancelled without being
-// told why.
 
 require __DIR__ . '/auth.php';
 require_once __DIR__ . '/notifications_helper.php';
@@ -15,8 +9,6 @@ $currentUser = require_role(['administrator', 'counselor']);
 $pdo = get_db();
 $message = null;
 
-// consultations.rescheduled_at comes from migration_28; fall back gracefully
-// if that migration hasn't been run on this database yet.
 try {
     $pdo->query("SELECT rescheduled_at FROM consultations LIMIT 0");
     $hasRescheduleCol = true;
@@ -190,8 +182,6 @@ if ($statusFilter !== 'all') {
 $consultations = $stmt->fetchAll();
 
 $counts = $pdo->query("SELECT status, COUNT(*) AS n FROM consultations GROUP BY status")->fetchAll(PDO::FETCH_KEY_PAIR);
-// 'scheduled' is displayed as 'Confirmed' (matches the panel's suggested wording);
-// the stored status value stays 'scheduled'.
 $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Confirmed', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
 ?>
 <!DOCTYPE html>
@@ -211,12 +201,6 @@ $statusLabels = ['pending' => 'Pending', 'scheduled' => 'Confirmed', 'completed'
     /* Status tabs — same pattern as careers.php / users.php */
     .tabs { max-width: 1100px; margin: 24px auto 18px; display: flex; gap: 4px; border-bottom: 2px solid #eee; flex-wrap: wrap; }
     .tab-btn { background: none; border: none; padding: 10px 18px; font-size: 15.5px; font-weight: bold; color: #888; cursor: pointer; text-decoration: none; display: inline-block; border-bottom: 3px solid transparent; margin-bottom: -2px; font-family: inherit; }
-    /* On mobile, 5 tabs (Pending/Scheduled/Completed/Cancelled/All) don't fit
-       one row, so flex-wrap used to break them into a ragged 2-then-2-then-1
-       grid with no consistent column alignment between rows -- reported as
-       looking "goloh" (messed up). A single horizontally-scrollable row
-       (same idea as the .cp-table-scroll wrapper used for data tables)
-       keeps every tab the same height in one clean line instead. */
     @media (max-width: 700px) {
         .tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .tab-btn { flex: 0 0 auto; white-space: nowrap; }

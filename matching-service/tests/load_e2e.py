@@ -22,10 +22,8 @@ import argparse, csv, json, random, statistics, threading, time, urllib.parse, u
 
 KEYS = "RIASEC"
 
-
 def pct(v, p):
     return v[min(len(v) - 1, int(len(v) * p))]
-
 
 class Session:
     def __init__(self):
@@ -45,13 +43,11 @@ class Session:
         with self.op.open(req, timeout=60) as r:
             return r.status, r.geturl(), r.read()
 
-
 def do_match(a, rng):
     s = Session()
     body = {"riasec": {k: round(rng.random(), 3) for k in KEYS}, "top_n": 5}
     st, _, txt = s.post(a.match.rstrip("/") + "/match", body, js=True)
     return st == 200 and b"recommendations" in txt or st == 200
-
 
 def login(a, s):
     st, url, txt = s.post(a.base.rstrip("/") + "/student_login.php",
@@ -60,14 +56,12 @@ def login(a, s):
         return True
     return f"login failed (HTTP {st}, ended at {url.split('/')[-1][:40]})"
 
-
 def do_login(a, rng):
     s = Session()
     r = login(a, s)
     if r is not True: return r
     st, _, _ = s.get(a.base.rstrip("/") + "/student_dashboard.php")
     return st == 200 or f"dashboard HTTP {st}"
-
 
 def do_flow(a, rng):
     s = Session()
@@ -91,9 +85,7 @@ def do_flow(a, rng):
     msg = _re.sub(r"\s+", " ", _re.sub(r"<[^>]+>", " ", m.group(1))).strip()[:200] if m else "no error box on page (history save may have failed)"
     return f"submit did not reach results (HTTP {st}): {msg}"
 
-
 SCEN = {"match": do_match, "login": do_login, "flow": do_flow}
-
 
 def run(name, fn, a, users):
     lat, errs, lock = [], [0], threading.Lock()
@@ -130,7 +122,6 @@ def run(name, fn, a, users):
         print(f"   ! {v} x {k}")
     return [name, users, n, round(statistics.mean(lat), 1), round(pct(lat, .5), 1), round(pct(lat, .95), 1), round(lat[-1], 1),
             round(n / wall, 1), errs[0], round(100 * errs[0] / n, 2)]
-
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
